@@ -1,0 +1,238 @@
+.muteCheckbox + label svg{
+    transition-duration: 200ms;
+    fill: black;
+    stroke: black;
+}
+.muteCheckbox:checked + label svg{
+    fill: red;
+    stroke: red;
+}
+table{
+    border: 1px;
+    border-spacing: 1px;
+    border-color: gray;
+}
+.playpause div {
+    display: inline-block;
+    box-sizing: border-box;
+    width: 0;
+    height: 9.86666668cqw;
+    border-color: transparent transparent transparent #000;
+    transition: 100ms all ease;
+    cursor: pointer;
+    border-style: double;
+    border-width: 0px 0 0px 8cqw; /* 0px 0 0px 60px */
+    margin: auto;
+}
+.playpause input[type=checkbox] {
+    position: absolute;
+    display: none;
+}
+.playpause input[type=checkbox]:not(:checked) + div {
+    border-style: solid;
+    border-width: 4.933333334cqw 0 4.93333334cqw 8cqw; /* 37px 0 37px 60px */
+}
+.smallplaypause div{
+    border-width: 0px 0 0px 2.5em;/* 0px 0 0px 60px */
+}
+.smallplaypause input[type=checkbox]:not(:checked) + div {
+    border-style: solid;
+    border-width: 1.5em 0 1.5em 2.5em;/* 37px 0 37px 60px */
+}
+.smallplaypause input[type=checkbox] + div{ height: 3em; /*original: 3em*/ }
+.playpause input[type=checkbox]:focus + div {
+    box-shadow: 0 0 1px lightblue;
+}
+.hoverToDrop{
+    background-color: rgba(173, 216, 230, 0.75);
+    pointer-events: none;
+    opacity: 0;
+    position: fixed;
+    left: -50vw;
+    top: -50vh;
+    width: 200vw;
+    height: 200vh;
+    transition-duration: 200ms;
+    z-index: 10;
+}
+.hoverToDrop[draggingOver=true]{ opacity: 1; }
+
+[id="rightClickContextMenu"]{
+    width: max-content;
+    height: 0;
+    background-color: white;
+    opacity: 0;
+    z-index: 5;
+    position: fixed;
+    overflow: hidden;
+    border-radius: 5px;
+    border: black;
+    border-width: 1px;
+    border-style: solid;
+    @media not (prefers-reduced-motion) {
+        transition: all 250ms;
+        transition-property: opacity, height;
+    }
+}
+[id="rightClickContextMenu"][open=true]{
+    opacity: 1;
+}
+.contextOption{
+    color: black;
+    border-bottom: black;
+    border-bottom-style: solid;
+    border-bottom-width: 0px; /*set to 1px if there is an option below it, otherwise it should be 0px*/
+    font-weight: bold;
+    text-align: center;
+    user-select: none;
+    line-height: 29px;
+    height: 29px;
+    overflow: hidden;
+    white-space: nowrap;
+    position: relative;
+    transform: translateX(-50%);
+    transition: background-color 150ms;
+
+    --distance-from-sides: 5px;
+    left: calc(50% - var(--distance-from-sides));
+    margin-left: var(--distance-from-sides);
+}
+.contextOption:hover{
+    background-color: lightgray;
+}
+.contextOption:active{
+    background-color: rgb(175,175,175);
+}
+.contextIcon{
+    position: relative;
+    top: 50%;
+    transform: translate(0, -50%);
+}
+
+.playBackIcon{ pointer-events: none; }
+dialog{
+    display: inline-flex;
+    top: -100vh;
+    width: 0;
+    height: 0;
+    left: 100%;
+    opacity: 0;
+    
+    flex-direction: column;
+    background-color: white;
+    @media not (prefers-reduced-motion) {
+        transition: 250ms;
+    }
+}
+dialog[open] {
+    top: 0;
+    left: 0;
+    height: max-content;
+    width: 75%;
+    opacity: 1;
+}
+dialog::backdrop{
+    transition: 250ms;
+    transition-duration: 250ms;
+    animation: darkenColor 250ms ease normal;
+    animation-fill-mode: forwards;
+}
+@media (max-width: 140ch){
+    dialog[open] {
+        width: 100%;
+    }
+}
+@keyframes darkenColor{
+    from {
+      background-color: #0000;
+    }
+    to {
+      background-color: rgba(0, 0, 0, 0.75);
+    }
+}
+.clickableButton{
+    position: relative;
+    z-index: 0;
+    transition-duration: 200ms;
+    border-radius: 5px;
+    user-select: none;
+    -webkit-user-drag: none;
+    cursor: pointer;
+}
+.clickableButton:hover{ background-color: rgb(200, 200, 200); }
+.clickableButton:active{
+    transition-duration: 100ms;
+    background-color: rgb(255, 255, 255);
+    box-shadow: 0 5px 5px 0 rgba(0,0,0,0.24), 0 17px 50px 0 rgba(0,0,0,0.19);
+}
+.pullsOpen div{
+    transform: translate(0, 50%);
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    bottom: 100%;
+    background: linear-gradient(0deg, #0000 50%, white 50%);
+    transition-duration: 200ms;
+    @media (prefers-reduced-motion) {
+        transition-duration: 50ms;
+    }
+    visibility: hidden;
+    opacity: 0;
+    z-index: 2;
+}
+.pullsOpen:hover div{
+    width: 100%;
+    height: 50vh;
+    visibility: visible;
+    opacity: 1;
+}
+.shuffle + label svg {
+    float: right;
+    width: 50%;
+    height: 50%;
+    fill: #000;
+}
+.shuffle:checked + label svg { fill: #ff0000; }
+.repeatButton + label img{
+    float: left;
+    width: 50%;
+    height: 50%;
+    /* display: inline-block; */
+}
+.playingStatus{
+    display: inline-block;
+    font-weight: bold;
+    color:black;
+}
+.songName::-webkit-scrollbar{ display: none; }
+.songName{
+    display: inline-block;
+    font-family:Cambria;
+    text-overflow: clip;
+    overflow: scroll /*hidden*/;
+    white-space: nowrap;
+    /* max-width: 75vw; 45.5ch */
+    max-width: 50cqw;
+}
+.largerSize{ max-width: 90%; }
+progress {
+    margin-top: 1em;
+    width: 50vw;
+    height: 1em;
+    transition: 0.3s;
+}
+input[type=file]{
+    width:90px;
+    color:transparent;
+}
+input[type=number]{
+    display: inline-block;
+    width: 100%;
+}
+.cell{ text-align: center; }
+dt {
+  font-weight: bold;
+}
+dt::after {
+  content: ": ";
+}

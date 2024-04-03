@@ -1,0 +1,16 @@
+body {
+  background: #888;
+  color: white;
+}
+.prevent-select {
+  user-select: none;
+  pointer-events: visible;
+  -webkit-user-select: none;
+}
+::-webkit-scrollbar { width: 1em; }
+/* Track */
+::-webkit-scrollbar-track { background: #999; }
+/* Handle */
+::-webkit-scrollbar-thumb { background: #555; }
+/* Handle on hover */
+::-webkit-scrollbar-thumb:active, ::-webkit-scrollbar-thumb:hover { background: #111; }

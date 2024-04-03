@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Web Music Looper</title>
+        <link rel="icon" href="../Icons/PageFavicon.ico">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script defer src="../Javascript/WebLooper.js"></script>
+        <script defer src="../howler.js"></script>
+        <script src="../Javascript/ServiceWorker.js"></script>
+        <link rel="stylesheet" href="../CSS/WebLooper.css">
+        <link rel="stylesheet" href="../CSS/background.css">
+        <!-- August 27, 2023, 12:33AM -->
+    </head>
+    <body>
+        <div style="margin-left: auto; margin-right: auto; text-align: center;">
+            <h1 style="border:1px solid black; background-color:white">
+                <font style="color:black; font-family: Cambria">Web Looper</font>
+            </h1>
+            <h2>
+                <font style="font-size: 15px; color:black; font-family: Cambria">Powered by Howler.js</font>
+            </h2>
+
+            <input type="file" style="margin-left:5px; margin-right:5px; width:90px; color:transparent;" multiple=true title="Drag audios here to batch upload them!" id="batchUpload"/>
+            <label for="batchUpload" style="position: relative; top: 1px;">Add files here to batch upload</label>
+        </div>
+
+        <table id="theTable">
+            <tbody>
+                <tr>
+                    <td>
+                        <button id="playButton">Play All</button>
+                        <button id="seekBackward">-10 Seconds</button>
+                        <button id="seekForward">+10 Seconds</button>
+                        
+                        <input style="margin-left:0px" type="checkbox" id="1playAfter0"><label for="1playAfter0">Playlist Mode (Audio #1 plays, then Audio #2 loops)</label>
+                        <div>More audio players will be created as more files are added. If there are no file players, Javascript may be disabled. Try enabling Javascript and refreshing.</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <button id="FadingControlOpenDialog">Fade Control</button>
+        <dialog id="FadeControlDialog" style="position: sticky; top: 50vh; z-index: 1">
+            <label style="margin-right:1ch;" for='fallBehindLeeway' title='Determines how much synced sounds can go ahead / behind of sound #1 (in seconds). Try increasing this value if audio is stuttery or fading is not working.'>Displacement Leeway:</label><input type="number" id='fallBehindLeeway' inputmode="numeric" value=0 min=0 step=0.01 title='Determines how much synced sounds can go ahead / behind of sound #1 (in seconds). Try increasing this value if audio is stuttery or fading is not working.'/>
+            
+            <table id='fadeControllingTable'>
+                <tbody>
+                    <tr>
+                        <td>
+                            <button id="fadeAllButton">Fade All</button>
+                            <button id="PlaylistModeCloseDialog">Close</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <datalist id="commonVolumes">
+                <option value="0"></option>
+                <option value="0.25"></option>
+                <option value="0.5"></option>
+                <option value="0.75"></option>
+                <option value="1"></option>
+            </datalist>
+        </dialog>
+
+        <div style="text-align:left"><a href="../HTML/PlaylistCreator.html">Playlist Creator</a></div>
+    </body>
+</html>
