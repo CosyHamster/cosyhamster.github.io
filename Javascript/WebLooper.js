@@ -1,3 +1,5 @@
+import { Howl, Howler } from "../howler";
+
 class OnEventUpdated{
     constructor(){
         this.registeredCallbacks = []
