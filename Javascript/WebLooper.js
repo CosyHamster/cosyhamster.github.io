@@ -1,4 +1,4 @@
-// import { Howl, Howler } from "../howler";
+import("./howler.js");
 
 class OnEventUpdated{
     constructor(){

@@ -1,5 +1,5 @@
 //@ts-nocheck
-// import { Howl, Howler } from "../howler";
+import("./howler.js");
 
 const enum PhaseType {
   COLLECTING,
