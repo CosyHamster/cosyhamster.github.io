@@ -45,6 +45,9 @@ self.addEventListener("install", (event) => {
         cacheStorage.addAll(contentToCache).then(() => accept()).catch(() => reject("Failed to add all resources to cache on install"));
     })));
 });
+self.addEventListener('activate', (e) => {
+    return self.clients.claim();
+});
 self.addEventListener("fetch", (e) => {
     if (e.request.method !== "GET")
         return;
@@ -82,7 +85,8 @@ function getCachedResponse(request) {
     return __awaiter(this, void 0, void 0, function* () {
         return new Promise((accept, reject) => {
             cacheStorage.match(request).then((response) => {
-                accept(response);
+                var _a;
+                accept((_a = response === null || response === void 0 ? void 0 : response.clone) === null || _a === void 0 ? void 0 : _a.call(response));
             }).catch(() => {
                 accept(null);
             });

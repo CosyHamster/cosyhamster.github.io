@@ -34,6 +34,9 @@ self.addEventListener("install", (event) => {
         cacheStorage.addAll(contentToCache).then(() => accept()).catch(() => reject("Failed to add all resources to cache on install"));
     }))
 });
+self.addEventListener('activate', (e) => {
+    return self.clients.claim();
+})
 self.addEventListener("fetch", (e) => {
     if(e.request.method !== "GET") return;
     e.respondWith(new Promise(async (accept, reject) => {        
