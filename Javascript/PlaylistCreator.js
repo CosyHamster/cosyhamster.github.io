@@ -180,7 +180,7 @@ var REQUEST_ANIMATION_FRAME_EVENT = new OnRequestAnimationFrameEvent(), KEY_DOWN
     SELECTING: "lightblue",
     NONE: ""
 }, PAUSED = false, PLAYING = true, PLAYLIST_VIEWER_TABLE = document.getElementById("Playlist_Viewer"), PRELOAD_DIST_ELEMENT = document.getElementById('preloadDistance'), COMPACT_MODE_LINK_ELEMENT = null, //document.getElementById('compactModeStyleLink'),
-COMPACT_MODE_TOGGLE = document.getElementById('compactMode'), SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration'), SEEK_DURATION_DISPLAY = document.getElementById("seekDurationDisplay"), SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional'), SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable'), UPLOAD_BUTTON = document.getElementById('0input'), UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory'), PLAY_RATE_RANGE = document.getElementById('0playRateSlider'), SETTINGS_PAGE = document.getElementById('settingsPage'), ERROR_POPUP = document.getElementById('errorPopup'), ERROR_LIST = document.getElementById('errorList'), PROGRESS_BAR = document.getElementById('progress-bar'), HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay'), VOLUME_CHANGER = document.getElementById('0playVolume'), PLAY_RATE = document.getElementById('0playRate'), PLAY_PAN = document.getElementById('0playPan'), SEEK_BACK = document.getElementById('seekBack'), SEEK_FORWARD = document.getElementById('seekForward'), REPEAT_BUTTON = document.getElementById('repeatButton'), SHUFFLE_BUTTON = document.getElementById('shuffleButton'), MUTE_BUTTON = document.getElementById('0Mute'), PLAY_BUTTON = document.getElementById('playpause'), STATUS_TEXT = document.getElementById('0status'), CURRENT_FILE_NAME = document.getElementById('currentFileName'), DROPPING_FILE_OVERLAY = document.getElementById("dragOverDisplay"), DURATION_OF_SONG_DISPLAY = document.getElementById('secondDurationLabel');
+COMPACT_MODE_TOGGLE = document.getElementById('compactMode'), SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration'), SEEK_DURATION_DISPLAY = document.getElementById("seekDurationDisplay"), SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional'), SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable'), UPLOAD_BUTTON = document.getElementById('0input'), UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory'), PLAY_RATE_RANGE = document.getElementById('0playRateSlider'), SETTINGS_PAGE = document.getElementById('settingsPage'), ERROR_POPUP = document.getElementById('errorPopup'), DEPRECATED_POPUP = document.getElementById('deprecatedPopup'), ERROR_LIST = document.getElementById('errorList'), PROGRESS_BAR = document.getElementById('progress-bar'), HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay'), VOLUME_CHANGER = document.getElementById('0playVolume'), PLAY_RATE = document.getElementById('0playRate'), PLAY_PAN = document.getElementById('0playPan'), SEEK_BACK = document.getElementById('seekBack'), SEEK_FORWARD = document.getElementById('seekForward'), REPEAT_BUTTON = document.getElementById('repeatButton'), SHUFFLE_BUTTON = document.getElementById('shuffleButton'), MUTE_BUTTON = document.getElementById('0Mute'), PLAY_BUTTON = document.getElementById('playpause'), STATUS_TEXT = document.getElementById('0status'), CURRENT_FILE_NAME = document.getElementById('currentFileName'), DROPPING_FILE_OVERLAY = document.getElementById("dragOverDisplay"), DURATION_OF_SONG_DISPLAY = document.getElementById('secondDurationLabel');
 var fileNameDisplays = [];
 var filePlayingCheckboxes = [];
 var fileSizeDisplays = [];
@@ -192,7 +192,8 @@ var processingNumber = 0;
 var skipSongQueued = false;
 var currentSongIndex = null;
 const start = (() => {
-    if ("serviceWorker" in navigator) {
+    const onDeprecated = new URL(document.URL).origin == 'https://cosyhamster.codehs.me';
+    if ("serviceWorker" in navigator && !onDeprecated) {
         navigator.serviceWorker.register("../ServiceWorker.js");
     }
     KEY_DOWN_EVENT.register(closeContextMenu);
@@ -236,6 +237,7 @@ const start = (() => {
     registerClickEvent('settingsButton', () => __awaiter(void 0, void 0, void 0, function* () { return SETTINGS_PAGE.showModal(); }));
     registerClickEvent('exitSettingsButton', () => __awaiter(void 0, void 0, void 0, function* () { return SETTINGS_PAGE.close(); }));
     registerClickEvent('exitErrorPopup', () => __awaiter(void 0, void 0, void 0, function* () { return ERROR_POPUP.close(); }));
+    registerClickEvent('exitDeprecatedPopup', () => __awaiter(void 0, void 0, void 0, function* () { return DEPRECATED_POPUP.close(); }));
     ERROR_POPUP.addEventListener("close", onCloseErrorPopup);
     UPLOAD_BUTTON.addEventListener('change', function () { importFiles(UPLOAD_BUTTON.files); }, { passive: true });
     UPLOAD_DIRECTORY_BUTTON.addEventListener('change', function () { importFiles(UPLOAD_DIRECTORY_BUTTON.files); }, { passive: true });
@@ -254,6 +256,8 @@ const start = (() => {
         progressBarSeek(pointer, 0 /* ProgressBarSeekAction.SEEK_TO */); }, { passive: true });
     PROGRESS_BAR.addEventListener('pointermove', (pointer) => progressBarSeek(pointer, 1 /* ProgressBarSeekAction.DISPLAY_TIME */), { passive: true });
     PROGRESS_BAR.addEventListener('pointerleave', (pointer) => progressBarSeek(pointer, 2 /* ProgressBarSeekAction.STOP_DISPLAYING */), { passive: true });
+    if (onDeprecated)
+        DEPRECATED_POPUP.showModal();
     //END
 })();
 function makeDocumentDroppable() {

@@ -207,6 +207,7 @@ var REQUEST_ANIMATION_FRAME_EVENT = new OnRequestAnimationFrameEvent(),
   PLAY_RATE_RANGE: HTMLInputElement = document.getElementById('0playRateSlider'),
   SETTINGS_PAGE: HTMLDialogElement = document.getElementById('settingsPage'),
   ERROR_POPUP: HTMLDialogElement = document.getElementById('errorPopup'),
+  DEPRECATED_POPUP: HTMLDialogElement = document.getElementById('deprecatedPopup'),
   ERROR_LIST: HTMLDListElement = document.getElementById('errorList'),
   PROGRESS_BAR: HTMLProgressElement = document.getElementById('progress-bar'),
   HOVERED_TIME_DISPLAY: HTMLDivElement = document.getElementById('hoveredTimeDisplay'),
@@ -235,7 +236,9 @@ var processingNumber: number = 0;
 var skipSongQueued = false;
 var currentSongIndex: number | null = null;
 const start = (() => {
-  if ("serviceWorker" in navigator) {
+  const deprecated = new URL(document.URL).origin == 'https://cosyhamster.codehs.me';
+
+  if ("serviceWorker" in navigator && !deprecated) {
     navigator.serviceWorker.register("../ServiceWorker.js");
   }
   KEY_DOWN_EVENT.register(closeContextMenu);
@@ -278,6 +281,7 @@ const start = (() => {
   registerClickEvent('settingsButton', async () => SETTINGS_PAGE.showModal());
   registerClickEvent('exitSettingsButton', async () => SETTINGS_PAGE.close());
   registerClickEvent('exitErrorPopup', async () => ERROR_POPUP.close());
+  registerClickEvent('exitDeprecatedPopup', async () => DEPRECATED_POPUP.close());
   ERROR_POPUP.addEventListener("close", onCloseErrorPopup);
 
   UPLOAD_BUTTON.addEventListener('change', function () { importFiles(UPLOAD_BUTTON.files) }, { passive: true })
@@ -297,6 +301,8 @@ const start = (() => {
   PROGRESS_BAR.addEventListener('pointerdown', (pointer) => { if(pointer.button == 0) progressBarSeek(pointer, ProgressBarSeekAction.SEEK_TO); }, { passive: true })
   PROGRESS_BAR.addEventListener('pointermove', (pointer) => progressBarSeek(pointer, ProgressBarSeekAction.DISPLAY_TIME), { passive: true })
   PROGRESS_BAR.addEventListener('pointerleave', (pointer) => progressBarSeek(pointer, ProgressBarSeekAction.STOP_DISPLAYING), { passive: true })
+  
+  if(deprecated) DEPRECATED_POPUP.showModal();
   //END
 })()
 
