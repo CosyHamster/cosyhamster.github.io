@@ -1,7 +1,4 @@
 "use strict";
-//@ts-nocheck
-import("./howler");
-
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -11,18 +8,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var PhaseType;
-(function (PhaseType) {
-    PhaseType[PhaseType["COLLECTING"] = 0] = "COLLECTING";
-    PhaseType[PhaseType["RETRIEVING"] = 1] = "RETRIEVING";
-    PhaseType[PhaseType["FINISHED"] = 2] = "FINISHED";
-})(PhaseType || (PhaseType = {}));
-var ProgressBarSeekAction;
-(function (ProgressBarSeekAction) {
-    ProgressBarSeekAction[ProgressBarSeekAction["SEEK_TO"] = 0] = "SEEK_TO";
-    ProgressBarSeekAction[ProgressBarSeekAction["DISPLAY_TIME"] = 1] = "DISPLAY_TIME";
-    ProgressBarSeekAction[ProgressBarSeekAction["STOP_DISPLAYING"] = 2] = "STOP_DISPLAYING";
-})(ProgressBarSeekAction || (ProgressBarSeekAction = {}));
+//@ts-nocheck
+import("./howler.js");
 class OnEventUpdated {
     constructor() {
         this.registeredCallbacks = [];
@@ -91,7 +78,7 @@ class DataTransferItemGrabber {
         this.promises = [];
         this.filesCollected = 0;
         this.filesAdded = 0;
-        this.phase = PhaseType.COLLECTING; //0 == collecting, 1 == retrieving
+        this.phase = 0 /* PhaseType.COLLECTING */; //0 == collecting, 1 == retrieving
         this.dataTransferItemList = dataTransferItemList;
     }
     retrieveContents() {
@@ -104,9 +91,9 @@ class DataTransferItemGrabber {
                 for (let i = 0; i < this.dataTransferItemList.length; i++)
                     fileEntryArray.push((_c = (_b = (_a = this.dataTransferItemList[i]) === null || _a === void 0 ? void 0 : _a.webkitGetAsEntry) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : this.dataTransferItemList[i]);
                 yield this.scanFilesInArray(fileEntryArray);
-                this.phase = PhaseType.RETRIEVING;
+                this.phase = 1 /* PhaseType.RETRIEVING */;
                 yield Promise.allSettled(this.promises);
-                this.phase = PhaseType.FINISHED;
+                this.phase = 2 /* PhaseType.FINISHED */;
                 this.updateLoadingStatus();
                 return resolve(this.files);
             }));
@@ -174,9 +161,9 @@ class DataTransferItemGrabber {
     }
     updateLoadingStatus() {
         switch (this.phase) {
-            case PhaseType.COLLECTING: return changeStatus(`Collecting: (${this.filesCollected} files; ${this.filesAdded} processed)`);
-            case PhaseType.RETRIEVING: return changeStatus(`Processed: ${this.filesAdded}/${this.filesCollected} files`);
-            case PhaseType.FINISHED: return changeStatus(`Adding ${this.filesAdded} to the playlist... (this will lag)`);
+            case 0 /* PhaseType.COLLECTING */: return changeStatus(`Collecting: (${this.filesCollected} files; ${this.filesAdded} processed)`);
+            case 1 /* PhaseType.RETRIEVING */: return changeStatus(`Processed: ${this.filesAdded}/${this.filesCollected} files`);
+            case 2 /* PhaseType.FINISHED */: return changeStatus(`Adding ${this.filesAdded} to the playlist... (this will lag)`);
         }
     }
 }
@@ -267,11 +254,11 @@ const start = (() => {
     onRangeInput(PLAY_PAN, () => { PLAY_PAN.labels[0].textContent = `${Math.floor(PLAY_PAN.value * 100)}%`; sounds[currentSongIndex].stereo(parseFloat(PLAY_PAN.value)); });
     onRangeInput(VOLUME_CHANGER, () => { VOLUME_CHANGER.labels[0].textContent = `${Math.floor(VOLUME_CHANGER.value * 100)}%`; sounds[currentSongIndex].volume(VOLUME_CHANGER.value); });
     handleCheckBoxClick(MUTE_BUTTON, REPEAT_BUTTON, SHUFFLE_BUTTON);
-    PROGRESS_BAR.addEventListener('pointerenter', (pointer) => progressBarSeek(pointer, ProgressBarSeekAction.DISPLAY_TIME), { passive: true });
+    PROGRESS_BAR.addEventListener('pointerenter', (pointer) => progressBarSeek(pointer, 1 /* ProgressBarSeekAction.DISPLAY_TIME */), { passive: true });
     PROGRESS_BAR.addEventListener('pointerdown', (pointer) => { if (pointer.button == 0)
-        progressBarSeek(pointer, ProgressBarSeekAction.SEEK_TO); }, { passive: true });
-    PROGRESS_BAR.addEventListener('pointermove', (pointer) => progressBarSeek(pointer, ProgressBarSeekAction.DISPLAY_TIME), { passive: true });
-    PROGRESS_BAR.addEventListener('pointerleave', (pointer) => progressBarSeek(pointer, ProgressBarSeekAction.STOP_DISPLAYING), { passive: true });
+        progressBarSeek(pointer, 0 /* ProgressBarSeekAction.SEEK_TO */); }, { passive: true });
+    PROGRESS_BAR.addEventListener('pointermove', (pointer) => progressBarSeek(pointer, 1 /* ProgressBarSeekAction.DISPLAY_TIME */), { passive: true });
+    PROGRESS_BAR.addEventListener('pointerleave', (pointer) => progressBarSeek(pointer, 2 /* ProgressBarSeekAction.STOP_DISPLAYING */), { passive: true });
     //END
 })();
 function makeDocumentDroppable() {
@@ -495,13 +482,13 @@ function updateCurrentTimeDisplay(currentTime, songDurationInSeconds) {
 }
 function progressBarSeek(mouse, hoverType) {
     var _a, _b;
-    if (((mouse === null || mouse === void 0 ? void 0 : mouse.pointerType) == "touch" && hoverType !== ProgressBarSeekAction.SEEK_TO) || sounds[currentSongIndex] == null || ((_b = (_a = sounds[currentSongIndex]) === null || _a === void 0 ? void 0 : _a.state) === null || _b === void 0 ? void 0 : _b.call(_a)) != 'loaded' || hoverType === ProgressBarSeekAction.STOP_DISPLAYING)
+    if (((mouse === null || mouse === void 0 ? void 0 : mouse.pointerType) == "touch" && hoverType !== 0 /* ProgressBarSeekAction.SEEK_TO */) || sounds[currentSongIndex] == null || ((_b = (_a = sounds[currentSongIndex]) === null || _a === void 0 ? void 0 : _a.state) === null || _b === void 0 ? void 0 : _b.call(_a)) != 'loaded' || hoverType === 2 /* ProgressBarSeekAction.STOP_DISPLAYING */)
         return HOVERED_TIME_DISPLAY.setAttribute('inUse', 0);
     const offsetX = mouse.offsetX, progressBarWidth = PROGRESS_BAR.clientWidth, currentSongLength = sounds[currentSongIndex].duration();
     let seekToTime = Math.max(new Number(offsetX * (currentSongLength / progressBarWidth)), 0);
     switch (hoverType) {
-        case (ProgressBarSeekAction.SEEK_TO): return sounds[currentSongIndex].seek(seekToTime);
-        case (ProgressBarSeekAction.DISPLAY_TIME):
+        case (0 /* ProgressBarSeekAction.SEEK_TO */): return sounds[currentSongIndex].seek(seekToTime);
+        case (1 /* ProgressBarSeekAction.DISPLAY_TIME */):
             HOVERED_TIME_DISPLAY.setAttribute('inUse', 1);
             HOVERED_TIME_DISPLAY.style.left = `${(mouse.x - HOVERED_TIME_DISPLAY.getBoundingClientRect().width / 2) + 1}px`;
             HOVERED_TIME_DISPLAY.firstChild.textContent = new Time(seekToTime).toString();
