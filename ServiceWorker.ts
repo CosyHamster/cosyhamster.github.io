@@ -39,6 +39,7 @@ self.addEventListener('activate', (e) => {
 })
 self.addEventListener("fetch", (e) => {
     if(e.request.method !== "GET") return;
+    e.preventDefault();
     e.respondWith(new Promise(async (accept, reject) => {        
         if(!cacheStorage) cacheStorage = await caches.open(CACHE_NAME);
 

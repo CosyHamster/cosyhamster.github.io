@@ -51,6 +51,7 @@ self.addEventListener('activate', (e) => {
 self.addEventListener("fetch", (e) => {
     if (e.request.method !== "GET")
         return;
+    e.preventDefault();
     e.respondWith(new Promise((accept, reject) => __awaiter(void 0, void 0, void 0, function* () {
         if (!cacheStorage)
             cacheStorage = yield caches.open(CACHE_NAME);
