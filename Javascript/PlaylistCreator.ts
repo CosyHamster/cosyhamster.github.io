@@ -1,22 +1,22 @@
 //@ts-nocheck
 // import { Howl, Howler } from "../howler";
 
-enum PhaseType {
+const enum PhaseType {
   COLLECTING,
   RETRIEVING,
   FINISHED
+}
+
+const enum ProgressBarSeekAction {
+  SEEK_TO,
+  DISPLAY_TIME,
+  STOP_DISPLAYING
 }
 
 interface ContextMenuOptions {
   text: String,
   icon: String,
   action: Function
-}
-
-enum ProgressBarSeekAction {
-  SEEK_TO,
-  DISPLAY_TIME,
-  STOP_DISPLAYING
 }
 
 class OnEventUpdated {
