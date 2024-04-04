@@ -111,5 +111,5 @@
     // "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
     "skipLibCheck": true                                 /* Skip type checking all .d.ts files. */
   },
-  "files": ["./Javascript/PlaylistCreator.ts", "./Javascript/ServiceWorker.ts"]
+  "files": ["./Javascript/PlaylistCreator.ts", "ServiceWorker.ts"]
 }
