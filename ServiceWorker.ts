@@ -1,11 +1,3 @@
-if ("serviceWorker" in navigator) {
-    try {
-      navigator.serviceWorker.register("./ServiceWorker.js");
-    } catch (exception) {
-      console.warn(exception);
-    }
-  }
-
 const OFFLINE_VERSION = 2;
 const CACHE_NAME = 'CosyHamsterMusicPlayerOfflineCache';
 var cacheStorage: Cache;

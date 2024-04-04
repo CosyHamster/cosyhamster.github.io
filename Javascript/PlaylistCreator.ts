@@ -235,6 +235,9 @@ var processingNumber: number = 0;
 var skipSongQueued = false;
 var currentSongIndex: number | null = null;
 const start = (() => {
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("../ServiceWorker.js");
+  }
   KEY_DOWN_EVENT.register(closeContextMenu);
   registerClickEvent('skipBack', () => jumpSong(-1));
   registerClickEvent('skipForward', () => jumpSong(1));

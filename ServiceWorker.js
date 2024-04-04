@@ -8,14 +8,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-if ("serviceWorker" in navigator) {
-    try {
-        navigator.serviceWorker.register("ServiceWorker.js");
-    }
-    catch (exception) {
-        console.warn(exception);
-    }
-}
 const OFFLINE_VERSION = 2;
 const CACHE_NAME = 'CosyHamsterMusicPlayerOfflineCache';
 var cacheStorage;

@@ -82,17 +82,20 @@ processQueue = [],
 fadeControllerQuantity = 0
 
 const start = (() => {
-  createNewPlayer(0)
-  registerClickEvent('seekBackward', () => seek('seekBackward') )
-  registerClickEvent('seekForward', () => seek('seekForward') )
-  registerClickEvent('playButton', () => {playAllSounds('playButton'); togglePlayButtonText('playButton');} )
-  registerClickEvent('FadingControlOpenDialog', () => toggleDialog( document.getElementById('FadeControlDialog') ))
-  registerClickEvent('fadeAllButton', () => { for(var i = 0; i < fadeControllerQuantity; i++) fadeAudio(i); } )
-  registerClickEvent('PlaylistModeCloseDialog', () => closeNewestDialog() )
-  importFileDetectID(document.getElementById('batchUpload'));
+    if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("../ServiceWorker.js");
+    }
+    createNewPlayer(0)
+    registerClickEvent('seekBackward', () => seek('seekBackward') )
+    registerClickEvent('seekForward', () => seek('seekForward') )
+    registerClickEvent('playButton', () => {playAllSounds('playButton'); togglePlayButtonText('playButton');} )
+    registerClickEvent('FadingControlOpenDialog', () => toggleDialog( document.getElementById('FadeControlDialog') ))
+    registerClickEvent('fadeAllButton', () => { for(var i = 0; i < fadeControllerQuantity; i++) fadeAudio(i); } )
+    registerClickEvent('PlaylistModeCloseDialog', () => closeNewestDialog() )
+    importFileDetectID(document.getElementById('batchUpload'));
 
-  ON_KEY_DOWN.register(handleKeyDown)
-  REQUEST_ANIMATION_FRAME_EVENT.register(keepTrackofTimes)
+    ON_KEY_DOWN.register(handleKeyDown)
+    REQUEST_ANIMATION_FRAME_EVENT.register(keepTrackofTimes)
 })()
 
 function registerClickEvent(element, func){
