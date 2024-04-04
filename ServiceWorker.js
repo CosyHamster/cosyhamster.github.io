@@ -14,6 +14,7 @@ var cacheStorage;
 self.addEventListener("install", (event) => {
     console.log("[Service Worker] Install");
     const contentToCache = [
+        "/",
         "./index.html",
         "./HTML/WebLooper.html",
         "./HTML/PlaylistCreator.html",
