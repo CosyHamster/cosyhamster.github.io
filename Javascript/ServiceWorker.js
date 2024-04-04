@@ -46,7 +46,7 @@ self.addEventListener("install", (event) => {
     })));
 });
 self.addEventListener('activate', (e) => {
-    return self.clients.claim();
+    e.waitUntil(clients.claim());
 });
 self.addEventListener("fetch", (e) => {
     if (e.request.method !== "GET")
