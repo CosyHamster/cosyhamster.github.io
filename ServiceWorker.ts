@@ -1,6 +1,6 @@
 if ("serviceWorker" in navigator) {
     try {
-      navigator.serviceWorker.register("ServiceWorker.js");
+      navigator.serviceWorker.register("./ServiceWorker.js");
     } catch (exception) {
       console.warn(exception);
     }
