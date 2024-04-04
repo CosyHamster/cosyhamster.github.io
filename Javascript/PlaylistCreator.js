@@ -1,19 +1,3 @@
-"use strict";
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        if (typeof b !== "function" && b !== null)
-            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -23,36 +7,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __generator = (this && this.__generator) || function (thisArg, body) {
-    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
-    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
-    function verb(n) { return function (v) { return step([n, v]); }; }
-    function step(op) {
-        if (f) throw new TypeError("Generator is already executing.");
-        while (g && (g = 0, op[0] && (_ = 0)), _) try {
-            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
-            if (y = 0, t) op = [op[0] & 2, t.value];
-            switch (op[0]) {
-                case 0: case 1: t = op; break;
-                case 4: _.label++; return { value: op[1], done: false };
-                case 5: _.label++; y = op[1]; op = [0]; continue;
-                case 7: op = _.ops.pop(); _.trys.pop(); continue;
-                default:
-                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
-                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
-                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
-                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
-                    if (t[2]) _.ops.pop();
-                    _.trys.pop(); continue;
-            }
-            op = body.call(thisArg, _);
-        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
-        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
-    }
-};
-Object.defineProperty(exports, "__esModule", { value: true });
 //@ts-nocheck
-var howler_1 = require("../howler");
+import { Howl, Howler } from "../howler";
 var PhaseType;
 (function (PhaseType) {
     PhaseType[PhaseType["COLLECTING"] = 0] = "COLLECTING";
@@ -65,54 +21,46 @@ var ProgressBarSeekAction;
     ProgressBarSeekAction[ProgressBarSeekAction["DISPLAY_TIME"] = 1] = "DISPLAY_TIME";
     ProgressBarSeekAction[ProgressBarSeekAction["STOP_DISPLAYING"] = 2] = "STOP_DISPLAYING";
 })(ProgressBarSeekAction || (ProgressBarSeekAction = {}));
-var OnEventUpdated = /** @class */ (function () {
-    function OnEventUpdated() {
+class OnEventUpdated {
+    constructor() {
         this.registeredCallbacks = [];
     }
-    OnEventUpdated.prototype.register = function (func) {
+    register(func) {
         this.registeredCallbacks.push(func);
-    };
-    OnEventUpdated.prototype.unregister = function (func) {
+    }
+    unregister(func) {
         this.registeredCallbacks.splice(this.registeredCallbacks.indexOf(func), 1);
-    };
-    OnEventUpdated.prototype.clearAll = function () {
+    }
+    clearAll() {
         this.registeredCallbacks = [];
-    };
-    OnEventUpdated.prototype.callAllRegisteredFunctions = function (data) {
+    }
+    callAllRegisteredFunctions(data) {
         for (var i = 0; i < this.registeredCallbacks.length; i++)
             this.registeredCallbacks[i](data);
-    };
-    return OnEventUpdated;
-}());
-var OnKeyDownEvent = /** @class */ (function (_super) {
-    __extends(OnKeyDownEvent, _super);
-    function OnKeyDownEvent() {
-        var _this = _super.call(this) || this;
-        window.addEventListener('keydown', function (key) { return _this.callAllRegisteredFunctions(key); }, { passive: false });
-        return _this;
     }
-    return OnKeyDownEvent;
-}(OnEventUpdated));
-var OnRequestAnimationFrameEvent = /** @class */ (function (_super) {
-    __extends(OnRequestAnimationFrameEvent, _super);
-    function OnRequestAnimationFrameEvent() {
-        var _this = _super.call(this) || this;
+}
+class OnKeyDownEvent extends OnEventUpdated {
+    constructor() {
+        super();
+        window.addEventListener('keydown', key => this.callAllRegisteredFunctions(key), { passive: false });
+    }
+}
+class OnRequestAnimationFrameEvent extends OnEventUpdated {
+    constructor() {
+        super();
         // @ts-expect-error
-        _this.raf = (window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame).bind(window);
-        _this.raf(function (timestamp) { return _this.handleRAFCall(timestamp); });
-        return _this;
+        this.raf = (window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame).bind(window);
+        this.raf((timestamp) => this.handleRAFCall(timestamp));
     }
-    OnRequestAnimationFrameEvent.prototype.handleRAFCall = function (timestamp) {
-        var _this = this;
+    handleRAFCall(timestamp) {
         this.callAllRegisteredFunctions(timestamp);
-        this.raf(function (timestamp) { return _this.handleRAFCall(timestamp); });
-    };
-    return OnRequestAnimationFrameEvent;
-}(OnEventUpdated));
+        this.raf((timestamp) => this.handleRAFCall(timestamp));
+    }
+}
 /** Splits inputted seconds into hours, minutes, & seconds. toString() returns the time in digital format.
 */
-var Time = /** @class */ (function () {
-    function Time(seconds) {
+class Time {
+    constructor(seconds) {
         this.seconds = 0;
         this.minutes = 0;
         this.hours = 0;
@@ -122,21 +70,20 @@ var Time = /** @class */ (function () {
         this.minutes = Time.numberToDigitalTimeString(this.minutes - this.hours * 60);
         this.hours = Time.numberToDigitalTimeString(this.hours);
     }
-    Time.prototype.toString = function () {
+    toString() {
         if (this.hours === '00')
-            return "".concat(this.minutes, ":").concat(this.seconds);
-        return "".concat(this.hours, ":").concat(this.minutes, ":").concat(this.seconds);
-    };
-    Time.numberToDigitalTimeString = function (number) {
+            return `${this.minutes}:${this.seconds}`;
+        return `${this.hours}:${this.minutes}:${this.seconds}`;
+    }
+    static numberToDigitalTimeString(number) {
         if (number <= 9)
-            return "0".concat(number);
-        return "".concat(number);
-    };
-    return Time;
-}());
-var DataTransferItemGrabber = /** @class */ (function () {
+            return `0${number}`;
+        return `${number}`;
+    }
+}
+class DataTransferItemGrabber {
     /** @param dataTransferItemList this can be any array-like containing DataTransferItems or File / Directory entries (from DataTransferItem.webkitGetAsEntry()) */
-    function DataTransferItemGrabber(dataTransferItemList) {
+    constructor(dataTransferItemList) {
         this.dataTransferItemList = [];
         this.files = [];
         this.promises = [];
@@ -145,170 +92,92 @@ var DataTransferItemGrabber = /** @class */ (function () {
         this.phase = PhaseType.COLLECTING; //0 == collecting, 1 == retrieving
         this.dataTransferItemList = dataTransferItemList;
     }
-    DataTransferItemGrabber.prototype.retrieveContents = function () {
-        return __awaiter(this, void 0, void 0, function () {
-            var _this = this;
-            return __generator(this, function (_a) {
-                return [2 /*return*/, new Promise(function (resolve) { return __awaiter(_this, void 0, void 0, function () {
-                        var fileEntryArray, i;
-                        var _a, _b, _c;
-                        return __generator(this, function (_d) {
-                            switch (_d.label) {
-                                case 0:
-                                    if (this.files.length > 0)
-                                        resolve(this.files);
-                                    fileEntryArray = [];
-                                    for (i = 0; i < this.dataTransferItemList.length; i++)
-                                        fileEntryArray.push((_c = (_b = (_a = this.dataTransferItemList[i]) === null || _a === void 0 ? void 0 : _a.webkitGetAsEntry) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : this.dataTransferItemList[i]);
-                                    return [4 /*yield*/, this.scanFilesInArray(fileEntryArray)];
-                                case 1:
-                                    _d.sent();
-                                    this.phase = PhaseType.RETRIEVING;
-                                    return [4 /*yield*/, Promise.allSettled(this.promises)];
-                                case 2:
-                                    _d.sent();
-                                    this.phase = PhaseType.FINISHED;
-                                    this.updateLoadingStatus();
-                                    return [2 /*return*/, resolve(this.files)];
-                            }
-                        });
-                    }); })];
-            });
+    retrieveContents() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
+                var _a, _b, _c;
+                if (this.files.length > 0)
+                    resolve(this.files);
+                let fileEntryArray = []; //collect all file entries that need to be scanned
+                for (let i = 0; i < this.dataTransferItemList.length; i++)
+                    fileEntryArray.push((_c = (_b = (_a = this.dataTransferItemList[i]) === null || _a === void 0 ? void 0 : _a.webkitGetAsEntry) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : this.dataTransferItemList[i]);
+                yield this.scanFilesInArray(fileEntryArray);
+                this.phase = PhaseType.RETRIEVING;
+                yield Promise.allSettled(this.promises);
+                this.phase = PhaseType.FINISHED;
+                this.updateLoadingStatus();
+                return resolve(this.files);
+            }));
         });
-    };
-    DataTransferItemGrabber.prototype.scanFilesInArray = function (fileEntries) {
-        return __awaiter(this, void 0, void 0, function () {
-            var _this = this;
-            return __generator(this, function (_a) {
-                return [2 /*return*/, new Promise(function (resolve, reject) { return __awaiter(_this, void 0, void 0, function () {
-                        var _loop_1, this_1, i;
-                        var _this = this;
-                        return __generator(this, function (_a) {
-                            switch (_a.label) {
-                                case 0:
-                                    _loop_1 = function (i) {
-                                        var webkitEntry, reader, index_1, promise;
-                                        return __generator(this, function (_b) {
-                                            switch (_b.label) {
-                                                case 0:
-                                                    webkitEntry = fileEntries[i];
-                                                    if (!webkitEntry.isDirectory) return [3 /*break*/, 2];
-                                                    reader = webkitEntry.createReader();
-                                                    return [4 /*yield*/, this_1.addFilesInDirectory(reader)];
-                                                case 1:
-                                                    _b.sent();
-                                                    return [3 /*break*/, 3];
-                                                case 2:
-                                                    if (webkitEntry.isFile) {
-                                                        index_1 = this_1.filesCollected++;
-                                                        this_1.files.push(null);
-                                                        this_1.updateLoadingStatus();
-                                                        promise = this_1.getFile(webkitEntry);
-                                                        promise.then(function (file) {
-                                                            _this.files[index_1] = file;
-                                                            ++_this.filesAdded;
-                                                            _this.updateLoadingStatus();
-                                                        });
-                                                        this_1.promises.push(promise);
-                                                    }
-                                                    _b.label = 3;
-                                                case 3: return [2 /*return*/];
-                                            }
-                                        });
-                                    };
-                                    this_1 = this;
-                                    i = 0;
-                                    _a.label = 1;
-                                case 1:
-                                    if (!(i < fileEntries.length)) return [3 /*break*/, 4];
-                                    return [5 /*yield**/, _loop_1(i)];
-                                case 2:
-                                    _a.sent();
-                                    _a.label = 3;
-                                case 3:
-                                    i++;
-                                    return [3 /*break*/, 1];
-                                case 4:
-                                    resolve();
-                                    return [2 /*return*/];
-                            }
+    }
+    scanFilesInArray(fileEntries) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
+                for (let i = 0; i < fileEntries.length; i++) {
+                    let webkitEntry = fileEntries[i];
+                    if (webkitEntry.isDirectory) {
+                        let reader = webkitEntry.createReader();
+                        yield this.addFilesInDirectory(reader);
+                    }
+                    else if (webkitEntry.isFile) {
+                        let index = this.filesCollected++;
+                        this.files.push(null);
+                        this.updateLoadingStatus();
+                        let promise = this.getFile(webkitEntry);
+                        promise.then(file => {
+                            this.files[index] = file;
+                            ++this.filesAdded;
+                            this.updateLoadingStatus();
                         });
-                    }); })];
-            });
+                        this.promises.push(promise);
+                    }
+                }
+                resolve();
+            }));
         });
-    };
-    DataTransferItemGrabber.prototype.addFilesInDirectory = function (reader) {
-        return __awaiter(this, void 0, void 0, function () {
-            var _this = this;
-            return __generator(this, function (_a) {
-                return [2 /*return*/, new Promise(function (resolve) { return __awaiter(_this, void 0, void 0, function () {
-                        var someFiles;
-                        return __generator(this, function (_a) {
-                            switch (_a.label) {
-                                case 0: return [4 /*yield*/, this.getSomeFilesInDirectory(reader)];
-                                case 1:
-                                    someFiles = _a.sent();
-                                    _a.label = 2;
-                                case 2:
-                                    if (!(someFiles.length > 0)) return [3 /*break*/, 5];
-                                    return [4 /*yield*/, this.scanFilesInArray(someFiles)];
-                                case 3:
-                                    _a.sent();
-                                    return [4 /*yield*/, this.getSomeFilesInDirectory(reader)];
-                                case 4:
-                                    someFiles = _a.sent();
-                                    return [3 /*break*/, 2];
-                                case 5:
-                                    ;
-                                    return [2 /*return*/, resolve(this.files)];
-                            }
-                        });
-                    }); })];
-            });
+    }
+    addFilesInDirectory(reader) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
+                let someFiles = yield this.getSomeFilesInDirectory(reader);
+                while (someFiles.length > 0) {
+                    yield this.scanFilesInArray(someFiles);
+                    someFiles = yield this.getSomeFilesInDirectory(reader);
+                }
+                ;
+                return resolve(this.files);
+            }));
         });
-    };
-    DataTransferItemGrabber.prototype.getSomeFilesInDirectory = function (reader) {
-        return __awaiter(this, void 0, void 0, function () {
-            var _this = this;
-            return __generator(this, function (_a) {
-                return [2 /*return*/, new Promise(function (resolve) { return __awaiter(_this, void 0, void 0, function () {
-                        return __generator(this, function (_a) {
-                            reader.readEntries(function (someFiles) {
-                                resolve(someFiles);
-                            }, function (error) {
-                                console.error(error, reader);
-                                resolve([]);
-                            });
-                            return [2 /*return*/];
-                        });
-                    }); })];
-            });
+    }
+    getSomeFilesInDirectory(reader) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
+                reader.readEntries(someFiles => {
+                    resolve(someFiles);
+                }, error => {
+                    console.error(error, reader);
+                    resolve([]);
+                });
+            }));
         });
-    };
-    DataTransferItemGrabber.prototype.getFile = function (fileEntry) {
-        return __awaiter(this, void 0, void 0, function () {
-            var _this = this;
-            return __generator(this, function (_a) {
-                return [2 /*return*/, new Promise(function (resolve) { return __awaiter(_this, void 0, void 0, function () {
-                        return __generator(this, function (_a) {
-                            fileEntry.file(function (file) {
-                                resolve(file);
-                            });
-                            return [2 /*return*/];
-                        });
-                    }); })];
-            });
+    }
+    getFile(fileEntry) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
+                fileEntry.file(file => {
+                    resolve(file);
+                });
+            }));
         });
-    };
-    DataTransferItemGrabber.prototype.updateLoadingStatus = function () {
+    }
+    updateLoadingStatus() {
         switch (this.phase) {
-            case PhaseType.COLLECTING: return changeStatus("Collecting: (".concat(this.filesCollected, " files; ").concat(this.filesAdded, " processed)"));
-            case PhaseType.RETRIEVING: return changeStatus("Processed: ".concat(this.filesAdded, "/").concat(this.filesCollected, " files"));
-            case PhaseType.FINISHED: return changeStatus("Adding ".concat(this.filesAdded, " to the playlist... (this will lag)"));
+            case PhaseType.COLLECTING: return changeStatus(`Collecting: (${this.filesCollected} files; ${this.filesAdded} processed)`);
+            case PhaseType.RETRIEVING: return changeStatus(`Processed: ${this.filesAdded}/${this.filesCollected} files`);
+            case PhaseType.FINISHED: return changeStatus(`Adding ${this.filesAdded} to the playlist... (this will lag)`);
         }
-    };
-    return DataTransferItemGrabber;
-}());
+    }
+}
 var REQUEST_ANIMATION_FRAME_EVENT = new OnRequestAnimationFrameEvent(), KEY_DOWN_EVENT = new OnKeyDownEvent(), VALAD_FILE_EXTENSIONS = new Set(["ogg", "webm", "wav", "hls", "flac", "mp3", "opus", "pcm", "vorbis", "aac"]), StatusTexts = {
     PLAYING: "Playing",
     PAUSED: "Paused",
@@ -333,7 +202,7 @@ var hoveredRowInDragAndDrop = null; //does not work with importing files, only w
 var processingNumber = 0;
 var skipSongQueued = false;
 var currentSongIndex = null;
-var start = (function () {
+const start = (() => {
     if ("serviceWorker" in navigator) {
         try {
             navigator.serviceWorker.register("/Javascript/ServiceWorker.js");
@@ -343,20 +212,20 @@ var start = (function () {
         }
     }
     KEY_DOWN_EVENT.register(closeContextMenu);
-    registerClickEvent('skipBack', function () { return jumpSong(-1); });
-    registerClickEvent('skipForward', function () { return jumpSong(1); });
-    registerClickEvent('seekBack', function () { return seek(new Number(SEEK_BACK.getAttribute('seekDirection'))); });
-    registerClickEvent('seekForward', function () { return seek(new Number(SEEK_FORWARD.getAttribute('seekDirection'))); });
-    registerClickEvent(CURRENT_FILE_NAME, function () { return PLAYLIST_VIEWER_TABLE.rows[currentSongIndex + 1].scrollIntoView(false); });
+    registerClickEvent('skipBack', () => jumpSong(-1));
+    registerClickEvent('skipForward', () => jumpSong(1));
+    registerClickEvent('seekBack', () => seek(new Number(SEEK_BACK.getAttribute('seekDirection'))));
+    registerClickEvent('seekForward', () => seek(new Number(SEEK_FORWARD.getAttribute('seekDirection'))));
+    registerClickEvent(CURRENT_FILE_NAME, () => PLAYLIST_VIEWER_TABLE.rows[currentSongIndex + 1].scrollIntoView(false));
     KEY_DOWN_EVENT.register(selectionLogicForKeyboard);
     REQUEST_ANIMATION_FRAME_EVENT.register(keepTrackofTimes);
     makeDocumentDroppable();
-    document.addEventListener('click', function (mouseEvent) {
+    document.addEventListener('click', (mouseEvent) => {
         closeContextMenu();
         if (mouseEvent.target == document.querySelector("html") || mouseEvent.target == document.body)
             deselectAll();
     }, { passive: true });
-    document.addEventListener('touchend', function (touchEvent) {
+    document.addEventListener('touchend', (touchEvent) => {
         // if(touchEvent.touches == 1) {
         //   touchEvent.preventDefault();
         //   const rect = touchEvent.target.getBoundingClientRect();
@@ -374,55 +243,49 @@ var start = (function () {
         // }
     });
     document.addEventListener("beforeunload", function () {
-        howler_1.Howler.unload();
+        Howler.unload();
         sounds = [];
     }, { passive: true });
     initContextMenu();
     PLAY_BUTTON.addEventListener('change', playButton, { passive: true });
     COMPACT_MODE_TOGGLE.addEventListener('change', toggleCompactMode, { passive: true });
-    registerClickEvent('settingsButton', function () { return __awaiter(void 0, void 0, void 0, function () { return __generator(this, function (_a) {
-        return [2 /*return*/, SETTINGS_PAGE.showModal()];
-    }); }); });
-    registerClickEvent('exitSettingsButton', function () { return __awaiter(void 0, void 0, void 0, function () { return __generator(this, function (_a) {
-        return [2 /*return*/, SETTINGS_PAGE.close()];
-    }); }); });
-    registerClickEvent('exitErrorPopup', function () { return __awaiter(void 0, void 0, void 0, function () { return __generator(this, function (_a) {
-        return [2 /*return*/, ERROR_POPUP.close()];
-    }); }); });
+    registerClickEvent('settingsButton', () => __awaiter(void 0, void 0, void 0, function* () { return SETTINGS_PAGE.showModal(); }));
+    registerClickEvent('exitSettingsButton', () => __awaiter(void 0, void 0, void 0, function* () { return SETTINGS_PAGE.close(); }));
+    registerClickEvent('exitErrorPopup', () => __awaiter(void 0, void 0, void 0, function* () { return ERROR_POPUP.close(); }));
     ERROR_POPUP.addEventListener("close", onCloseErrorPopup);
     UPLOAD_BUTTON.addEventListener('change', function () { importFiles(UPLOAD_BUTTON.files); }, { passive: true });
     UPLOAD_DIRECTORY_BUTTON.addEventListener('change', function () { importFiles(UPLOAD_DIRECTORY_BUTTON.files); }, { passive: true });
     // document.getElementById('uploadFilesLabel').addEventListener('contextmenu', (pointerEvent) => {
     //   pointerEvent.preventDefault();
     // })
-    PLAY_RATE.addEventListener('change', function () { onPlayRateUpdate(PLAY_RATE.value); }, { passive: true });
+    PLAY_RATE.addEventListener('change', () => { onPlayRateUpdate(PLAY_RATE.value); }, { passive: true });
     SEEK_DURATION_NUMBER_INPUT.addEventListener('input', updateSeekDurationDisplay, { passive: true });
-    onRangeInput(PLAY_RATE_RANGE, function () { onPlayRateUpdate(PLAY_RATE_RANGE.value); });
-    onRangeInput(PRELOAD_DIST_ELEMENT, function () { PRELOAD_DIST_ELEMENT.labels[0].textContent = "Value: ".concat(PRELOAD_DIST_ELEMENT.value); });
-    onRangeInput(PLAY_PAN, function () { PLAY_PAN.labels[0].textContent = "".concat(Math.floor(PLAY_PAN.value * 100), "%"); sounds[currentSongIndex].stereo(parseFloat(PLAY_PAN.value)); });
-    onRangeInput(VOLUME_CHANGER, function () { VOLUME_CHANGER.labels[0].textContent = "".concat(Math.floor(VOLUME_CHANGER.value * 100), "%"); sounds[currentSongIndex].volume(VOLUME_CHANGER.value); });
+    onRangeInput(PLAY_RATE_RANGE, () => { onPlayRateUpdate(PLAY_RATE_RANGE.value); });
+    onRangeInput(PRELOAD_DIST_ELEMENT, () => { PRELOAD_DIST_ELEMENT.labels[0].textContent = `Value: ${PRELOAD_DIST_ELEMENT.value}`; });
+    onRangeInput(PLAY_PAN, () => { PLAY_PAN.labels[0].textContent = `${Math.floor(PLAY_PAN.value * 100)}%`; sounds[currentSongIndex].stereo(parseFloat(PLAY_PAN.value)); });
+    onRangeInput(VOLUME_CHANGER, () => { VOLUME_CHANGER.labels[0].textContent = `${Math.floor(VOLUME_CHANGER.value * 100)}%`; sounds[currentSongIndex].volume(VOLUME_CHANGER.value); });
     handleCheckBoxClick(MUTE_BUTTON, REPEAT_BUTTON, SHUFFLE_BUTTON);
-    PROGRESS_BAR.addEventListener('pointerenter', function (pointer) { return progressBarSeek(pointer, ProgressBarSeekAction.DISPLAY_TIME); }, { passive: true });
-    PROGRESS_BAR.addEventListener('pointerdown', function (pointer) { if (pointer.button == 0)
+    PROGRESS_BAR.addEventListener('pointerenter', (pointer) => progressBarSeek(pointer, ProgressBarSeekAction.DISPLAY_TIME), { passive: true });
+    PROGRESS_BAR.addEventListener('pointerdown', (pointer) => { if (pointer.button == 0)
         progressBarSeek(pointer, ProgressBarSeekAction.SEEK_TO); }, { passive: true });
-    PROGRESS_BAR.addEventListener('pointermove', function (pointer) { return progressBarSeek(pointer, ProgressBarSeekAction.DISPLAY_TIME); }, { passive: true });
-    PROGRESS_BAR.addEventListener('pointerleave', function (pointer) { return progressBarSeek(pointer, ProgressBarSeekAction.STOP_DISPLAYING); }, { passive: true });
+    PROGRESS_BAR.addEventListener('pointermove', (pointer) => progressBarSeek(pointer, ProgressBarSeekAction.DISPLAY_TIME), { passive: true });
+    PROGRESS_BAR.addEventListener('pointerleave', (pointer) => progressBarSeek(pointer, ProgressBarSeekAction.STOP_DISPLAYING), { passive: true });
     //END
 })();
 function makeDocumentDroppable() {
-    window.addEventListener("dragover", function (event) {
+    window.addEventListener("dragover", (event) => {
         if (!onlyFiles(event.dataTransfer))
             return;
         event.preventDefault();
         DROPPING_FILE_OVERLAY.setAttribute("draggingOver", "true");
         stopHighlightingRow();
     });
-    window.addEventListener("dragleave", function () {
+    window.addEventListener("dragleave", () => {
         DROPPING_FILE_OVERLAY.setAttribute("draggingOver", "false");
         stopHighlightingRow();
     }, { passive: true });
-    window.addEventListener("drop", function (event) {
-        var dataTransfer = event.dataTransfer;
+    window.addEventListener("drop", (event) => {
+        const dataTransfer = event.dataTransfer;
         if (!onlyFiles(dataTransfer))
             return;
         event.preventDefault();
@@ -434,27 +297,27 @@ function makeDocumentDroppable() {
 function onlyFiles(dataTransfer) { return dataTransfer.types.length == 1 && dataTransfer.types[0] == 'Files'; }
 //displayProgress - show progress in seek bar | currentIndex - what index in "fileSizeDisplays" to show loading progress in. This value is nullable to prevent showing loading progress in song chooser.
 function retrieveSound(file, displayProgress, currentIndex) {
-    if (file === null || file instanceof howler_1.Howl)
-        return new Promise(function (resolve, reject) { resolve(file); });
-    var currentProcessingNumber = processingNumber;
-    return new Promise(function (resolve, reject) {
-        var fileReader = new FileReader();
+    if (file === null || file instanceof Howl)
+        return new Promise((resolve, reject) => { resolve(file); });
+    const currentProcessingNumber = processingNumber;
+    return new Promise((resolve, reject) => {
+        const fileReader = new FileReader();
         fileReader.readAsDataURL(file);
-        var onProgress = function (progressEvent) {
+        const onProgress = function (progressEvent) {
             if (processingNumber === currentProcessingNumber && displayProgress)
                 PROGRESS_BAR.value = (100 * progressEvent.loaded) / progressEvent.total;
             if (currentIndex >= 0) {
-                fileSizeDisplays[currentIndex].textContent = "".concat(getInMegabytes(progressEvent.loaded), " MB / ").concat(getInMegabytes(file.size), " MB");
-                fileSizeDisplays[currentIndex].setAttribute('title', "".concat(progressEvent.loaded, " bytes / ").concat(file.size, " bytes"));
+                fileSizeDisplays[currentIndex].textContent = `${getInMegabytes(progressEvent.loaded)} MB / ${getInMegabytes(file.size)} MB`;
+                fileSizeDisplays[currentIndex].setAttribute('title', `${progressEvent.loaded} bytes / ${file.size} bytes`);
             }
         };
-        var onLoaded = function () {
+        const onLoaded = function () {
             removeListeners();
             if (processingNumber !== currentProcessingNumber)
                 resolve(null);
             resolve(loaded(fileReader, file));
         };
-        var errorFunc = function (progressEvent) {
+        const errorFunc = function (progressEvent) {
             removeListeners();
             switch (progressEvent.target.error.name) {
                 case "NotFoundError": {
@@ -470,7 +333,7 @@ function retrieveSound(file, displayProgress, currentIndex) {
         };
         function warnUser() {
             removeListeners();
-            console.warn("File Aborted: ".concat(fileReader.name));
+            console.warn(`File Aborted: ${fileReader.name}`);
             resolve(null);
         }
         function removeListeners() {
@@ -488,7 +351,7 @@ function retrieveSound(file, displayProgress, currentIndex) {
     });
 }
 function onCloseErrorPopup() {
-    var childElement;
+    let childElement;
     while ((childElement = ERROR_LIST.lastChild) != null) {
         ERROR_LIST.removeChild(childElement);
     }
@@ -499,32 +362,32 @@ function registerClickEvent(element, func) {
     element.addEventListener('click', func, { passive: true });
 }
 function createNewSong(fileName, index) {
-    var row = PLAYLIST_VIEWER_TABLE.insertRow(PLAYLIST_VIEWER_TABLE.rows.length);
-    var cell1 = row.insertCell(0);
+    const row = PLAYLIST_VIEWER_TABLE.insertRow(PLAYLIST_VIEWER_TABLE.rows.length);
+    const cell1 = row.insertCell(0);
     initializeRow(row);
-    var fileSize = document.createElement('text');
+    const fileSize = document.createElement('text');
     fileSize.setAttribute('class', 'songName');
     fileSize.setAttribute('style', 'position: absolute; transform: translate(-100%, 0); left: calc(100% - 3px);');
-    fileSize.setAttribute('id', "".concat(index, "playButtonLabel"));
-    var songName = document.createElement('text');
+    fileSize.setAttribute('id', `${index}playButtonLabel`);
+    const songName = document.createElement('text');
     songName.setAttribute('class', 'songName');
-    songName.setAttribute('title', "".concat(fileName));
+    songName.setAttribute('title', `${fileName}`);
     songName.textContent = fileName;
-    var songNumber = document.createElement('text');
-    songNumber.textContent = "".concat(PLAYLIST_VIEWER_TABLE.rows.length - 1, ". ");
+    const songNumber = document.createElement('text');
+    songNumber.textContent = `${PLAYLIST_VIEWER_TABLE.rows.length - 1}. `;
     setAttributes(songNumber, {
         style: 'float: left; display: inline-block;',
         class: 'songNumber',
         index: index
     });
-    var playButtonDiv = document.createElement('label');
+    const playButtonDiv = document.createElement('label');
     playButtonDiv.setAttribute('class', 'smallplaypause playpause');
-    playButtonDiv.setAttribute('for', "".concat(index, "playButton"));
-    var checkbox = document.createElement('input');
-    checkbox.addEventListener('change', function () { return playSpecificSong(filePlayingCheckboxes.indexOf(checkbox)); }, { passive: true });
+    playButtonDiv.setAttribute('for', `${index}playButton`);
+    const checkbox = document.createElement('input');
+    checkbox.addEventListener('change', () => playSpecificSong(filePlayingCheckboxes.indexOf(checkbox)), { passive: true });
     setAttributes(checkbox, {
         type: 'checkbox',
-        id: "".concat(index, "playButton"),
+        id: `${index}playButton`,
         class: 'smallplaypause playpause'
     });
     playButtonDiv.appendChild(checkbox);
@@ -548,19 +411,16 @@ function appendChilds(element, childElements) {
         element.appendChild(childElements[i]);
 }
 function toggleCompactMode() {
-    return __awaiter(this, void 0, void 0, function () {
-        return __generator(this, function (_a) {
-            // COMPACT_MODE_TOGGLE.disabled = true;
-            if (COMPACT_MODE_LINK_ELEMENT === null) {
-                COMPACT_MODE_LINK_ELEMENT = document.createElement('link');
-                setAttributes(COMPACT_MODE_LINK_ELEMENT, {
-                    rel: "stylesheet",
-                    href: "../CSS/CompactMode.css",
-                });
-                document.head.appendChild(COMPACT_MODE_LINK_ELEMENT);
-            }
-            return [2 /*return*/];
-        });
+    return __awaiter(this, void 0, void 0, function* () {
+        // COMPACT_MODE_TOGGLE.disabled = true;
+        if (COMPACT_MODE_LINK_ELEMENT === null) {
+            COMPACT_MODE_LINK_ELEMENT = document.createElement('link');
+            setAttributes(COMPACT_MODE_LINK_ELEMENT, {
+                rel: "stylesheet",
+                href: "../CSS/CompactMode.css",
+            });
+            document.head.appendChild(COMPACT_MODE_LINK_ELEMENT);
+        }
     });
 }
 function keepTrackofTimes() {
@@ -579,22 +439,22 @@ function keepTrackofTimes() {
         return cannotUpdateProgress(isLoading(sounds[currentSongIndex]));
     if (sounds[currentSongIndex].playing() && (STATUS_TEXT.textContent == StatusTexts.PROCESSING || STATUS_TEXT.textContent == StatusTexts.DOWNLOADING))
         onLatePlayStart();
-    var songDuration = sounds[currentSongIndex].duration();
-    var currentTime = sounds[currentSongIndex].seek(sounds[currentSongIndex]);
-    var timeToSet = currentTime / songDuration * 100;
+    let songDuration = sounds[currentSongIndex].duration();
+    let currentTime = sounds[currentSongIndex].seek(sounds[currentSongIndex]);
+    const timeToSet = currentTime / songDuration * 100;
     if (Number.isFinite(timeToSet))
         PROGRESS_BAR.value = timeToSet;
     updateCurrentTimeDisplay(currentTime, songDuration);
     highlightCurrentSongRow();
 }
 function unHighlightOldCurrentSongRow() {
-    for (var i = 0; i < PLAYLIST_VIEWER_TABLE.rows.length; i++) {
+    for (let i = 0; i < PLAYLIST_VIEWER_TABLE.rows.length; i++) {
         if (PLAYLIST_VIEWER_TABLE.rows[i].style.backgroundColor == RowColors.PLAYING)
             PLAYLIST_VIEWER_TABLE.rows[i].style.backgroundColor = RowColors.NONE;
     }
 }
 function highlightCurrentSongRow() {
-    var style = PLAYLIST_VIEWER_TABLE.rows[currentSongIndex + 1].style;
+    const style = PLAYLIST_VIEWER_TABLE.rows[currentSongIndex + 1].style;
     if (currentSongIndex != null && style.backgroundColor == RowColors.NONE)
         style.backgroundColor = RowColors.PLAYING;
 }
@@ -610,7 +470,7 @@ function cannotUpdateProgress(isProcessing) {
     }
 }
 function reapplySoundAttributes(index) {
-    var affected = (index instanceof howler_1.Howl) ? index : sounds[index];
+    let affected = (index instanceof Howl) ? index : sounds[index];
     affected.rate(PLAY_RATE.value);
     affected.volume(VOLUME_CHANGER.value);
     affected.mute(MUTE_BUTTON.checked);
@@ -619,15 +479,15 @@ function reapplySoundAttributes(index) {
 function updateCurrentTimeDisplay(currentTime, songDurationInSeconds) {
     if (HOVERED_TIME_DISPLAY.getAttribute('inUse') == 1)
         return;
-    var progressBarDomRect = PROGRESS_BAR.getBoundingClientRect();
+    const progressBarDomRect = PROGRESS_BAR.getBoundingClientRect();
     if (progressBarDomRect.top + 50 < 0)
         return; //return if you scrolled away from the progress bar (+50 to include the hoveredTimeDisplay)
-    var songDurationFormatted = new Time(songDurationInSeconds).toString(), top = progressBarDomRect.top + window.scrollY, left = (progressBarDomRect.left - HOVERED_TIME_DISPLAY.getBoundingClientRect().width / 2) + (progressBarDomRect.width * currentTime / songDurationInSeconds) - 1;
+    const songDurationFormatted = new Time(songDurationInSeconds).toString(), top = progressBarDomRect.top + window.scrollY, left = (progressBarDomRect.left - HOVERED_TIME_DISPLAY.getBoundingClientRect().width / 2) + (progressBarDomRect.width * currentTime / songDurationInSeconds) - 1;
     if (DURATION_OF_SONG_DISPLAY.textContent != songDurationFormatted)
         DURATION_OF_SONG_DISPLAY.textContent = songDurationFormatted;
-    HOVERED_TIME_DISPLAY.style.top = "".concat(top, "px");
-    HOVERED_TIME_DISPLAY.style.left = "".concat(left, "px");
-    var currentTimeString = new Time(currentTime).toString();
+    HOVERED_TIME_DISPLAY.style.top = `${top}px`;
+    HOVERED_TIME_DISPLAY.style.left = `${left}px`;
+    const currentTimeString = new Time(currentTime).toString();
     if (HOVERED_TIME_DISPLAY.children[0].textContent != currentTimeString)
         HOVERED_TIME_DISPLAY.children[0].textContent = currentTimeString;
 }
@@ -635,20 +495,20 @@ function progressBarSeek(mouse, hoverType) {
     var _a, _b;
     if (((mouse === null || mouse === void 0 ? void 0 : mouse.pointerType) == "touch" && hoverType !== ProgressBarSeekAction.SEEK_TO) || sounds[currentSongIndex] == null || ((_b = (_a = sounds[currentSongIndex]) === null || _a === void 0 ? void 0 : _a.state) === null || _b === void 0 ? void 0 : _b.call(_a)) != 'loaded' || hoverType === ProgressBarSeekAction.STOP_DISPLAYING)
         return HOVERED_TIME_DISPLAY.setAttribute('inUse', 0);
-    var offsetX = mouse.offsetX, progressBarWidth = PROGRESS_BAR.clientWidth, currentSongLength = sounds[currentSongIndex].duration();
-    var seekToTime = Math.max(new Number(offsetX * (currentSongLength / progressBarWidth)), 0);
+    const offsetX = mouse.offsetX, progressBarWidth = PROGRESS_BAR.clientWidth, currentSongLength = sounds[currentSongIndex].duration();
+    let seekToTime = Math.max(new Number(offsetX * (currentSongLength / progressBarWidth)), 0);
     switch (hoverType) {
         case (ProgressBarSeekAction.SEEK_TO): return sounds[currentSongIndex].seek(seekToTime);
         case (ProgressBarSeekAction.DISPLAY_TIME):
             HOVERED_TIME_DISPLAY.setAttribute('inUse', 1);
-            HOVERED_TIME_DISPLAY.style.left = "".concat((mouse.x - HOVERED_TIME_DISPLAY.getBoundingClientRect().width / 2) + 1, "px");
+            HOVERED_TIME_DISPLAY.style.left = `${(mouse.x - HOVERED_TIME_DISPLAY.getBoundingClientRect().width / 2) + 1}px`;
             HOVERED_TIME_DISPLAY.firstChild.textContent = new Time(seekToTime).toString();
     }
 }
 function loaded(fileReader, sourceFileObject) {
-    var result = fileReader.result;
-    var index = sourceFileObject.nativeIndex;
-    var sound = new howler_1.Howl({
+    let result = fileReader.result;
+    const index = sourceFileObject.nativeIndex;
+    const sound = new Howl({
         src: [result],
         preload: false,
         autoplay: false,
@@ -659,7 +519,7 @@ function loaded(fileReader, sourceFileObject) {
     sound.name = sourceFileObject.name;
     sound.size = sourceFileObject.size;
     sound.sourceFile = sourceFileObject;
-    sound.on('end', function () { return jumpSong(+1); }); //jump to next song when they end (or do custom stuff if needed)
+    sound.on('end', () => jumpSong(+1)); //jump to next song when they end (or do custom stuff if needed)
     updateFileSizeDisplay(index, sounds[index].size);
     return sound;
 }
@@ -669,17 +529,17 @@ function loaded(fileReader, sourceFileObject) {
  * @param {String} errorMessage The message provided by the error
 */
 function displayError(errorType, errorText, errorMessage, fileName) {
-    var insertAfter;
-    var children = ERROR_LIST.children;
-    for (var i = 0; i < children.length; i++) {
+    let insertAfter;
+    const children = ERROR_LIST.children;
+    for (let i = 0; i < children.length; i++) {
         if (children[i].textContent == fileName) {
             insertAfter = children[i];
             break;
         }
     }
-    var songTitle = document.createElement('dt');
+    const songTitle = document.createElement('dt');
     songTitle.textContent = fileName;
-    var songError = document.createElement('dd');
+    const songError = document.createElement('dd');
     songError.textContent = errorType + ": " + errorText;
     songError.title = errorMessage;
     if (insertAfter) {
@@ -690,28 +550,39 @@ function displayError(errorType, errorText, errorMessage, fileName) {
         ERROR_LIST.appendChild(songError);
     }
     ERROR_POPUP.showModal();
-    console.error("".concat(errorType, ": ").concat(errorText, " ").concat(errorMessage));
+    console.error(`${errorType}: ${errorText} ${errorMessage}`);
 }
 function seek(seekDirection) {
     if (isUnloaded(sounds[currentSongIndex]))
         return;
-    var seekDuration = new Number(SEEK_DURATION_NUMBER_INPUT.value) * seekDirection;
-    var numToAdd = (SEEK_DISTANCE_PROPORTIONAL_CHECKBOX.checked) ? seekDuration * PLAY_RATE.value : seekDuration;
-    var currentTime = sounds[currentSongIndex].seek(sounds[currentSongIndex]);
+    const seekDuration = new Number(SEEK_DURATION_NUMBER_INPUT.value) * seekDirection;
+    const numToAdd = (SEEK_DISTANCE_PROPORTIONAL_CHECKBOX.checked) ? seekDuration * PLAY_RATE.value : seekDuration;
+    const currentTime = sounds[currentSongIndex].seek(sounds[currentSongIndex]);
     sounds[currentSongIndex].seek(Math.max(currentTime + numToAdd, 0));
 }
 function importFiles(element) {
-    return __awaiter(this, void 0, void 0, function () {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (element instanceof FileList) {
+            addFiles(element);
+        }
+        else if (element instanceof DataTransfer) {
+            let dataTransferItemList = element === null || element === void 0 ? void 0 : element.items;
+            if (!dataTransferItemList || dataTransferItemList.length == 0)
+                return;
+            changeStatus(StatusTexts.RETRIEVING);
+            let fileReciever = new DataTransferItemGrabber(dataTransferItemList);
+            addFiles(yield fileReciever.retrieveContents());
+        }
         function addFiles(files /*: FileList or array-like containing File objects*/) {
-            var lengthBeforeBegin = sounds.length;
-            changeStatus("Importing ".concat(files.length, " Files..."));
+            const lengthBeforeBegin = sounds.length;
+            changeStatus(`Importing ${files.length} Files...`);
             for (var i = 0, offsetBecauseOfSkipped = 0; i < files.length; i++) {
-                var file = files[i];
+                const file = files[i];
                 if (file == null)
                     continue;
-                var fileExtension = getFileExtension(file.name);
+                const fileExtension = getFileExtension(file.name);
                 if (SKIP_UNPLAYABLE_CHECKBOX.checked && !VALAD_FILE_EXTENSIONS.has(fileExtension)) {
-                    displayError("TypeError", "The file type '".concat(fileExtension, "' is unsupported."), "This file is unsupported and cannot be imported!", file.name);
+                    displayError("TypeError", `The file type '${fileExtension}' is unsupported.`, "This file is unsupported and cannot be imported!", file.name);
                     ++offsetBecauseOfSkipped;
                     continue;
                 }
@@ -720,30 +591,8 @@ function importFiles(element) {
                 updateFileSizeDisplay(file.nativeIndex, file.size);
                 sounds.push(file);
             }
-            changeStatus("".concat(files.length - offsetBecauseOfSkipped, " files added!"));
+            changeStatus(`${files.length - offsetBecauseOfSkipped} files added!`);
         }
-        var dataTransferItemList, fileReciever, _a;
-        return __generator(this, function (_b) {
-            switch (_b.label) {
-                case 0:
-                    if (!(element instanceof FileList)) return [3 /*break*/, 1];
-                    addFiles(element);
-                    return [3 /*break*/, 3];
-                case 1:
-                    if (!(element instanceof DataTransfer)) return [3 /*break*/, 3];
-                    dataTransferItemList = element === null || element === void 0 ? void 0 : element.items;
-                    if (!dataTransferItemList || dataTransferItemList.length == 0)
-                        return [2 /*return*/];
-                    changeStatus(StatusTexts.RETRIEVING);
-                    fileReciever = new DataTransferItemGrabber(dataTransferItemList);
-                    _a = addFiles;
-                    return [4 /*yield*/, fileReciever.retrieveContents()];
-                case 2:
-                    _a.apply(void 0, [_b.sent()]);
-                    _b.label = 3;
-                case 3: return [2 /*return*/];
-            }
-        });
     });
 }
 function onPlayRateUpdate(newRate) {
@@ -754,7 +603,7 @@ function onPlayRateUpdate(newRate) {
     if (newRate <= 0)
         return sounds[currentSongIndex].pause(); //the rate cant be set to 0. the progress tracker will glitch back to 0.
     if (isCurrentSoundPaused() && STATUS_TEXT.textContent == StatusTexts.PLAYING) {
-        var currentTime = sounds[currentSongIndex].seek(sounds[currentSongIndex]);
+        const currentTime = sounds[currentSongIndex].seek(sounds[currentSongIndex]);
         sounds[currentSongIndex].rate(newRate);
         sounds[currentSongIndex].play(); //this starts the song over
         sounds[currentSongIndex].seek(currentTime, sounds[currentSongIndex]); //jump back to where we were
@@ -763,25 +612,21 @@ function onPlayRateUpdate(newRate) {
     sounds[currentSongIndex].rate(newRate);
 }
 function updateSeekDurationDisplay() {
-    var duration = SEEK_DURATION_NUMBER_INPUT.value;
+    let duration = SEEK_DURATION_NUMBER_INPUT.value;
     if (duration < 1) {
-        SEEK_DURATION_DISPLAY.textContent = "".concat(new Number(duration) * 1000, " ms");
+        SEEK_DURATION_DISPLAY.textContent = `${new Number(duration) * 1000} ms`;
     }
     else {
-        SEEK_DURATION_DISPLAY.textContent = "".concat(new Number(duration), " sec");
+        SEEK_DURATION_DISPLAY.textContent = `${new Number(duration)} sec`;
     }
 }
-function handleCheckBoxClick() {
-    var elements = [];
-    for (var _i = 0; _i < arguments.length; _i++) {
-        elements[_i] = arguments[_i];
-    }
-    elements.forEach(function (el) {
-        var onlyText = el.id.replace(/[^a-z]/gi, ''); //grab all text except numbers
-        el.addEventListener('change', function () {
+function handleCheckBoxClick(...elements) {
+    elements.forEach(el => {
+        const onlyText = el.id.replace(/[^a-z]/gi, ''); //grab all text except numbers
+        el.addEventListener('change', () => {
             var _a, _b;
             if (onlyText == "Mute" && !isUnloaded(sounds[currentSongIndex])) {
-                howler_1.Howler.mute(el.checked);
+                Howler.mute(el.checked);
             }
             else if (onlyText == "repeatButton") {
                 (_b = (_a = sounds[currentSongIndex]) === null || _a === void 0 ? void 0 : _a.loop) === null || _b === void 0 ? void 0 : _b.call(_a, el.checked);
@@ -804,16 +649,16 @@ function handleShuffleButton(checked) {
         }
         return;
     }
-    var tempArray = sounds, foundCurrentPlayingSong = false;
+    let tempArray = sounds, foundCurrentPlayingSong = false;
     sounds = [].fill(null, 0, tempArray.length);
     for (var i = 0; i < tempArray.length; i++) {
-        var sound = tempArray[i];
+        let sound = tempArray[i];
         sounds[sound.nativeIndex] = sound;
         updateFileSizeDisplay(sound.nativeIndex, sound.size);
         if (!foundCurrentPlayingSong && currentSongIndex !== null && i == currentSongIndex) {
             currentSongIndex = sound.nativeIndex;
-            var currentCheckbox = filePlayingCheckboxes[currentSongIndex];
-            filePlayingCheckboxes.forEach(function (it) { it.checked = false; });
+            const currentCheckbox = filePlayingCheckboxes[currentSongIndex];
+            filePlayingCheckboxes.forEach(it => { it.checked = false; });
             currentCheckbox.checked = true;
             foundCurrentPlayingSong = true;
         }
@@ -824,7 +669,7 @@ function handleShuffleButton(checked) {
     tempArray = null;
 }
 function shuffle() {
-    var currentIndex = sounds.length, randomIndex;
+    let currentIndex = sounds.length, randomIndex;
     while (currentIndex != 0) {
         randomIndex = Math.floor(Math.random() * currentIndex);
         --currentIndex;
@@ -833,50 +678,46 @@ function shuffle() {
                 currentSongIndex = randomIndex;
             else if (currentSongIndex == randomIndex)
                 currentSongIndex = currentIndex;
-            var currentCheckbox = filePlayingCheckboxes[currentSongIndex];
-            filePlayingCheckboxes.forEach(function (it) { it.checked = false; });
+            const currentCheckbox = filePlayingCheckboxes[currentSongIndex];
+            filePlayingCheckboxes.forEach(it => { it.checked = false; });
             currentCheckbox.checked = true;
         }
-        var tempForSwapping = sounds[currentIndex];
+        let tempForSwapping = sounds[currentIndex];
         sounds[currentIndex] = sounds[randomIndex];
         sounds[randomIndex] = tempForSwapping;
     }
 }
 function playSpecificSong(index) {
-    return __awaiter(this, void 0, void 0, function () {
-        var checkbox, i, soundName, fileType;
+    return __awaiter(this, void 0, void 0, function* () {
         var _a, _b, _c, _d, _e, _f;
-        return __generator(this, function (_g) {
-            checkbox = filePlayingCheckboxes[index];
-            if (((_b = (_a = sounds[currentSongIndex]) === null || _a === void 0 ? void 0 : _a.playing) === null || _b === void 0 ? void 0 : _b.call(_a)) && ((_d = (_c = sounds[currentSongIndex]) === null || _c === void 0 ? void 0 : _c.state) === null || _d === void 0 ? void 0 : _d.call(_c)) == "loaded")
-                (_f = (_e = sounds[currentSongIndex]) === null || _e === void 0 ? void 0 : _e.stop) === null || _f === void 0 ? void 0 : _f.call(_e);
-            howler_1.Howler.stop();
-            if (!checkbox.checked) {
-                PLAY_BUTTON.checked = PAUSED;
-                currentSongIndex = null;
-                for (i = 0; i < sounds.length; i++)
-                    removeSongFromRam(i);
-                changeStatus(StatusTexts.STOPPED);
-                unHighlightOldCurrentSongRow();
-                return [2 /*return*/];
+        const checkbox = filePlayingCheckboxes[index];
+        if (((_b = (_a = sounds[currentSongIndex]) === null || _a === void 0 ? void 0 : _a.playing) === null || _b === void 0 ? void 0 : _b.call(_a)) && ((_d = (_c = sounds[currentSongIndex]) === null || _c === void 0 ? void 0 : _c.state) === null || _d === void 0 ? void 0 : _d.call(_c)) == "loaded")
+            (_f = (_e = sounds[currentSongIndex]) === null || _e === void 0 ? void 0 : _e.stop) === null || _f === void 0 ? void 0 : _f.call(_e);
+        Howler.stop();
+        if (!checkbox.checked) {
+            PLAY_BUTTON.checked = PAUSED;
+            currentSongIndex = null;
+            for (var i = 0; i < sounds.length; i++)
+                removeSongFromRam(i);
+            changeStatus(StatusTexts.STOPPED);
+            unHighlightOldCurrentSongRow();
+            return;
+        }
+        else {
+            currentSongIndex = index;
+            filePlayingCheckboxes.forEach((it) => { if (it.id != checkbox.id)
+                it.checked = false; }); //uncheck the play button for all the other sounds except the one u chose
+            const soundName = sounds[index].name, fileType = getFileExtension(soundName);
+            if (SKIP_UNPLAYABLE_CHECKBOX.checked && !VALAD_FILE_EXTENSIONS.has(fileType)) {
+                displayError("TypeError", `The file type '${fileType}' is unsupported.`, "This file is unsupported and cannot be played!", soundName);
+                skipSongQueued = true;
+                return;
             }
-            else {
-                currentSongIndex = index;
-                filePlayingCheckboxes.forEach(function (it) { if (it.id != checkbox.id)
-                    it.checked = false; }); //uncheck the play button for all the other sounds except the one u chose
-                soundName = sounds[index].name, fileType = getFileExtension(soundName);
-                if (SKIP_UNPLAYABLE_CHECKBOX.checked && !VALAD_FILE_EXTENSIONS.has(fileType)) {
-                    displayError("TypeError", "The file type '".concat(fileType, "' is unsupported."), "This file is unsupported and cannot be played!", soundName);
-                    skipSongQueued = true;
-                    return [2 /*return*/];
-                }
-                changeStatus(StatusTexts.DOWNLOADING);
-                retrieveSound(sounds[index], true, index).then(function (retrieved) { return loadSong(retrieved, index, true); });
-                refreshPreloadedSongs();
-                unHighlightOldCurrentSongRow();
-            }
-            return [2 /*return*/];
-        });
+            changeStatus(StatusTexts.DOWNLOADING);
+            retrieveSound(sounds[index], true, index).then((retrieved) => loadSong(retrieved, index, true));
+            refreshPreloadedSongs();
+            unHighlightOldCurrentSongRow();
+        }
     });
 }
 function loadSong(retrieved, index, startPlaying) {
@@ -899,23 +740,20 @@ function startPlayingSong() {
 function refreshPreloadedSongs() {
     if (currentSongIndex == null)
         return;
-    var _loop_2 = function (i) {
+    for (let i = 0; i < sounds.length; i++) {
         if (i == currentSongIndex)
-            return "continue";
+            continue;
         if (!isIndexInRangeofCurrent(i)) {
             if (sounds[i] !== null)
                 removeSongFromRam(i);
-            return "continue";
+            continue;
         }
-        retrieveSound(sounds[i], false, i).then(function (retrieved) { return loadSong(retrieved, i, false); });
-    };
-    for (var i = 0; i < sounds.length; i++) {
-        _loop_2(i);
+        retrieveSound(sounds[i], false, i).then(retrieved => loadSong(retrieved, i, false));
     }
 }
 function jumpSong(amount) {
     amount = amount || 1; //if no value inputted, assume u want to jump ahead one song
-    var repeating = REPEAT_BUTTON.checked;
+    const repeating = REPEAT_BUTTON.checked;
     if (repeating) {
         if (isCurrentSoundPaused()) {
             sounds[currentSongIndex].stop();
@@ -928,41 +766,31 @@ function jumpSong(amount) {
         currentSongIndex %= sounds.length;
     else if (currentSongIndex < 0)
         currentSongIndex = Math.max(currentSongIndex + sounds.length, 0); //idk a real solution to this
-    var playButtonToActivate = filePlayingCheckboxes[currentSongIndex];
+    const playButtonToActivate = filePlayingCheckboxes[currentSongIndex];
     playButtonToActivate.checked = true;
     playButtonToActivate.dispatchEvent(new Event('change'));
 }
 function playButton() {
-    return __awaiter(this, void 0, void 0, function () {
+    return __awaiter(this, void 0, void 0, function* () {
         var _a, _b;
-        return __generator(this, function (_c) {
-            switch (_c.label) {
-                case 0:
-                    if (isUnloaded(sounds[currentSongIndex]))
-                        return [2 /*return*/, PLAY_BUTTON.checked = !PLAY_BUTTON.checked];
-                    if (PLAY_BUTTON.checked == PAUSED) { //if set to paused
-                        if (((_b = (_a = sounds[currentSongIndex]) === null || _a === void 0 ? void 0 : _a.pause) === null || _b === void 0 ? void 0 : _b.call(_a)) != undefined)
-                            changeStatus(StatusTexts.PAUSED);
-                        return [2 /*return*/];
-                    }
-                    if (!(sounds[currentSongIndex].state() != "loaded")) return [3 /*break*/, 2];
-                    return [4 /*yield*/, sounds[currentSongIndex].load()];
-                case 1:
-                    _c.sent();
-                    _c.label = 2;
-                case 2:
-                    sounds[currentSongIndex].play();
-                    changeStatus(StatusTexts.PLAYING);
-                    return [2 /*return*/];
-            }
-        });
+        if (isUnloaded(sounds[currentSongIndex]))
+            return PLAY_BUTTON.checked = !PLAY_BUTTON.checked;
+        if (PLAY_BUTTON.checked == PAUSED) { //if set to paused
+            if (((_b = (_a = sounds[currentSongIndex]) === null || _a === void 0 ? void 0 : _a.pause) === null || _b === void 0 ? void 0 : _b.call(_a)) != undefined)
+                changeStatus(StatusTexts.PAUSED);
+            return;
+        }
+        if (sounds[currentSongIndex].state() != "loaded")
+            yield sounds[currentSongIndex].load();
+        sounds[currentSongIndex].play();
+        changeStatus(StatusTexts.PLAYING);
     });
 }
 function isIndexInRangeofCurrent(index) {
-    var distance = parseInt(PRELOAD_DIST_ELEMENT.value);
-    var withinRange = index >= currentSongIndex - distance && index <= currentSongIndex + distance;
-    var inRangeWrappedToBegin = index + distance >= sounds.length && (index + distance) % sounds.length >= currentSongIndex;
-    var inRangeWrappedToEnd = index - distance < 0 && (index - distance) + sounds.length <= currentSongIndex;
+    const distance = parseInt(PRELOAD_DIST_ELEMENT.value);
+    const withinRange = index >= currentSongIndex - distance && index <= currentSongIndex + distance;
+    const inRangeWrappedToBegin = index + distance >= sounds.length && (index + distance) % sounds.length >= currentSongIndex;
+    const inRangeWrappedToEnd = index - distance < 0 && (index - distance) + sounds.length <= currentSongIndex;
     return withinRange || inRangeWrappedToBegin || inRangeWrappedToEnd;
 }
 function removeSongFromRam(index) {
@@ -975,9 +803,9 @@ function removeSongFromRam(index) {
     sounds[index] = sounds[index].sourceFile;
 }
 function updateFileSizeDisplay(index, bytes) {
-    var megabytes = (bytes / 1048576).toFixed(2);
-    fileSizeDisplays[index].textContent = "".concat(megabytes, " MB");
-    fileSizeDisplays[index].setAttribute('title', "".concat(bytes, " bytes"));
+    const megabytes = (bytes / 1048576).toFixed(2);
+    fileSizeDisplays[index].textContent = `${megabytes} MB`;
+    fileSizeDisplays[index].setAttribute('title', `${bytes} bytes`);
 }
 function refreshSongNames() {
     for (var i = 0; i < sounds.length; i++) {
@@ -993,9 +821,9 @@ function setCurrentFileName(name) {
     }
 }
 function updateSeekButtonTexts() {
-    document.querySelectorAll('button').forEach(function (element) {
-        var secondsSkipAmount = precisionRound(10 * PLAY_RATE.value, 3);
-        element.textContent = "".concat(element.textContent[0]).concat(secondsSkipAmount, " Seconds");
+    document.querySelectorAll('button').forEach(element => {
+        const secondsSkipAmount = precisionRound(10 * PLAY_RATE.value, 3);
+        element.textContent = `${element.textContent[0]}${secondsSkipAmount} Seconds`;
     });
 }
 function precisionRound(number, precision) {
@@ -1003,14 +831,14 @@ function precisionRound(number, precision) {
     return Math.round(number * factor) / factor;
 }
 function setProgress(progressEvent, index) {
-    fileSizeDisplays[index].textContent = "".concat((progressEvent.loaded / 1024000).toFixed(2), "/").concat((progressEvent.total / 1024000).toFixed(2), " MB");
+    fileSizeDisplays[index].textContent = `${(progressEvent.loaded / 1024000).toFixed(2)}/${(progressEvent.total / 1024000).toFixed(2)} MB`;
 }
 function changeStatus(status) { STATUS_TEXT.textContent = status; }
 function isUnloaded(sound) { var _a; return sound === null || sound instanceof File || ((_a = sound === null || sound === void 0 ? void 0 : sound.state) === null || _a === void 0 ? void 0 : _a.call(sound)) != 'loaded'; }
 function isLoading(sound) { var _a; return ((_a = sound === null || sound === void 0 ? void 0 : sound.state) === null || _a === void 0 ? void 0 : _a.call(sound)) == 'loading'; }
 function isSongRepeating() { return REPEAT_BUTTON.checked; }
 function onRangeInput(elem, func) { elem.addEventListener('input', func, { passive: true }); }
-function sleep(ms) { return new Promise(function (resolve) { return setTimeout(resolve, ms); }); }
+function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 function isCurrentSoundPaused() { return sounds[currentSongIndex]._sounds[0]._paused; }
 function getInMegabytes(bytes) { return (bytes / 1048576).toFixed(2); }
 function getFileExtension(fileName) { return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase(); }
@@ -1020,7 +848,7 @@ function initializeRow(row) {
     row.addEventListener('click', onSingleClick, { passive: true });
     // row.addEventListener('contextmenu', onRightClick);
     row.addEventListener('dblclick', onDoubleClick, { passive: true });
-    row.addEventListener('dragstart', function (event) {
+    row.addEventListener('dragstart', (event) => {
         if (onlyFiles(event.dataTransfer))
             return;
         if (selectedRows.length == 0)
@@ -1029,7 +857,7 @@ function initializeRow(row) {
         event.dataTransfer.setData("text/plain", "action:reorganizingPlaylist");
         whileDraggingRows(event);
     });
-    row.addEventListener('dragover', function (event) {
+    row.addEventListener('dragover', (event) => {
         event.preventDefault(); //required to make rows allowed drop targets
         whileDraggingRows(event);
     });
@@ -1053,7 +881,7 @@ function onDropRow(event) {
         return;
     stopHighlightingRow();
     sortSelectedRows();
-    var row = event.target;
+    let row = event.target;
     if (!rowValid(row)) {
         row = tryFindTableRowInParents(row);
         if (!rowValid(row))
@@ -1069,28 +897,28 @@ function stopHighlightingRow() {
     }
 }
 function onSingleClick(pointerEvent) {
-    var row = pointerEvent.target;
+    let row = pointerEvent.target;
     if (!rowValid(row)) {
         row = tryFindTableRowInParents(row);
         if (!rowValid(row))
             return;
     }
-    var indexOf = selectedRows.indexOf(row);
+    const indexOf = selectedRows.indexOf(row);
     if (pointerEvent.ctrlKey) {
         if (indexOf != -1)
             return deselectRow(row, indexOf);
     }
     else if (pointerEvent.shiftKey && selectedRows.length != 0) {
         sortSelectedRows();
-        var startingIndex = selectedRows[selectedRows.length - 1].rowIndex;
-        var endingIndex = row.rowIndex;
+        let startingIndex = selectedRows[selectedRows.length - 1].rowIndex;
+        const endingIndex = row.rowIndex;
         if (endingIndex > startingIndex) {
-            for (var i = startingIndex + 1; i < endingIndex; i++)
+            for (let i = startingIndex + 1; i < endingIndex; i++)
                 selectRow(PLAYLIST_VIEWER_TABLE.rows[i]);
         }
         else {
             startingIndex = selectedRows[0].rowIndex;
-            for (var i = startingIndex - 1; i > endingIndex; i--)
+            for (let i = startingIndex - 1; i > endingIndex; i--)
                 selectRow(PLAYLIST_VIEWER_TABLE.rows[i]);
         }
     }
@@ -1141,7 +969,7 @@ function deselectRow(row, removeIndex) {
         selectedRows.splice(removeIndex, 1);
 }
 function deselectAll() {
-    for (var i = 0; i < selectedRows.length; i++)
+    for (let i = 0; i < selectedRows.length; i++)
         deselectRow(selectedRows[i], -1);
     selectedRows = [];
 }
@@ -1151,25 +979,25 @@ function playRow(row) {
         if (!rowValid(row))
             return;
     }
-    var index = row.rowIndex - 1;
+    const index = row.rowIndex - 1;
     filePlayingCheckboxes[index].checked = !filePlayingCheckboxes[index].checked;
     playSpecificSong(index);
 }
 function deleteSelectedSongs() {
-    for (var i = 0; i < selectedRows.length; i++) {
-        var index = selectedRows[i].rowIndex - 1;
+    for (let i = 0; i < selectedRows.length; i++) {
+        const index = selectedRows[i].rowIndex - 1;
         if (index == currentSongIndex) {
             filePlayingCheckboxes[currentSongIndex].checked = false;
             playSpecificSong(currentSongIndex); //stop playing
             PROGRESS_BAR.value = 0;
         }
-        var tableBody = PLAYLIST_VIEWER_TABLE.firstElementChild;
+        const tableBody = PLAYLIST_VIEWER_TABLE.firstElementChild;
         tableBody.removeChild(selectedRows[i]);
-        for (var i_1 = 0; i_1 < sounds.length; i_1++) {
-            if (sounds[i_1] != sounds[index] && sounds[i_1].nativeIndex >= sounds[index].nativeIndex) { //warning: branch prediction failure
-                --sounds[i_1].nativeIndex;
-                if (sounds[i_1] instanceof howler_1.Howl)
-                    --sounds[i_1].sourceFile.nativeIndex;
+        for (let i = 0; i < sounds.length; i++) {
+            if (sounds[i] != sounds[index] && sounds[i].nativeIndex >= sounds[index].nativeIndex) { //warning: branch prediction failure
+                --sounds[i].nativeIndex;
+                if (sounds[i] instanceof Howl)
+                    --sounds[i].sourceFile.nativeIndex;
             }
         }
         if (currentSongIndex != null && currentSongIndex > index)
@@ -1184,19 +1012,19 @@ function deleteSelectedSongs() {
     refreshPreloadedSongs();
 }
 function moveSelectedSongs(toIndex) {
-    for (var i = selectedRows.length - 1; i >= 0; i--) {
-        var index = selectedRows[i].rowIndex - 1;
+    for (let i = selectedRows.length - 1; i >= 0; i--) {
+        const index = selectedRows[i].rowIndex - 1;
         // if(index == currentSongIndex){
         //   filePlayingCheckboxes[currentSongIndex].checked = false;
         //   playSpecificSong(currentSongIndex); //stop playing
         // }
-        var tableBody = PLAYLIST_VIEWER_TABLE.firstElementChild;
+        const tableBody = PLAYLIST_VIEWER_TABLE.firstElementChild;
         tableBody.removeChild(selectedRows[i]);
-        for (var i_2 = 0; i_2 < sounds.length; i_2++) {
-            if (sounds[i_2] != sounds[index] && sounds[i_2].nativeIndex >= sounds[index].nativeIndex) { //warning: branch prediction failure
-                --sounds[i_2].nativeIndex;
-                if (sounds[i_2] instanceof howler_1.Howl)
-                    --sounds[i_2].sourceFile.nativeIndex;
+        for (let i = 0; i < sounds.length; i++) {
+            if (sounds[i] != sounds[index] && sounds[i].nativeIndex >= sounds[index].nativeIndex) { //warning: branch prediction failure
+                --sounds[i].nativeIndex;
+                if (sounds[i] instanceof Howl)
+                    --sounds[i].sourceFile.nativeIndex;
             }
         }
         if (index < currentSongIndex)
@@ -1208,11 +1036,11 @@ function moveSelectedSongs(toIndex) {
         fileNameDisplays.splice(toIndex, 0, fileNameDisplays.splice(index, 1)[0]);
         fileSizeDisplays.splice(toIndex, 0, fileSizeDisplays.splice(index, 1)[0]);
         tableBody.insertBefore(selectedRows[i], tableBody.children[toIndex + 1]);
-        for (var i_3 = 0; i_3 < sounds.length; i_3++) {
-            if (sounds[i_3] != sounds[toIndex] && sounds[i_3].nativeIndex >= sounds[toIndex].nativeIndex) { //warning: branch prediction failure
-                ++sounds[i_3].nativeIndex;
-                if (sounds[i_3] instanceof howler_1.Howl)
-                    ++sounds[i_3].sourceFile.nativeIndex;
+        for (let i = 0; i < sounds.length; i++) {
+            if (sounds[i] != sounds[toIndex] && sounds[i].nativeIndex >= sounds[toIndex].nativeIndex) { //warning: branch prediction failure
+                ++sounds[i].nativeIndex;
+                if (sounds[i] instanceof Howl)
+                    ++sounds[i].sourceFile.nativeIndex;
             }
         }
         if (toIndex < currentSongIndex)
@@ -1242,7 +1070,7 @@ function arrowSelection(keyboardEvent, indexIncrement) {
         return;
     if (keyboardEvent.ctrlKey || keyboardEvent.shiftKey) {
         if (indexIncrement > 0) {
-            var row = PLAYLIST_VIEWER_TABLE.rows[selectedRows[selectedRows.length - 1].rowIndex + indexIncrement];
+            const row = PLAYLIST_VIEWER_TABLE.rows[selectedRows[selectedRows.length - 1].rowIndex + indexIncrement];
             if (row)
                 selectRow(row);
         }
@@ -1251,7 +1079,7 @@ function arrowSelection(keyboardEvent, indexIncrement) {
         }
     }
     else {
-        var oneElement = (indexIncrement > 0) ? PLAYLIST_VIEWER_TABLE.rows[selectedRows[selectedRows.length - 1].rowIndex + 1] : PLAYLIST_VIEWER_TABLE.rows[selectedRows[selectedRows.length - 1].rowIndex - 1];
+        const oneElement = (indexIncrement > 0) ? PLAYLIST_VIEWER_TABLE.rows[selectedRows[selectedRows.length - 1].rowIndex + 1] : PLAYLIST_VIEWER_TABLE.rows[selectedRows[selectedRows.length - 1].rowIndex - 1];
         if (!rowValid(oneElement))
             return;
         deselectAll();
@@ -1271,25 +1099,25 @@ function tryFindTableRowInParents(element) {
     return element.closest('tr');
 }
 function updateSongNumberings() {
-    var songNumbers = document.getElementsByClassName('songNumber');
-    for (var i = 0; i < songNumbers.length; i++) {
-        var songNumber = songNumbers[i];
-        var row = tryFindTableRowInParents(songNumber);
+    let songNumbers = document.getElementsByClassName('songNumber');
+    for (let i = 0; i < songNumbers.length; i++) {
+        let songNumber = songNumbers[i];
+        let row = tryFindTableRowInParents(songNumber);
         if (row == null)
             continue;
-        songNumber.textContent = "".concat(row.rowIndex, ". ");
+        songNumber.textContent = `${row.rowIndex}. `;
     }
 }
 function rowValid(row) { return row instanceof HTMLTableRowElement && row != PLAYLIST_VIEWER_TABLE.rows[0] && row.closest('table') == PLAYLIST_VIEWER_TABLE; }
-function sortSelectedRows() { selectedRows.sort(function (a, b) { return a.rowIndex - b.rowIndex; }); }
+function sortSelectedRows() { selectedRows.sort((a, b) => a.rowIndex - b.rowIndex); }
 function isTyping(keyboardEvent) { return keyboardEvent.target instanceof HTMLInputElement; }
 /*                       CONTEXT MENU                      */
-var CONTEXT_MENU = document.getElementById('rightClickContextMenu');
+const CONTEXT_MENU = document.getElementById('rightClickContextMenu');
 function initContextMenu() {
-    document.addEventListener('contextmenu', function (pointerEvent) {
+    document.addEventListener('contextmenu', (pointerEvent) => {
         pointerEvent.preventDefault();
         selectingSongRow: { //if clicking a row
-            var row = pointerEvent.target;
+            let row = pointerEvent.target;
             if (!rowValid(row)) {
                 row = tryFindTableRowInParents(row);
                 if (!rowValid(row))
@@ -1299,17 +1127,17 @@ function initContextMenu() {
                 deselectAll();
                 selectRow(row);
             }
-            var contextOptions = [];
+            const contextOptions = [];
             if (selectedRows.length == 1)
-                contextOptions.push({ text: (currentSongIndex != selectedRows[0].rowIndex - 1) ? "Play" : "Stop", action: function () { return playRow(selectedRows[0]); } });
+                contextOptions.push({ text: (currentSongIndex != selectedRows[0].rowIndex - 1) ? "Play" : "Stop", action: () => playRow(selectedRows[0]) });
             contextOptions.push({ text: "Delete", action: deleteSelectedSongs });
             return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, contextOptions, true);
         }
         switch (pointerEvent.target.getAttribute('data-onRightClick')) {
             case "uploadFileMenu": {
                 return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, [
-                    { text: "Upload Files", icon: "../Icons/UploadIcon.svg", action: function () { return UPLOAD_BUTTON.dispatchEvent(new MouseEvent('click')); } },
-                    { text: "Upload Folder", icon: "../Icons/UploadIcon.svg", action: function () { return UPLOAD_DIRECTORY_BUTTON.dispatchEvent(new MouseEvent('click')); } }
+                    { text: "Upload Files", icon: "../Icons/UploadIcon.svg", action: () => UPLOAD_BUTTON.dispatchEvent(new MouseEvent('click')) },
+                    { text: "Upload Folder", icon: "../Icons/UploadIcon.svg", action: () => UPLOAD_DIRECTORY_BUTTON.dispatchEvent(new MouseEvent('click')) }
                 ], false);
             }
             default: {
@@ -1319,23 +1147,23 @@ function initContextMenu() {
     });
 }
 function spawnContextMenu(clientX, clientY, contextOptions, allowDefaultOptions) {
-    var childElement;
+    let childElement;
     while ((childElement = CONTEXT_MENU.lastChild) != null) {
         CONTEXT_MENU.removeChild(childElement);
     }
     if (allowDefaultOptions) {
-        contextOptions = contextOptions.concat([{ text: COMPACT_MODE_TOGGLE.checked ? "Disable Compact Mode" : "Enable Compact Mode", action: function () { COMPACT_MODE_TOGGLE.dispatchEvent(new MouseEvent('click')); } }]);
+        contextOptions = contextOptions.concat([{ text: COMPACT_MODE_TOGGLE.checked ? "Disable Compact Mode" : "Enable Compact Mode", action: () => { COMPACT_MODE_TOGGLE.dispatchEvent(new MouseEvent('click')); } }]);
     }
-    var _loop_3 = function (i) {
-        var contextOption = contextOptions[i];
-        var contextButton = document.createElement('div');
+    for (let i = 0; i < contextOptions.length; i++) {
+        const contextOption = contextOptions[i];
+        const contextButton = document.createElement('div');
         contextButton.setAttribute('class', 'contextOption');
         if (i < contextOptions.length - 1)
             contextButton.style.borderBottomWidth = "1px";
-        contextButton.addEventListener('click', function (event) { if (CONTEXT_MENU.getAttribute('open') == 'true')
+        contextButton.addEventListener('click', (event) => { if (CONTEXT_MENU.getAttribute('open') == 'true')
             contextOption.action(event); });
         if (contextOption.icon) {
-            var contextIcon = document.createElement('img');
+            const contextIcon = document.createElement('img');
             contextIcon.setAttribute('class', 'contextIcon');
             contextIcon.src = contextOption.icon;
             contextButton.append(contextIcon, contextOption.text);
@@ -1344,22 +1172,20 @@ function spawnContextMenu(clientX, clientY, contextOptions, allowDefaultOptions)
             contextButton.innerText = contextOption.text;
         }
         CONTEXT_MENU.appendChild(contextButton);
-    };
-    for (var i = 0; i < contextOptions.length; i++) {
-        _loop_3(i);
     }
-    CONTEXT_MENU.style.height = "".concat(contextOptions.length * 29, "px");
-    var leftOffset = clientX + 2, downOffset = clientY + 2;
-    var viewportWidth = document.documentElement.clientWidth, viewportHeight = document.documentElement.clientHeight, contextMenuRect = CONTEXT_MENU.getBoundingClientRect();
+    CONTEXT_MENU.style.height = `${contextOptions.length * 29}px`;
+    let leftOffset = clientX + 2, downOffset = clientY + 2;
+    const viewportWidth = document.documentElement.clientWidth, viewportHeight = document.documentElement.clientHeight, contextMenuRect = CONTEXT_MENU.getBoundingClientRect();
     if (leftOffset + contextMenuRect.width > viewportWidth) {
         leftOffset = viewportWidth - contextMenuRect.width;
     }
     if (downOffset + contextMenuRect.height > viewportHeight) {
         downOffset = viewportHeight - contextMenuRect.height;
     }
-    CONTEXT_MENU.style.left = "".concat(leftOffset, "px");
-    CONTEXT_MENU.style.top = "".concat(downOffset, "px");
+    CONTEXT_MENU.style.left = `${leftOffset}px`;
+    CONTEXT_MENU.style.top = `${downOffset}px`;
     CONTEXT_MENU.setAttribute('open', 'true');
 }
 function closeContextMenu() { CONTEXT_MENU.setAttribute('open', 'false'); CONTEXT_MENU.style.height = '0'; }
 ;
+//# sourceMappingURL=PlaylistCreator.js.map
