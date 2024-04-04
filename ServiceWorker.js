@@ -46,7 +46,11 @@ self.addEventListener("install", (event) => {
     })));
 });
 self.addEventListener('activate', (e) => {
-    e.waitUntil(clients.claim());
+    e.waitUntil(new Promise((accept, reject) => __awaiter(void 0, void 0, void 0, function* () {
+        yield clients.claim();
+        self.skipWaiting();
+        accept();
+    })));
 });
 self.addEventListener("fetch", (e) => {
     if (e.request.method !== "GET")
