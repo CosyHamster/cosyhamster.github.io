@@ -194,7 +194,7 @@ var currentSongIndex = null;
 const start = (() => {
     if ("serviceWorker" in navigator) {
         try {
-            navigator.serviceWorker.register("/Javascript/ServiceWorker.js");
+            navigator.serviceWorker.register("../ServiceWorker.js");
         }
         catch (exception) {
             console.warn(exception);
