@@ -66,7 +66,7 @@ self.addEventListener("fetch", (e) => {
 async function getCachedResponse(request: Request): Promise<Response | null | undefined>{
     return new Promise((accept, reject) => {
         cacheStorage.match(request).then((response) => {
-            accept(response);
+            accept(response?.clone?.());
         }).catch(() => {
             accept(null);
         })
