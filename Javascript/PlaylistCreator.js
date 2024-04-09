@@ -8,7 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-//@ts-nocheck
+// @ts-nocheck
 import("./howler.js");
 class OnEventUpdated {
     constructor() {
@@ -192,8 +192,8 @@ var processingNumber = 0;
 var skipSongQueued = false;
 var currentSongIndex = null;
 const start = (() => {
-    const onDeprecated = new URL(document.URL).origin == 'https://cosyhamster.codehs.me';
-    if ("serviceWorker" in navigator && !onDeprecated) {
+    const deprecated = new URL(document.URL).origin == 'https://cosyhamster.codehs.me';
+    if ("serviceWorker" in navigator && !deprecated) {
         navigator.serviceWorker.register("../ServiceWorker.js");
     }
     KEY_DOWN_EVENT.register(closeContextMenu);
@@ -256,7 +256,7 @@ const start = (() => {
         progressBarSeek(pointer, 0 /* ProgressBarSeekAction.SEEK_TO */); }, { passive: true });
     PROGRESS_BAR.addEventListener('pointermove', (pointer) => progressBarSeek(pointer, 1 /* ProgressBarSeekAction.DISPLAY_TIME */), { passive: true });
     PROGRESS_BAR.addEventListener('pointerleave', (pointer) => progressBarSeek(pointer, 2 /* ProgressBarSeekAction.STOP_DISPLAYING */), { passive: true });
-    if (onDeprecated)
+    if (deprecated)
         DEPRECATED_POPUP.showModal();
     //END
 })();
