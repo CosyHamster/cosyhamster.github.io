@@ -1,10 +1,16 @@
-import("./howler.js");
+const SITE_DEPRECATED = document.URL.toLowerCase().includes('codehs');
+
+import("./howler.js").catch((error) => {
+    console.warn(error);
+    let howlerScript = document.createElement('script');
+    howlerScript.src = "./howler.js";
+    document.head.appendChild(howlerScript);
+});
 
 class OnEventUpdated{
     constructor(){
         this.registeredCallbacks = []
     }
-
     register(func){
         this.registeredCallbacks.push(func)
     }

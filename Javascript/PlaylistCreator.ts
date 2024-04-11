@@ -1,5 +1,15 @@
+import { assert } from "console";
+import { waitForDebugger } from "inspector";
+
 // @ts-nocheck
-import("./howler.js");
+const SITE_DEPRECATED = document.URL.toLowerCase().includes('codehs');
+
+import("./howler.js").catch((error) => {
+  console.warn(error);
+  let howlerScript = document.createElement('script');
+  howlerScript.src = "../Javascript/howler.js";
+  document.head.appendChild(howlerScript);
+});
 
 const enum PhaseType {
   COLLECTING,
@@ -82,11 +92,10 @@ class Time {
     return `${number}`
   }
 }
-class DataTransferItemGrabber { //this exists because javascript has bugs
-  
+class DataTransferItemGrabber { //this exists because javascript has bugs (it keeps deleting the references in the FileSystemEntry[])
   dataTransferItemList: DataTransferItem[] | FileSystemEntry[] = [];
   files: (File | null)[] = [];
-  promises: Promise<File>[] = [];
+  activePromises = 0;
   filesCollected = 0;
   filesAdded = 0;
   phase: PhaseType = PhaseType.COLLECTING; //0 == collecting, 1 == retrieving
@@ -96,7 +105,7 @@ class DataTransferItemGrabber { //this exists because javascript has bugs
     this.dataTransferItemList = dataTransferItemList;
   }
 
-  async retrieveContents() {
+  async retrieveContents(): Promise<File[]> {
     return new Promise(async resolve => {
       if (this.files.length > 0) resolve(this.files);
       let fileEntryArray: FileSystemEntry[] = []; //collect all file entries that need to be scanned
@@ -104,14 +113,24 @@ class DataTransferItemGrabber { //this exists because javascript has bugs
       await this.scanFilesInArray(fileEntryArray);
 
       this.phase = PhaseType.RETRIEVING;
-      await Promise.allSettled(this.promises);
+      await new Promise<void>((resolve, reject) => {
+        const waitForPromisesToResolve = (() => {
+          if(this.activePromises > 0){
+            setTimeout(waitForPromisesToResolve, 5);
+          } else {
+            resolve();
+          }
+        });
+        waitForPromisesToResolve();
+      });
+    
       this.phase = PhaseType.FINISHED;
       this.updateLoadingStatus();
       return resolve(this.files);
     });
   }
 
-  async scanFilesInArray(fileEntries) {
+  async scanFilesInArray(fileEntries: FileSystemEntry[]) {
     return new Promise<void>(async (resolve, reject) => {
       for (let i = 0; i < fileEntries.length; i++) {
         let webkitEntry = fileEntries[i];
@@ -129,7 +148,10 @@ class DataTransferItemGrabber { //this exists because javascript has bugs
             ++this.filesAdded;
             this.updateLoadingStatus();
           })
-          this.promises.push(promise);
+          promise.finally(() => {
+            --this.activePromises;
+          })
+          ++this.activePromises;
         }
       }
       resolve();
@@ -177,7 +199,7 @@ class DataTransferItemGrabber { //this exists because javascript has bugs
 }
 var REQUEST_ANIMATION_FRAME_EVENT = new OnRequestAnimationFrameEvent(),
   KEY_DOWN_EVENT = new OnKeyDownEvent(),
-  VALAD_FILE_EXTENSIONS: Set<String> = new Set(["ogg", "webm", "wav", "hls", "flac", "mp3", "opus", "pcm", "vorbis", "aac"]),
+  VALID_FILE_EXTENSIONS: Set<String> = new Set(["ogg", "webm", "wav", "hls", "flac", "mp3", "opus", "pcm", "vorbis", "aac"]),
   StatusTexts = {
     PLAYING: "Playing",
     PAUSED: "Paused",
@@ -236,9 +258,7 @@ var processingNumber: number = 0;
 var skipSongQueued = false;
 var currentSongIndex: number | null = null;
 const start = (() => {
-  const deprecated = new URL(document.URL).origin == 'https://cosyhamster.codehs.me';
-
-  if ("serviceWorker" in navigator && !deprecated) {
+  if ("serviceWorker" in navigator && !SITE_DEPRECATED) {
     navigator.serviceWorker.register("../ServiceWorker.js");
   }
   KEY_DOWN_EVENT.register(closeContextMenu);
@@ -248,7 +268,7 @@ const start = (() => {
   registerClickEvent('seekForward', () => seek(new Number(SEEK_FORWARD.getAttribute('seekDirection'))));
   registerClickEvent(CURRENT_FILE_NAME, () => PLAYLIST_VIEWER_TABLE.rows[currentSongIndex + 1].scrollIntoView(false));
   KEY_DOWN_EVENT.register(selectionLogicForKeyboard);
-  REQUEST_ANIMATION_FRAME_EVENT.register(keepTrackofTimes);
+  REQUEST_ANIMATION_FRAME_EVENT.register(keepTrackOfTimes);
   makeDocumentDroppable();
   document.addEventListener('click', (mouseEvent) => {
     closeContextMenu();
@@ -302,7 +322,7 @@ const start = (() => {
   PROGRESS_BAR.addEventListener('pointermove', (pointer) => progressBarSeek(pointer, ProgressBarSeekAction.DISPLAY_TIME), { passive: true })
   PROGRESS_BAR.addEventListener('pointerleave', (pointer) => progressBarSeek(pointer, ProgressBarSeekAction.STOP_DISPLAYING), { passive: true })
   
-  if(deprecated) DEPRECATED_POPUP.showModal();
+  if(SITE_DEPRECATED) DEPRECATED_POPUP.showModal();
   //END
 })()
 
@@ -389,10 +409,15 @@ function registerClickEvent(element: HTMLElement, func: EventListenerOrEventList
   element.addEventListener('click', func, { passive: true })
 }
 
-function createNewSong(fileName, index) { //index is used to number the checkboxes
-  const row = PLAYLIST_VIEWER_TABLE.insertRow(PLAYLIST_VIEWER_TABLE.rows.length)
+/**
+ * @satisfies New song was not pushed to sounds array beforehand.
+ * @param fileName The name of the song to be added to the Playlist Table.
+ * @param index The song's index.
+ */
+function createNewSong(fileName, index): HTMLTableRowElement { //index is used to number the checkboxes
+  const row = document.createElement('tr');//PLAYLIST_VIEWER_TABLE.insertRow(PLAYLIST_VIEWER_TABLE.rows.length)
   const cell1 = row.insertCell(0);
-  initializeRow(row);
+  initializeRowEvents(row);
 
   const fileSize = document.createElement('text');
   fileSize.setAttribute('class', 'songName');
@@ -405,16 +430,17 @@ function createNewSong(fileName, index) { //index is used to number the checkbox
   songName.textContent = fileName
 
   const songNumber = document.createElement('text');
-  songNumber.textContent = `${PLAYLIST_VIEWER_TABLE.rows.length - 1}. `;
+  songNumber.textContent = `${sounds.length + 1}. `;
   setAttributes(songNumber, {
     style: 'float: left; display: inline-block;',
     class: 'songNumber',
     index: index
   })
 
-  const playButtonDiv = document.createElement('label');
-  playButtonDiv.setAttribute('class', 'smallplaypause playpause');
-  playButtonDiv.setAttribute('for', `${index}playButton`);
+  const playButton = document.createElement('label');
+  playButton.setAttribute('class', 'smallplaypause playpause');
+  playButton.setAttribute('for', `${index}playButton`);
+
   const checkbox = document.createElement('input');
   checkbox.addEventListener('change', () => playSpecificSong(filePlayingCheckboxes.indexOf(checkbox)), { passive: true });
   setAttributes(checkbox, {
@@ -422,30 +448,22 @@ function createNewSong(fileName, index) { //index is used to number the checkbox
     id: `${index}playButton`,
     class: 'smallplaypause playpause'
   });
-  playButtonDiv.appendChild(checkbox);
-  playButtonDiv.appendChild(document.createElement('div'));
 
-  appendChilds(cell1, [
-    fileSize,
-    songNumber,
-    playButtonDiv,
-    songName,
-  ]);
+  playButton.append(checkbox, document.createElement('div'));
+  cell1.append(fileSize, songNumber, playButton, songName);
 
   fileSizeDisplays.push(fileSize);
   fileNameDisplays.push(songName);
   filePlayingCheckboxes.push(checkbox);
+
+  return row;
 }
 
 function setAttributes(element, attrs) {
   for (var key in attrs) element.setAttribute(key, attrs[key]);
 }
-function appendChilds(element, childElements) {
-  for (var i = 0; i < childElements.length; i++) element.appendChild(childElements[i]);
-}
 
 async function toggleCompactMode() {
-  // COMPACT_MODE_TOGGLE.disabled = true;
   if (COMPACT_MODE_LINK_ELEMENT === null) {
     COMPACT_MODE_LINK_ELEMENT = document.createElement('link');
     setAttributes(COMPACT_MODE_LINK_ELEMENT, {
@@ -455,11 +473,10 @@ async function toggleCompactMode() {
     document.head.appendChild(COMPACT_MODE_LINK_ELEMENT);
   }
 }
-function keepTrackofTimes() {
+function keepTrackOfTimes() {
   if (skipSongQueued) {
     skipSongQueued = false;
     filePlayingCheckboxes[(currentSongIndex + 1) % filePlayingCheckboxes.length].dispatchEvent(new MouseEvent("click"));
-    // playSpecificSong((currentSongIndex+1)%sounds.length);
   }
 
   PRELOAD_DIST_ELEMENT.max = Math.max(sounds.length - 1, 1);
@@ -499,27 +516,27 @@ function cannotUpdateProgress(isProcessing) {
     DURATION_OF_SONG_DISPLAY.textContent = "00:00";
   }
 }
-function reapplySoundAttributes(index) {
-  let affected = (index instanceof Howl) ? index : sounds[index];
-  affected.rate(PLAY_RATE.value);
-  affected.volume(VOLUME_CHANGER.value);
-  affected.mute(MUTE_BUTTON.checked);
-  affected.stereo(parseFloat(PLAY_PAN.value));
+function reapplySoundAttributes(howl: Howl) {
+  howl.rate(PLAY_RATE.value);
+  howl.volume(VOLUME_CHANGER.value);
+  howl.mute(MUTE_BUTTON.checked);
+  howl.stereo(parseFloat(PLAY_PAN.value));
 }
-function updateCurrentTimeDisplay(currentTime, songDurationInSeconds) {
+function updateCurrentTimeDisplay(currentTime: number, songDurationInSeconds: number) {
   if (HOVERED_TIME_DISPLAY.getAttribute('inUse') == 1) return;
   const progressBarDomRect = PROGRESS_BAR.getBoundingClientRect();
   if (progressBarDomRect.top + 50 < 0) return; //return if you scrolled away from the progress bar (+50 to include the hoveredTimeDisplay)
 
   const songDurationFormatted = new Time(songDurationInSeconds).toString(),
-    top = progressBarDomRect.top + window.scrollY,
-    left = (progressBarDomRect.left - HOVERED_TIME_DISPLAY.getBoundingClientRect().width / 2) + (progressBarDomRect.width * currentTime / songDurationInSeconds) - 1;
-
+        currentTimeString = new Time(currentTime).toString();
   if (DURATION_OF_SONG_DISPLAY.textContent != songDurationFormatted) DURATION_OF_SONG_DISPLAY.textContent = songDurationFormatted;
+  if (HOVERED_TIME_DISPLAY.children[0].textContent != currentTimeString) HOVERED_TIME_DISPLAY.children[0].textContent = currentTimeString;
+
+  const top = progressBarDomRect.top + window.scrollY,
+        left = (progressBarDomRect.left - HOVERED_TIME_DISPLAY.getBoundingClientRect().width / 2) + (progressBarDomRect.width * currentTime / songDurationInSeconds) - 1;
+
   HOVERED_TIME_DISPLAY.style.top = `${top}px`;
   HOVERED_TIME_DISPLAY.style.left = `${left}px`;
-  const currentTimeString = new Time(currentTime).toString();
-  if (HOVERED_TIME_DISPLAY.children[0].textContent != currentTimeString) HOVERED_TIME_DISPLAY.children[0].textContent = currentTimeString;
 }
 
 function progressBarSeek(mouse: MouseEvent, hoverType: ProgressBarSeekAction) {
@@ -561,21 +578,22 @@ function loaded(fileReader: FileReader, sourceFileObject: File) {
 }
 
 /**
- * @param {String} errorType The name of the exception
- * @param {String} errorText Generic error message to explain the error better.
- * @param {String} errorMessage The message provided by the error
+ * @param {string} errorType The name of the exception.
+ * @param {string} errorText A shortened error message.
+ * @param {string} errorMessage The full error message.
+ * @param {string} errorCategory The category the error is contained in.
 */
-function displayError(errorType: String, errorText: String, errorMessage: String, fileName: String) {
+function displayError(errorType: string, errorText: string, errorMessage: string, errorCategory: string) {
   let insertAfter;
   const children = ERROR_LIST.children;
   for (let i = 0; i < children.length; i++) {
-    if (children[i].textContent == fileName) {
+    if (children[i].textContent == errorCategory) {
       insertAfter = children[i];
       break;
     }
   }
   const songTitle = document.createElement('dt');
-  songTitle.textContent = fileName;
+  songTitle.textContent = errorCategory;
   const songError = document.createElement('dd');
   songError.textContent = errorType + ": " + errorText;
   songError.title = errorMessage;
@@ -583,8 +601,7 @@ function displayError(errorType: String, errorText: String, errorMessage: String
   if (insertAfter) {
     insertAfter.after(songError);
   } else {
-    ERROR_LIST.appendChild(songTitle);
-    ERROR_LIST.appendChild(songError);
+    ERROR_LIST.append(songTitle, songError);
   }
   ERROR_POPUP.showModal();
   console.error(`${errorType}: ${errorText} ${errorMessage}`);
@@ -599,6 +616,7 @@ function seek(seekDirection) { //controls audio seeking, seekDuration: usually +
 }
 
 async function importFiles(element) {
+  const songTableRows = [];
   if (element instanceof FileList) {
     addFiles(element);
   } else if (element instanceof DataTransfer) {
@@ -606,27 +624,36 @@ async function importFiles(element) {
     if (!dataTransferItemList || dataTransferItemList.length == 0) return;
 
     changeStatus(StatusTexts.RETRIEVING);
-    let fileReciever = new DataTransferItemGrabber(dataTransferItemList);
-    addFiles(await fileReciever.retrieveContents());
+    let fileReceiver = new DataTransferItemGrabber(dataTransferItemList);
+    addFiles(await fileReceiver.retrieveContents());
   }
 
-  function addFiles(files: FileList | Array<File>/*: FileList or array-like containing File objects*/) {
+  
+  function addFiles(files: ArrayLike<File> /*FileList or File[]*/) {
     const lengthBeforeBegin = sounds.length;
+    let offsetBecauseOfSkipped = 0
     changeStatus(`Importing ${files.length} Files...`);
-    for (var i = 0, offsetBecauseOfSkipped = 0; i < files.length; i++) {
+    
+    for (var i = 0; i < files.length; i++) {
       const file = files[i];
       if (file == null) continue;
       const fileExtension = getFileExtension(file.name);
-      if (SKIP_UNPLAYABLE_CHECKBOX.checked && !VALAD_FILE_EXTENSIONS.has(fileExtension)) {
+      if (SKIP_UNPLAYABLE_CHECKBOX.checked && !VALID_FILE_EXTENSIONS.has(fileExtension)) {
         displayError("TypeError", `The file type '${fileExtension}' is unsupported.`, "This file is unsupported and cannot be imported!", file.name);
         ++offsetBecauseOfSkipped;
         continue;
       }
 
       file.nativeIndex = i + lengthBeforeBegin - offsetBecauseOfSkipped;
-      createNewSong(file.name, file.nativeIndex); //index (2nd parameter) is used to number the checkboxes
+      songTableRows.push(createNewSong(file.name, file.nativeIndex)); //index (2nd parameter) is used to number the checkboxes
       updateFileSizeDisplay(file.nativeIndex, file.size);
       sounds.push(file);
+    }
+    const QUANTUM = 32768;
+    const playlistTableBody = PLAYLIST_VIEWER_TABLE.tBodies[0];
+
+    for (let i = 0; i < songTableRows.length; i += QUANTUM) {
+      playlistTableBody.append( ...songTableRows.slice(i, Math.min(i + QUANTUM, songTableRows.length)) );
     }
     changeStatus(`${files.length - offsetBecauseOfSkipped} files added!`);
   }
@@ -743,7 +770,7 @@ async function playSpecificSong(index) { //called by HTML element
     filePlayingCheckboxes.forEach((it) => { if (it.id != checkbox.id) it.checked = false; }) //uncheck the play button for all the other sounds except the one u chose
 
     const soundName = sounds[index].name, fileType = getFileExtension(soundName);
-    if (SKIP_UNPLAYABLE_CHECKBOX.checked && !VALAD_FILE_EXTENSIONS.has(fileType)) {
+    if (SKIP_UNPLAYABLE_CHECKBOX.checked && !VALID_FILE_EXTENSIONS.has(fileType)) {
       displayError("TypeError", `The file type '${fileType}' is unsupported.`, "This file is unsupported and cannot be played!", soundName);
       skipSongQueued = true;
       return;
@@ -764,7 +791,7 @@ function loadSong(retrieved, index, startPlaying) {
 
 function startPlayingSong() {
   setCurrentFileName(sounds[currentSongIndex].name);
-  reapplySoundAttributes(currentSongIndex);
+  reapplySoundAttributes(sounds[currentSongIndex]);
 
   if (PLAY_RATE.value != 0) {
     sounds[currentSongIndex].play();
@@ -776,7 +803,7 @@ function refreshPreloadedSongs() {
   for (let i = 0; i < sounds.length; i++) {
     if (i == currentSongIndex) continue;
 
-    if (!isIndexInRangeofCurrent(i)) {
+    if (!isIndexInRangeOfCurrent(i)) {
       if (sounds[i] !== null) removeSongFromRam(i);
       continue;
     }
@@ -818,7 +845,7 @@ async function playButton() { //controls playAll button, called by HTML element
   changeStatus(StatusTexts.PLAYING);
 }
 
-function isIndexInRangeofCurrent(index) {
+function isIndexInRangeOfCurrent(index) {
   const distance = parseInt(PRELOAD_DIST_ELEMENT.value);
   const withinRange = index >= currentSongIndex - distance && index <= currentSongIndex + distance;
   const inRangeWrappedToBegin = index + distance >= sounds.length && (index + distance) % sounds.length >= currentSongIndex;
@@ -867,12 +894,12 @@ function isLoading(sound) { return sound?.state?.() == 'loading'; }
 function isSongRepeating(): boolean { return REPEAT_BUTTON.checked; }
 function onRangeInput(elem: HTMLInputElement, func: Function) { elem.addEventListener('input', func, { passive: true }); }
 function sleep(ms: number): Promise<void> { return new Promise(resolve => setTimeout(resolve, ms)); }
-function isCurrentSoundPaused(): Boolean { return sounds[currentSongIndex]._sounds[0]._paused; }
-function getInMegabytes(bytes): Number { return (bytes / 1_048_576).toFixed(2); }
-function getFileExtension(fileName): String { return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase(); }
+function isCurrentSoundPaused(): boolean { return !sounds[currentSongIndex]?.playing?.(); }
+function getInMegabytes(bytes): number { return (bytes / 1_048_576).toFixed(2); }
+function getFileExtension(fileName: string): string { return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase(); }
 
 /*            TABLE INTERACTION FUNCTIONS             */
-function initializeRow(row) {
+function initializeRowEvents(row) {
   row.setAttribute('draggable', 'true')
   row.addEventListener('click', onSingleClick, { passive: true });
   // row.addEventListener('contextmenu', onRightClick);
