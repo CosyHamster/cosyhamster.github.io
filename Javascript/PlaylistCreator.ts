@@ -1,6 +1,3 @@
-import { assert } from "console";
-import { waitForDebugger } from "inspector";
-
 // @ts-nocheck
 const SITE_DEPRECATED = document.URL.toLowerCase().includes('codehs');
 
