@@ -22,7 +22,7 @@ const enum ProgressBarSeekAction {
 
 interface ContextMenuOptions {
   text: String,
-  icon: String,
+  icon?: String,
   action: Function
 }
 
@@ -51,7 +51,7 @@ class OnKeyDownEvent extends OnEventUpdated {
 
 class OnRequestAnimationFrameEvent extends OnEventUpdated {
   // @ts-expect-error
-  raf: ((callback: FrameRequestCallback) => number) & ((callback: FrameRequestCallback) => number) = (window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame).bind(window)
+  raf: ((callback: FrameRequestCallback) => number) = (window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame).bind(window)
   constructor() {
     super();
     this.raf((timestamp) => this.handleRAFCall(timestamp))

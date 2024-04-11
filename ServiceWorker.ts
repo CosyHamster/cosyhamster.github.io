@@ -11,7 +11,6 @@ self.addEventListener("install", (event) => {
         "./Javascript/howler.js",
         "./Javascript/WebLooper.js",
         "./Javascript/PlaylistCreator.js",
-        "./ServiceWorker.js",
         "./CSS/background.css",
         "./CSS/WebLooper.css",
         "./CSS/PlaylistCreator.css",
@@ -41,39 +40,54 @@ self.addEventListener('activate', (e) => {
 self.addEventListener("fetch", (e) => {
     if(e.request.method !== "GET") return;
     e.preventDefault();
-    e.respondWith(new Promise(async (accept, reject) => {        
+    e.respondWith(new Promise(async (resolve, reject) => {        
         if(!cacheStorage) cacheStorage = await caches.open(CACHE_NAME);
-
-        fetch(e.request).then( async response => {
-            if(response.ok){
-                console.log(`[Service Worker] Caching new resource: ${e.request.url}`);
-                cacheStorage.put(e.request, response.clone());
-                accept(response);
-            } else {
-                tryUsingCache();
-            }
-        }).catch( async () => {
-            tryUsingCache();
+        
+        useCache(e.request).then(response => {
+            resolve(response);
+            useFetchRequestAndCache().catch(() => {});
+        }, rejectReason => {
+            useFetchRequestAndCache(e.request).then(response => {
+                resolve(response)
+            }).catch(error => {
+                reject(error);
+            })
         });
 
-        async function tryUsingCache(){
-            const cachedResponse = await getCachedResponse(e.request);
-            if(cachedResponse){
-                console.log(`[Service Worker] Returning cached resource: ${e.request.url}`);
-                accept(cachedResponse);
-            } else {
-                console.log(`[Service Worker] Uncached resource: ${e.request.url}`); 
-                reject("The network request failed, and the resource is not cached.");  
-            }
+        async function useFetchRequestAndCache(){
+            return new Promise<Response>((resolve, reject) => {
+                fetch(e.request).then(response => {
+                    if(response.ok){
+                        console.log(`[Service Worker] Caching resource: ${e.request.url}`);
+                        cacheStorage.put(e.request, response.clone());
+                    }
+                    resolve(response);
+                }).catch((error) => {
+                    reject(error);
+                });
+            });
+        }
+
+        async function useCache(){
+            return new Promise<Response>((resolve, reject) => {
+                getCachedResponse(e.request).then(response => {
+                    console.log(`[Service Worker] Returning cached resource: ${e.request.url}`);
+                    resolve(response);
+                }).catch((errorReason) => {
+                    console.log(`[Service Worker] Uncached resource: ${e.request.url}`); 
+                    reject(errorReason);  
+                });
+            })
+            
         }
     })); 
 });
 async function getCachedResponse(request: Request): Promise<Response | null | undefined>{
     return new Promise((accept, reject) => {
         cacheStorage.match(request).then((response) => {
-            accept(response?.clone?.());
+            accept(response);
         }).catch(() => {
-            accept(null);
+            reject("Cache miss: " + request.url);
         })
     })
 }
