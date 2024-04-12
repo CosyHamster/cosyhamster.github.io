@@ -10,6 +10,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 // @ts-nocheck
 const SITE_DEPRECATED = document.URL.toLowerCase().includes('codehs');
+var ON_MOBILE;
+if (navigator.userAgentData)
+    ON_MOBILE = navigator.userAgentData.mobile;
+else {
+    let userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    ON_MOBILE = (/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(userAgent) || /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(userAgent.substring(0, 4)));
+}
 import("./howler.js").catch((error) => {
     console.warn(error);
     let howlerScript = document.createElement('script');
@@ -34,13 +41,13 @@ class OnEventUpdated {
             this.registeredCallbacks[i](data);
     }
 }
-class OnKeyDownEvent extends OnEventUpdated {
+class KeyDownEventRegistrar extends OnEventUpdated {
     constructor() {
         super();
         window.addEventListener('keydown', key => this.callAllRegisteredFunctions(key), { passive: false });
     }
 }
-class OnRequestAnimationFrameEvent extends OnEventUpdated {
+class RequestAnimationFrameEventRegistrar extends OnEventUpdated {
     constructor() {
         super();
         // @ts-expect-error
@@ -84,7 +91,7 @@ class DataTransferItemGrabber {
         this.activePromises = 0;
         this.filesCollected = 0;
         this.filesAdded = 0;
-        this.phase = 0 /* PhaseType.COLLECTING */; //0 == collecting, 1 == retrieving
+        this.phase = 0 /* PhaseType.COLLECTING */;
         this.dataTransferItemList = dataTransferItemList;
     }
     retrieveContents() {
@@ -186,7 +193,7 @@ class DataTransferItemGrabber {
         }
     }
 }
-var REQUEST_ANIMATION_FRAME_EVENT = new OnRequestAnimationFrameEvent(), KEY_DOWN_EVENT = new OnKeyDownEvent(), VALID_FILE_EXTENSIONS = new Set(["ogg", "webm", "wav", "hls", "flac", "mp3", "opus", "pcm", "vorbis", "aac"]), StatusTexts = {
+var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(), KEY_DOWN_EVENT = new KeyDownEventRegistrar(), VALID_FILE_EXTENSIONS = new Set(["ogg", "webm", "wav", "hls", "flac", "mp3", "opus", "pcm", "vorbis", "aac"]), StatusTexts = {
     PLAYING: "Playing",
     PAUSED: "Paused",
     STOPPED: "Stopped",
@@ -199,7 +206,7 @@ var REQUEST_ANIMATION_FRAME_EVENT = new OnRequestAnimationFrameEvent(), KEY_DOWN
     SELECTING: "lightblue",
     NONE: ""
 }, PAUSED = false, PLAYING = true, PLAYLIST_VIEWER_TABLE = document.getElementById("Playlist_Viewer"), PRELOAD_DIST_ELEMENT = document.getElementById('preloadDistance'), COMPACT_MODE_LINK_ELEMENT = null, //document.getElementById('compactModeStyleLink'),
-COMPACT_MODE_TOGGLE = document.getElementById('compactMode'), SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration'), SEEK_DURATION_DISPLAY = document.getElementById("seekDurationDisplay"), SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional'), SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable'), UPLOAD_BUTTON = document.getElementById('0input'), UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory'), PLAY_RATE_RANGE = document.getElementById('0playRateSlider'), SETTINGS_PAGE = document.getElementById('settingsPage'), ERROR_POPUP = document.getElementById('errorPopup'), DEPRECATED_POPUP = document.getElementById('deprecatedPopup'), ERROR_LIST = document.getElementById('errorList'), PROGRESS_BAR = document.getElementById('progress-bar'), HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay'), VOLUME_CHANGER = document.getElementById('0playVolume'), PLAY_RATE = document.getElementById('0playRate'), PLAY_PAN = document.getElementById('0playPan'), SEEK_BACK = document.getElementById('seekBack'), SEEK_FORWARD = document.getElementById('seekForward'), REPEAT_BUTTON = document.getElementById('repeatButton'), SHUFFLE_BUTTON = document.getElementById('shuffleButton'), MUTE_BUTTON = document.getElementById('0Mute'), PLAY_BUTTON = document.getElementById('playpause'), STATUS_TEXT = document.getElementById('0status'), CURRENT_FILE_NAME = document.getElementById('currentFileName'), DROPPING_FILE_OVERLAY = document.getElementById("dragOverDisplay"), DURATION_OF_SONG_DISPLAY = document.getElementById('secondDurationLabel');
+COMPACT_MODE_TOGGLE = document.getElementById('compactMode'), SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration'), SEEK_DURATION_DISPLAY = document.getElementById("seekDurationDisplay"), SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional'), SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable'), REORDER_FILES_CHECKBOX = document.getElementById('reorderFiles'), UPLOAD_BUTTON = document.getElementById('0input'), UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory'), PLAY_RATE_RANGE = document.getElementById('0playRateSlider'), SETTINGS_PAGE = document.getElementById('settingsPage'), ERROR_POPUP = document.getElementById('errorPopup'), DEPRECATED_POPUP = document.getElementById('deprecatedPopup'), ERROR_LIST = document.getElementById('errorList'), PROGRESS_BAR = document.getElementById('progress-bar'), HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay'), VOLUME_CHANGER = document.getElementById('0playVolume'), PLAY_RATE = document.getElementById('0playRate'), PLAY_PAN = document.getElementById('0playPan'), SEEK_BACK = document.getElementById('seekBack'), SEEK_FORWARD = document.getElementById('seekForward'), REPEAT_BUTTON = document.getElementById('repeatButton'), SHUFFLE_BUTTON = document.getElementById('shuffleButton'), MUTE_BUTTON = document.getElementById('0Mute'), PLAY_BUTTON = document.getElementById('playpause'), STATUS_TEXT = document.getElementById('0status'), CURRENT_FILE_NAME = document.getElementById('currentFileName'), DROPPING_FILE_OVERLAY = document.getElementById("dragOverDisplay"), DURATION_OF_SONG_DISPLAY = document.getElementById('secondDurationLabel');
 var fileNameDisplays = [];
 var filePlayingCheckboxes = [];
 var fileSizeDisplays = [];
@@ -252,6 +259,14 @@ const start = (() => {
     initContextMenu();
     PLAY_BUTTON.addEventListener('change', playButton, { passive: true });
     COMPACT_MODE_TOGGLE.addEventListener('change', toggleCompactMode, { passive: true });
+    REORDER_FILES_CHECKBOX.addEventListener('change', () => {
+        const checked = REORDER_FILES_CHECKBOX.checked;
+        const rows = PLAYLIST_VIEWER_TABLE.rows;
+        const length = PLAYLIST_VIEWER_TABLE.rows.length;
+        for (let i = length - 1; i > 0; i--) { //purposely exclude last index. that is the header for the table
+            rows[i].draggable = checked;
+        }
+    });
     registerClickEvent('settingsButton', () => __awaiter(void 0, void 0, void 0, function* () { return SETTINGS_PAGE.showModal(); }));
     registerClickEvent('exitSettingsButton', () => __awaiter(void 0, void 0, void 0, function* () { return SETTINGS_PAGE.close(); }));
     registerClickEvent('exitErrorPopup', () => __awaiter(void 0, void 0, void 0, function* () { return ERROR_POPUP.close(); }));
@@ -276,6 +291,7 @@ const start = (() => {
     PROGRESS_BAR.addEventListener('pointerleave', (pointer) => progressBarSeek(pointer, 2 /* ProgressBarSeekAction.STOP_DISPLAYING */), { passive: true });
     if (SITE_DEPRECATED)
         DEPRECATED_POPUP.showModal();
+    REORDER_FILES_CHECKBOX.checked = !ON_MOBILE;
     //END
 })();
 function makeDocumentDroppable() {
@@ -713,9 +729,9 @@ function playSpecificSong(index) {
             currentSongIndex = index;
             filePlayingCheckboxes.forEach((it) => { if (it.id != checkbox.id)
                 it.checked = false; }); //uncheck the play button for all the other sounds except the one u chose
-            const soundName = sounds[index].name, fileType = getFileExtension(soundName);
-            if (SKIP_UNPLAYABLE_CHECKBOX.checked && !VALID_FILE_EXTENSIONS.has(fileType)) {
-                displayError("TypeError", `The file type '${fileType}' is unsupported.`, "This file is unsupported and cannot be played!", soundName);
+            const soundName = sounds[index].name, fileExtension = getFileExtension(soundName);
+            if (SKIP_UNPLAYABLE_CHECKBOX.checked && !VALID_FILE_EXTENSIONS.has(fileExtension)) {
+                displayError("TypeError", `The file type '${fileExtension}' is unsupported.`, "This file is unsupported and cannot be played!", soundName);
                 skipSongQueued = true;
                 return;
             }
@@ -841,7 +857,7 @@ function setProgress(progressEvent, index) {
 }
 function changeStatus(status) { STATUS_TEXT.textContent = status; }
 function isUnloaded(sound) { var _a; return sound === null || sound instanceof File || ((_a = sound === null || sound === void 0 ? void 0 : sound.state) === null || _a === void 0 ? void 0 : _a.call(sound)) != 'loaded'; }
-function isLoading(sound) { var _a; return ((_a = sound === null || sound === void 0 ? void 0 : sound.state) === null || _a === void 0 ? void 0 : _a.call(sound)) == 'loading'; }
+function isLoading(sound) { var _a; return !(sound instanceof Howl) || ((_a = sound === null || sound === void 0 ? void 0 : sound.state) === null || _a === void 0 ? void 0 : _a.call(sound)) == 'loading'; }
 function isSongRepeating() { return REPEAT_BUTTON.checked; }
 function onRangeInput(elem, func) { elem.addEventListener('input', func, { passive: true }); }
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
@@ -850,7 +866,7 @@ function getInMegabytes(bytes) { return (bytes / 1048576).toFixed(2); }
 function getFileExtension(fileName) { return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase(); }
 /*            TABLE INTERACTION FUNCTIONS             */
 function initializeRowEvents(row) {
-    row.setAttribute('draggable', 'true');
+    row.setAttribute('draggable', (REORDER_FILES_CHECKBOX.checked).toString());
     row.addEventListener('click', onSingleClick, { passive: true });
     // row.addEventListener('contextmenu', onRightClick);
     row.addEventListener('dblclick', onDoubleClick, { passive: true });
@@ -1158,7 +1174,10 @@ function spawnContextMenu(clientX, clientY, contextOptions, allowDefaultOptions)
         CONTEXT_MENU.removeChild(childElement);
     }
     if (allowDefaultOptions) {
-        contextOptions = contextOptions.concat([{ text: COMPACT_MODE_TOGGLE.checked ? "Disable Compact Mode" : "Enable Compact Mode", action: () => { COMPACT_MODE_TOGGLE.dispatchEvent(new MouseEvent('click')); } }]);
+        contextOptions = contextOptions.concat([
+            { text: COMPACT_MODE_TOGGLE.checked ? "Disable Compact Mode" : "Enable Compact Mode", action: () => { COMPACT_MODE_TOGGLE.dispatchEvent(new MouseEvent('click')); } },
+            { text: REORDER_FILES_CHECKBOX.checked ? "Disable Song Reordering" : "Enable Song Reordering", action: () => { REORDER_FILES_CHECKBOX.dispatchEvent(new MouseEvent('click')); } }
+        ]);
     }
     for (let i = 0; i < contextOptions.length; i++) {
         const contextOption = contextOptions[i];
