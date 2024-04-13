@@ -173,7 +173,7 @@ class DataTransferItemGrabber {
         }
     }
 }
-var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(), KEY_DOWN_EVENT = new KeyDownEventRegistrar(), VALID_FILE_EXTENSIONS = new Set(["ogg", "webm", "wav", "hls", "flac", "mp3", "opus", "pcm", "vorbis", "aac"]), StatusTexts = {
+var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(), KEY_DOWN_EVENT = new KeyDownEventRegistrar(), StatusTexts = {
     PLAYING: "Playing",
     PAUSED: "Paused",
     STOPPED: "Stopped",
@@ -470,7 +470,7 @@ function reapplySoundAttributes(howl) {
     howl.stereo(parseFloat(PLAY_PAN.value));
 }
 function updateCurrentTimeDisplay(currentTime, songDurationInSeconds) {
-    if (HOVERED_TIME_DISPLAY.getAttribute('inUse') == 1)
+    if (HOVERED_TIME_DISPLAY.getAttribute('inUse') == "1")
         return;
     const progressBarDomRect = PROGRESS_BAR.getBoundingClientRect();
     if (progressBarDomRect.top + 50 < 0)
@@ -486,13 +486,13 @@ function updateCurrentTimeDisplay(currentTime, songDurationInSeconds) {
 }
 function progressBarSeek(mouse, hoverType) {
     if ((mouse?.pointerType == "touch" && hoverType !== 0 /* ProgressBarSeekAction.SEEK_TO */) || sounds[currentSongIndex] == null || sounds[currentSongIndex]?.state?.() != 'loaded' || hoverType === 2 /* ProgressBarSeekAction.STOP_DISPLAYING */)
-        return HOVERED_TIME_DISPLAY.setAttribute('inUse', 0);
+        return HOVERED_TIME_DISPLAY.setAttribute('inUse', "0");
     const offsetX = mouse.offsetX, progressBarWidth = PROGRESS_BAR.clientWidth, currentSongLength = sounds[currentSongIndex].duration();
-    let seekToTime = Math.max(new Number(offsetX * (currentSongLength / progressBarWidth)), 0);
+    let seekToTime = Math.max(offsetX * (currentSongLength / progressBarWidth), 0);
     switch (hoverType) {
         case (0 /* ProgressBarSeekAction.SEEK_TO */): return sounds[currentSongIndex].seek(seekToTime);
         case (1 /* ProgressBarSeekAction.DISPLAY_TIME */):
-            HOVERED_TIME_DISPLAY.setAttribute('inUse', 1);
+            HOVERED_TIME_DISPLAY.setAttribute('inUse', "1");
             HOVERED_TIME_DISPLAY.style.left = `${(mouse.x - HOVERED_TIME_DISPLAY.getBoundingClientRect().width / 2) + 1}px`;
             HOVERED_TIME_DISPLAY.firstChild.textContent = new Time(seekToTime).toString();
     }
@@ -574,7 +574,7 @@ async function importFiles(element) {
             if (file == null)
                 continue;
             const fileExtension = getFileExtension(file.name);
-            if (SKIP_UNPLAYABLE_CHECKBOX.checked && !VALID_FILE_EXTENSIONS.has(fileExtension)) {
+            if (SKIP_UNPLAYABLE_CHECKBOX.checked && !isValidExtension(fileExtension)) {
                 displayError("TypeError", `The file type '${fileExtension}' is unsupported.`, "This file is unsupported and cannot be imported!", file.name);
                 ++offsetBecauseOfSkipped;
                 continue;
@@ -702,7 +702,7 @@ async function playSpecificSong(index) {
         filePlayingCheckboxes.forEach((it) => { if (it.id != checkbox.id)
             it.checked = false; }); //uncheck the play button for all the other sounds except the one u chose
         const soundName = sounds[index].name, fileExtension = getFileExtension(soundName);
-        if (SKIP_UNPLAYABLE_CHECKBOX.checked && !VALID_FILE_EXTENSIONS.has(fileExtension)) {
+        if (SKIP_UNPLAYABLE_CHECKBOX.checked && !isValidExtension(fileExtension)) {
             displayError("TypeError", `The file type '${fileExtension}' is unsupported.`, "This file is unsupported and cannot be played!", soundName);
             skipSongQueued = true;
             return;
@@ -826,6 +826,7 @@ function setProgress(progressEvent, index) {
 function changeStatus(status) { STATUS_TEXT.textContent = status; }
 function isUnloaded(sound) { return sound === null || sound instanceof File || sound?.state?.() != 'loaded'; }
 function isLoading(sound) { return sound instanceof File || sound?.state?.() == 'loading'; }
+function isValidExtension(extension) { return Howler.codecs(extension); }
 function isSongRepeating() { return REPEAT_BUTTON.checked; }
 function onRangeInput(elem, func) { elem.addEventListener('input', func, { passive: true }); }
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }

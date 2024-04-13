@@ -184,7 +184,7 @@ class DataTransferItemGrabber { //this exists because javascript has bugs (it ke
     })
   }
 
-  async getFile(fileEntry: FileSystemEntry): Promise<File> {
+  async getFile(fileEntry: FileSystemFileEntry): Promise<File> {
     return new Promise(async resolve => {
       fileEntry.file(file => {
         resolve(file);
@@ -202,7 +202,6 @@ class DataTransferItemGrabber { //this exists because javascript has bugs (it ke
 }
 var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(),
   KEY_DOWN_EVENT = new KeyDownEventRegistrar(),
-  VALID_FILE_EXTENSIONS: Set<String> = new Set(["ogg", "webm", "wav", "hls", "flac", "mp3", "opus", "pcm", "vorbis", "aac"]),
   StatusTexts = {
     PLAYING: "Playing",
     PAUSED: "Paused",
@@ -569,6 +568,16 @@ function progressBarSeek(mouse: MouseEvent, hoverType: ProgressBarSeekAction) {
   }
 }
 
+interface PlaylistCreatorHowl extends Howl, File{
+  nativeIndex: number;
+  /** Size of the file in Bytes */
+  size: number;
+  sourceFile: PlaylistCreatorFile;
+}
+interface PlaylistCreatorFile extends File{
+  nativeIndex: number;
+}
+
 function loaded(fileReader: FileReader, sourceFileObject: File) {
   let result: string = fileReader.result;
   const index: number = sourceFileObject.nativeIndex;
@@ -651,7 +660,7 @@ async function importFiles(element) {
       const file = files[i];
       if (file == null) continue;
       const fileExtension = getFileExtension(file.name);
-      if (SKIP_UNPLAYABLE_CHECKBOX.checked && !VALID_FILE_EXTENSIONS.has(fileExtension)) {
+      if (SKIP_UNPLAYABLE_CHECKBOX.checked && !isValidExtension(fileExtension)) {
         displayError("TypeError", `The file type '${fileExtension}' is unsupported.`, "This file is unsupported and cannot be imported!", file.name);
         ++offsetBecauseOfSkipped;
         continue;
@@ -783,7 +792,7 @@ async function playSpecificSong(index) { //called by HTML element
     filePlayingCheckboxes.forEach((it) => { if (it.id != checkbox.id) it.checked = false; }) //uncheck the play button for all the other sounds except the one u chose
 
     const soundName = sounds[index].name, fileExtension = getFileExtension(soundName);
-    if (SKIP_UNPLAYABLE_CHECKBOX.checked && !VALID_FILE_EXTENSIONS.has(fileExtension)) {
+    if (SKIP_UNPLAYABLE_CHECKBOX.checked && !isValidExtension(fileExtension)) {
       displayError("TypeError", `The file type '${fileExtension}' is unsupported.`, "This file is unsupported and cannot be played!", soundName);
       skipSongQueued = true;
       return;
@@ -904,6 +913,7 @@ function setProgress(progressEvent, index) {
 function changeStatus(status: string) { STATUS_TEXT.textContent = status; }
 function isUnloaded(sound: File | Howl) { return sound === null || sound instanceof File || sound?.state?.() != 'loaded'; }
 function isLoading(sound: File | Howl) { return sound instanceof File || sound?.state?.() == 'loading'; }
+function isValidExtension(extension: string) { return Howler.codecs(extension); }
 function isSongRepeating(): boolean { return REPEAT_BUTTON.checked; }
 function onRangeInput(elem: HTMLInputElement, func: Function) { elem.addEventListener('input', func, { passive: true }); }
 function sleep(ms: number): Promise<void> { return new Promise(resolve => setTimeout(resolve, ms)); }
