@@ -134,7 +134,7 @@ class DataTransferItemGrabber { //this exists because javascript has bugs (it ke
   }
 
   async scanFilesInArray(fileEntries: FileSystemEntry[]) {
-    return new Promise<void>(async (resolve, reject) => {
+    return new Promise<void>(async (resolve) => {
       for (let i = 0; i < fileEntries.length; i++) {
         let webkitEntry = fileEntries[i];
         if (webkitEntry.isDirectory) {
@@ -253,7 +253,7 @@ var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(),
 var fileNameDisplays: HTMLElement[] = [];
 var filePlayingCheckboxes: HTMLInputElement[] = [];
 var fileSizeDisplays: HTMLElement[] = [];
-var sounds: (Howl | File)[] = [];
+var sounds: (PlaylistCreatorHowl | File)[] = [];
 var selectedRows: HTMLTableRowElement[] = [];
 var hoveredRowInDragAndDrop: HTMLTableRowElement = null; //does not work with importing files, only when organizing added files
 /** An ID representing what current batch of sounds is being loaded. If the ID increments, then the old sounds being loaded are discarded. */
@@ -360,13 +360,13 @@ function makeDocumentDroppable() {
 }
 function onlyFiles(dataTransfer: DataTransfer) { return dataTransfer.types.length == 1 && dataTransfer.types[0] == 'Files' }
 //displayProgress - show progress in seek bar | currentIndex - what index in "fileSizeDisplays" to show loading progress in. This value is nullable to prevent showing loading progress in song chooser.
-function retrieveSound(file: File, displayProgress: boolean, currentIndex: number) {
-  if (file === null || file instanceof Howl) return new Promise((resolve, reject) => { resolve(file) });
+function retrieveSound(file: File, displayProgress: boolean, currentIndex: number): Promise<File | null> {
+  if (file === null || file instanceof Howl) return new Promise((resolve) => { resolve(file) });
   const currentProcessingNumber = processingNumber;
 
-  return new Promise((resolve, reject) => {
-    const fileReader = new FileReader();
-    fileReader.readAsDataURL(file);
+  return new Promise((resolve) => {
+    const fileReader: FileReader = new FileReader();
+    const finishedLoadingAbortController = new AbortController();
 
     const onProgress = function (progressEvent: ProgressEvent<FileReader>) {
       if (processingNumber === currentProcessingNumber && displayProgress) PROGRESS_BAR.value = (100 * progressEvent.loaded) / progressEvent.total;
@@ -376,12 +376,12 @@ function retrieveSound(file: File, displayProgress: boolean, currentIndex: numbe
       }
     }
     const onLoaded = function () {
-      removeListeners();
+      finishedLoadingAbortController.abort();
       if (processingNumber !== currentProcessingNumber) resolve(null);
       resolve(loaded(fileReader, file));
     }
     const errorFunc = function (progressEvent: ProgressEvent<FileReader>) {
-      removeListeners();
+      finishedLoadingAbortController.abort();
       switch (progressEvent.target.error.name) {
         case "NotFoundError": { displayError(progressEvent.target.error.name, "Failed to find file!", progressEvent.target.error.message, file.name); break; }
         default: { displayError(progressEvent.target.error.name, "Unknown Error!", progressEvent.target.error.message, file.name); break; }
@@ -390,22 +390,17 @@ function retrieveSound(file: File, displayProgress: boolean, currentIndex: numbe
       resolve(null);
     }
     function warnUser() {
-      removeListeners();
+      finishedLoadingAbortController.abort();
       console.warn(`File Aborted: ${fileReader.name}`);
       resolve(null);
     }
-    function removeListeners() {
-      fileReader.removeEventListener('progress', onProgress, { passive: true });
-      fileReader.removeEventListener('loadend', onLoaded, { passive: true });
-      fileReader.removeEventListener('error', errorFunc, { passive: true });
-      fileReader.removeEventListener('abort', warnUser, { passive: true });
-      if (currentIndex >= 0) updateFileSizeDisplay(currentIndex, file.size);
-    }
 
-    fileReader.addEventListener('progress', onProgress, { passive: true });
-    fileReader.addEventListener('loadend', onLoaded, { passive: true });
-    fileReader.addEventListener('error', errorFunc, { passive: true });
-    fileReader.addEventListener('abort', warnUser, { passive: true });
+    fileReader.addEventListener('progress', onProgress, { passive: true, signal: finishedLoadingAbortController.signal });
+    fileReader.addEventListener('loadend', onLoaded, { passive: true, signal: finishedLoadingAbortController.signal });
+    fileReader.addEventListener('error', errorFunc, { passive: true, signal: finishedLoadingAbortController.signal });
+    fileReader.addEventListener('abort', warnUser, { passive: true, signal: finishedLoadingAbortController.signal });
+
+    fileReader.readAsDataURL(file);
   });
 }
 
@@ -416,8 +411,8 @@ function onCloseErrorPopup() {
   }
 }
 
-function registerClickEvent(element: HTMLElement, func: EventListenerOrEventListenerObject) {
-  if (typeof element === "string") element = document.getElementById(element);
+function registerClickEvent(element: HTMLElement | string, func: EventListenerOrEventListenerObject) {
+  if (typeof element === 'string') element = document.getElementById(element);
   element.addEventListener('click', func, { passive: true })
 }
 
@@ -426,7 +421,7 @@ function registerClickEvent(element: HTMLElement, func: EventListenerOrEventList
  * @param fileName The name of the song to be added to the Playlist Table.
  * @param index The song's index.
  */
-function createNewSong(fileName, index): HTMLTableRowElement { //index is used to number the checkboxes
+function createNewSong(fileName: string, index: number): HTMLTableRowElement { //index is used to number the checkboxes
   const row = document.createElement('tr');//PLAYLIST_VIEWER_TABLE.insertRow(PLAYLIST_VIEWER_TABLE.rows.length)
   const cell1 = row.insertCell(0);
   initializeRowEvents(row);
@@ -568,21 +563,23 @@ function progressBarSeek(mouse: MouseEvent, hoverType: ProgressBarSeekAction) {
   }
 }
 
-interface PlaylistCreatorHowl extends Howl, File{
+interface PlaylistCreatorHowl extends Howl{
   nativeIndex: number;
   /** Size of the file in Bytes */
   size: number;
+  name: string;
   sourceFile: PlaylistCreatorFile;
 }
 interface PlaylistCreatorFile extends File{
   nativeIndex: number;
 }
 
-function loaded(fileReader: FileReader, sourceFileObject: File) {
+function loaded(fileReader: FileReader, sourceFileObject: PlaylistCreatorFile): PlaylistCreatorHowl {
+  //@ts-expect-error
   let result: string = fileReader.result;
   const index: number = sourceFileObject.nativeIndex;
 
-  const sound = new Howl({
+  const sound: PlaylistCreatorHowl = new Howl({
     src: [result],
     preload: false,
     autoplay: false,

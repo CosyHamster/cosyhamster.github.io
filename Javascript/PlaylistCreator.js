@@ -111,7 +111,7 @@ class DataTransferItemGrabber {
         });
     }
     async scanFilesInArray(fileEntries) {
-        return new Promise(async (resolve, reject) => {
+        return new Promise(async (resolve) => {
             for (let i = 0; i < fileEntries.length; i++) {
                 let webkitEntry = fileEntries[i];
                 if (webkitEntry.isDirectory) {
@@ -300,11 +300,11 @@ function onlyFiles(dataTransfer) { return dataTransfer.types.length == 1 && data
 //displayProgress - show progress in seek bar | currentIndex - what index in "fileSizeDisplays" to show loading progress in. This value is nullable to prevent showing loading progress in song chooser.
 function retrieveSound(file, displayProgress, currentIndex) {
     if (file === null || file instanceof Howl)
-        return new Promise((resolve, reject) => { resolve(file); });
+        return new Promise((resolve) => { resolve(file); });
     const currentProcessingNumber = processingNumber;
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         const fileReader = new FileReader();
-        fileReader.readAsDataURL(file);
+        const finishedLoadingAbortController = new AbortController();
         const onProgress = function (progressEvent) {
             if (processingNumber === currentProcessingNumber && displayProgress)
                 PROGRESS_BAR.value = (100 * progressEvent.loaded) / progressEvent.total;
@@ -314,13 +314,13 @@ function retrieveSound(file, displayProgress, currentIndex) {
             }
         };
         const onLoaded = function () {
-            removeListeners();
+            finishedLoadingAbortController.abort();
             if (processingNumber !== currentProcessingNumber)
                 resolve(null);
             resolve(loaded(fileReader, file));
         };
         const errorFunc = function (progressEvent) {
-            removeListeners();
+            finishedLoadingAbortController.abort();
             switch (progressEvent.target.error.name) {
                 case "NotFoundError": {
                     displayError(progressEvent.target.error.name, "Failed to find file!", progressEvent.target.error.message, file.name);
@@ -334,22 +334,15 @@ function retrieveSound(file, displayProgress, currentIndex) {
             resolve(null);
         };
         function warnUser() {
-            removeListeners();
+            finishedLoadingAbortController.abort();
             console.warn(`File Aborted: ${fileReader.name}`);
             resolve(null);
         }
-        function removeListeners() {
-            fileReader.removeEventListener('progress', onProgress, { passive: true });
-            fileReader.removeEventListener('loadend', onLoaded, { passive: true });
-            fileReader.removeEventListener('error', errorFunc, { passive: true });
-            fileReader.removeEventListener('abort', warnUser, { passive: true });
-            if (currentIndex >= 0)
-                updateFileSizeDisplay(currentIndex, file.size);
-        }
-        fileReader.addEventListener('progress', onProgress, { passive: true });
-        fileReader.addEventListener('loadend', onLoaded, { passive: true });
-        fileReader.addEventListener('error', errorFunc, { passive: true });
-        fileReader.addEventListener('abort', warnUser, { passive: true });
+        fileReader.addEventListener('progress', onProgress, { passive: true, signal: finishedLoadingAbortController.signal });
+        fileReader.addEventListener('loadend', onLoaded, { passive: true, signal: finishedLoadingAbortController.signal });
+        fileReader.addEventListener('error', errorFunc, { passive: true, signal: finishedLoadingAbortController.signal });
+        fileReader.addEventListener('abort', warnUser, { passive: true, signal: finishedLoadingAbortController.signal });
+        fileReader.readAsDataURL(file);
     });
 }
 function onCloseErrorPopup() {
@@ -359,7 +352,7 @@ function onCloseErrorPopup() {
     }
 }
 function registerClickEvent(element, func) {
-    if (typeof element === "string")
+    if (typeof element === 'string')
         element = document.getElementById(element);
     element.addEventListener('click', func, { passive: true });
 }
@@ -498,6 +491,7 @@ function progressBarSeek(mouse, hoverType) {
     }
 }
 function loaded(fileReader, sourceFileObject) {
+    //@ts-expect-error
     let result = fileReader.result;
     const index = sourceFileObject.nativeIndex;
     const sound = new Howl({
