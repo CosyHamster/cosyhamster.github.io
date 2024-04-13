@@ -1,14 +1,11 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-// @ts-nocheck
+/* @ts-nocheck */
+import("./howler.js").catch((error) => {
+    console.warn(error);
+    let howlerScript = document.createElement('script');
+    howlerScript.src = "../Javascript/howler.js";
+    document.head.appendChild(howlerScript);
+});
 const SITE_DEPRECATED = document.URL.toLowerCase().includes('codehs');
 var ON_MOBILE;
 if (navigator.userAgentData)
@@ -17,12 +14,6 @@ else {
     let userAgent = navigator.userAgent || navigator.vendor || window.opera;
     ON_MOBILE = (/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(userAgent) || /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(userAgent.substring(0, 4)));
 }
-import("./howler.js").catch((error) => {
-    console.warn(error);
-    let howlerScript = document.createElement('script');
-    howlerScript.src = "../Javascript/howler.js";
-    document.head.appendChild(howlerScript);
-});
 class OnEventUpdated {
     constructor() {
         this.registeredCallbacks = [];
@@ -94,95 +85,84 @@ class DataTransferItemGrabber {
         this.phase = 0 /* PhaseType.COLLECTING */;
         this.dataTransferItemList = dataTransferItemList;
     }
-    retrieveContents() {
-        return __awaiter(this, void 0, void 0, function* () {
-            return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
-                var _a, _b, _c;
-                if (this.files.length > 0)
-                    resolve(this.files);
-                let fileEntryArray = []; //collect all file entries that need to be scanned
-                for (let i = 0; i < this.dataTransferItemList.length; i++)
-                    fileEntryArray.push((_c = (_b = (_a = this.dataTransferItemList[i]) === null || _a === void 0 ? void 0 : _a.webkitGetAsEntry) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : this.dataTransferItemList[i]);
-                yield this.scanFilesInArray(fileEntryArray);
-                this.phase = 1 /* PhaseType.RETRIEVING */;
-                yield new Promise((resolve, reject) => {
-                    const waitForPromisesToResolve = (() => {
-                        if (this.activePromises > 0) {
-                            setTimeout(waitForPromisesToResolve, 5);
-                        }
-                        else {
-                            resolve();
-                        }
-                    });
-                    waitForPromisesToResolve();
+    async retrieveContents() {
+        return new Promise(async (resolve) => {
+            if (this.files.length > 0)
+                resolve(this.files);
+            let fileEntryArray = []; //collect all file entries that need to be scanned
+            for (let i = 0; i < this.dataTransferItemList.length; i++)
+                fileEntryArray.push(this.dataTransferItemList[i]?.webkitGetAsEntry?.() ?? this.dataTransferItemList[i]);
+            await this.scanFilesInArray(fileEntryArray);
+            this.phase = 1 /* PhaseType.RETRIEVING */;
+            await new Promise((resolve, reject) => {
+                const waitForPromisesToResolve = (() => {
+                    if (this.activePromises > 0) {
+                        setTimeout(waitForPromisesToResolve, 5);
+                    }
+                    else {
+                        resolve();
+                    }
                 });
-                this.phase = 2 /* PhaseType.FINISHED */;
-                this.updateLoadingStatus();
-                return resolve(this.files);
-            }));
+                waitForPromisesToResolve();
+            });
+            this.phase = 2 /* PhaseType.FINISHED */;
+            this.updateLoadingStatus();
+            return resolve(this.files);
         });
     }
-    scanFilesInArray(fileEntries) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
-                for (let i = 0; i < fileEntries.length; i++) {
-                    let webkitEntry = fileEntries[i];
-                    if (webkitEntry.isDirectory) {
-                        let reader = webkitEntry.createReader();
-                        yield this.addFilesInDirectory(reader);
-                    }
-                    else if (webkitEntry.isFile) {
-                        let index = this.filesCollected++;
-                        this.files.push(null);
+    async scanFilesInArray(fileEntries) {
+        return new Promise(async (resolve, reject) => {
+            for (let i = 0; i < fileEntries.length; i++) {
+                let webkitEntry = fileEntries[i];
+                if (webkitEntry.isDirectory) {
+                    let reader = webkitEntry.createReader();
+                    await this.addFilesInDirectory(reader);
+                }
+                else if (webkitEntry.isFile) {
+                    let index = this.filesCollected++;
+                    this.files.push(null);
+                    this.updateLoadingStatus();
+                    let promise = this.getFile(webkitEntry);
+                    promise.then(file => {
+                        this.files[index] = file;
+                        ++this.filesAdded;
                         this.updateLoadingStatus();
-                        let promise = this.getFile(webkitEntry);
-                        promise.then(file => {
-                            this.files[index] = file;
-                            ++this.filesAdded;
-                            this.updateLoadingStatus();
-                        });
-                        promise.finally(() => {
-                            --this.activePromises;
-                        });
-                        ++this.activePromises;
-                    }
+                    });
+                    promise.finally(() => {
+                        --this.activePromises;
+                    });
+                    ++this.activePromises;
                 }
-                resolve();
-            }));
+            }
+            resolve();
         });
     }
-    addFilesInDirectory(reader) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
-                let someFiles = yield this.getSomeFilesInDirectory(reader);
-                while (someFiles.length > 0) {
-                    yield this.scanFilesInArray(someFiles);
-                    someFiles = yield this.getSomeFilesInDirectory(reader);
-                }
-                ;
-                return resolve(this.files);
-            }));
+    async addFilesInDirectory(reader) {
+        return new Promise(async (resolve) => {
+            let someFiles = await this.getSomeFilesInDirectory(reader);
+            while (someFiles.length > 0) {
+                await this.scanFilesInArray(someFiles);
+                someFiles = await this.getSomeFilesInDirectory(reader);
+            }
+            ;
+            return resolve(this.files);
         });
     }
-    getSomeFilesInDirectory(reader) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
-                reader.readEntries(someFiles => {
-                    resolve(someFiles);
-                }, error => {
-                    console.error(error, reader);
-                    resolve([]);
-                });
-            }));
+    async getSomeFilesInDirectory(reader) {
+        return new Promise(async (resolve) => {
+            reader.readEntries(someFiles => {
+                resolve(someFiles);
+            }, error => {
+                console.error(error, reader);
+                resolve([]);
+            });
         });
     }
-    getFile(fileEntry) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
-                fileEntry.file(file => {
-                    resolve(file);
-                });
-            }));
+    async getFile(fileEntry) {
+        return new Promise(async (resolve) => {
+            fileEntry.file(file => {
+                resolve(file);
+            });
         });
     }
     updateLoadingStatus() {
@@ -267,10 +247,10 @@ const start = (() => {
             rows[i].draggable = checked;
         }
     });
-    registerClickEvent('settingsButton', () => __awaiter(void 0, void 0, void 0, function* () { return SETTINGS_PAGE.showModal(); }));
-    registerClickEvent('exitSettingsButton', () => __awaiter(void 0, void 0, void 0, function* () { return SETTINGS_PAGE.close(); }));
-    registerClickEvent('exitErrorPopup', () => __awaiter(void 0, void 0, void 0, function* () { return ERROR_POPUP.close(); }));
-    registerClickEvent('exitDeprecatedPopup', () => __awaiter(void 0, void 0, void 0, function* () { return DEPRECATED_POPUP.close(); }));
+    registerClickEvent('settingsButton', async () => SETTINGS_PAGE.showModal());
+    registerClickEvent('exitSettingsButton', async () => SETTINGS_PAGE.close());
+    registerClickEvent('exitErrorPopup', async () => ERROR_POPUP.close());
+    registerClickEvent('exitDeprecatedPopup', async () => DEPRECATED_POPUP.close());
     ERROR_POPUP.addEventListener("close", onCloseErrorPopup);
     UPLOAD_BUTTON.addEventListener('change', function () { importFiles(UPLOAD_BUTTON.files); }, { passive: true });
     UPLOAD_DIRECTORY_BUTTON.addEventListener('change', function () { importFiles(UPLOAD_DIRECTORY_BUTTON.files); }, { passive: true });
@@ -428,17 +408,15 @@ function setAttributes(element, attrs) {
     for (var key in attrs)
         element.setAttribute(key, attrs[key]);
 }
-function toggleCompactMode() {
-    return __awaiter(this, void 0, void 0, function* () {
-        if (COMPACT_MODE_LINK_ELEMENT === null) {
-            COMPACT_MODE_LINK_ELEMENT = document.createElement('link');
-            setAttributes(COMPACT_MODE_LINK_ELEMENT, {
-                rel: "stylesheet",
-                href: "../CSS/CompactMode.css",
-            });
-            document.head.appendChild(COMPACT_MODE_LINK_ELEMENT);
-        }
-    });
+async function toggleCompactMode() {
+    if (COMPACT_MODE_LINK_ELEMENT === null) {
+        COMPACT_MODE_LINK_ELEMENT = document.createElement('link');
+        setAttributes(COMPACT_MODE_LINK_ELEMENT, {
+            rel: "stylesheet",
+            href: "../CSS/CompactMode.css",
+        });
+        document.head.appendChild(COMPACT_MODE_LINK_ELEMENT);
+    }
 }
 function keepTrackOfTimes() {
     if (skipSongQueued) {
@@ -446,7 +424,7 @@ function keepTrackOfTimes() {
         filePlayingCheckboxes[(currentSongIndex + 1) % filePlayingCheckboxes.length].dispatchEvent(new MouseEvent("click"));
     }
     PRELOAD_DIST_ELEMENT.max = Math.max(sounds.length - 1, 1);
-    if (COMPACT_MODE_LINK_ELEMENT === null || COMPACT_MODE_LINK_ELEMENT === void 0 ? void 0 : COMPACT_MODE_LINK_ELEMENT.sheet) {
+    if (COMPACT_MODE_LINK_ELEMENT?.sheet) {
         // if(COMPACT_MODE_TOGGLE.disabled) COMPACT_MODE_TOGGLE.disabled = false;
         if (COMPACT_MODE_LINK_ELEMENT.sheet.disabled == COMPACT_MODE_TOGGLE.checked) //if disabled needs to be updated with checkbox (checked is enabled, unchecked is disabled)
             COMPACT_MODE_LINK_ELEMENT.sheet.disabled = !COMPACT_MODE_TOGGLE.checked;
@@ -507,8 +485,7 @@ function updateCurrentTimeDisplay(currentTime, songDurationInSeconds) {
     HOVERED_TIME_DISPLAY.style.left = `${left}px`;
 }
 function progressBarSeek(mouse, hoverType) {
-    var _a, _b;
-    if (((mouse === null || mouse === void 0 ? void 0 : mouse.pointerType) == "touch" && hoverType !== 0 /* ProgressBarSeekAction.SEEK_TO */) || sounds[currentSongIndex] == null || ((_b = (_a = sounds[currentSongIndex]) === null || _a === void 0 ? void 0 : _a.state) === null || _b === void 0 ? void 0 : _b.call(_a)) != 'loaded' || hoverType === 2 /* ProgressBarSeekAction.STOP_DISPLAYING */)
+    if ((mouse?.pointerType == "touch" && hoverType !== 0 /* ProgressBarSeekAction.SEEK_TO */) || sounds[currentSongIndex] == null || sounds[currentSongIndex]?.state?.() != 'loaded' || hoverType === 2 /* ProgressBarSeekAction.STOP_DISPLAYING */)
         return HOVERED_TIME_DISPLAY.setAttribute('inUse', 0);
     const offsetX = mouse.offsetX, progressBarWidth = PROGRESS_BAR.clientWidth, currentSongLength = sounds[currentSongIndex].duration();
     let seekToTime = Math.max(new Number(offsetX * (currentSongLength / progressBarWidth)), 0);
@@ -575,47 +552,45 @@ function seek(seekDirection) {
     const currentTime = sounds[currentSongIndex].seek(sounds[currentSongIndex]);
     sounds[currentSongIndex].seek(Math.max(currentTime + numToAdd, 0));
 }
-function importFiles(element) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const songTableRows = [];
-        if (element instanceof FileList) {
-            addFiles(element);
-        }
-        else if (element instanceof DataTransfer) {
-            let dataTransferItemList = element === null || element === void 0 ? void 0 : element.items;
-            if (!dataTransferItemList || dataTransferItemList.length == 0)
-                return;
-            changeStatus(StatusTexts.RETRIEVING);
-            let fileReceiver = new DataTransferItemGrabber(dataTransferItemList);
-            addFiles(yield fileReceiver.retrieveContents());
-        }
-        function addFiles(files /*FileList or File[]*/) {
-            const lengthBeforeBegin = sounds.length;
-            let offsetBecauseOfSkipped = 0;
-            changeStatus(`Importing ${files.length} Files...`);
-            for (var i = 0; i < files.length; i++) {
-                const file = files[i];
-                if (file == null)
-                    continue;
-                const fileExtension = getFileExtension(file.name);
-                if (SKIP_UNPLAYABLE_CHECKBOX.checked && !VALID_FILE_EXTENSIONS.has(fileExtension)) {
-                    displayError("TypeError", `The file type '${fileExtension}' is unsupported.`, "This file is unsupported and cannot be imported!", file.name);
-                    ++offsetBecauseOfSkipped;
-                    continue;
-                }
-                file.nativeIndex = i + lengthBeforeBegin - offsetBecauseOfSkipped;
-                songTableRows.push(createNewSong(file.name, file.nativeIndex)); //index (2nd parameter) is used to number the checkboxes
-                updateFileSizeDisplay(file.nativeIndex, file.size);
-                sounds.push(file);
+async function importFiles(element) {
+    const songTableRows = [];
+    if (element instanceof FileList) {
+        addFiles(element);
+    }
+    else if (element instanceof DataTransfer) {
+        let dataTransferItemList = element?.items;
+        if (!dataTransferItemList || dataTransferItemList.length == 0)
+            return;
+        changeStatus(StatusTexts.RETRIEVING);
+        let fileReceiver = new DataTransferItemGrabber(dataTransferItemList);
+        addFiles(await fileReceiver.retrieveContents());
+    }
+    function addFiles(files /*FileList or File[]*/) {
+        const lengthBeforeBegin = sounds.length;
+        let offsetBecauseOfSkipped = 0;
+        changeStatus(`Importing ${files.length} Files...`);
+        for (var i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (file == null)
+                continue;
+            const fileExtension = getFileExtension(file.name);
+            if (SKIP_UNPLAYABLE_CHECKBOX.checked && !VALID_FILE_EXTENSIONS.has(fileExtension)) {
+                displayError("TypeError", `The file type '${fileExtension}' is unsupported.`, "This file is unsupported and cannot be imported!", file.name);
+                ++offsetBecauseOfSkipped;
+                continue;
             }
-            const QUANTUM = 32768;
-            const playlistTableBody = PLAYLIST_VIEWER_TABLE.tBodies[0];
-            for (let i = 0; i < songTableRows.length; i += QUANTUM) {
-                playlistTableBody.append(...songTableRows.slice(i, Math.min(i + QUANTUM, songTableRows.length)));
-            }
-            changeStatus(`${files.length - offsetBecauseOfSkipped} files added!`);
+            file.nativeIndex = i + lengthBeforeBegin - offsetBecauseOfSkipped;
+            songTableRows.push(createNewSong(file.name, file.nativeIndex)); //index (2nd parameter) is used to number the checkboxes
+            updateFileSizeDisplay(file.nativeIndex, file.size);
+            sounds.push(file);
         }
-    });
+        const QUANTUM = 32768;
+        const playlistTableBody = PLAYLIST_VIEWER_TABLE.tBodies[0];
+        for (let i = 0; i < songTableRows.length; i += QUANTUM) {
+            playlistTableBody.append(...songTableRows.slice(i, Math.min(i + QUANTUM, songTableRows.length)));
+        }
+        changeStatus(`${files.length - offsetBecauseOfSkipped} files added!`);
+    }
 }
 function onPlayRateUpdate(newRate) {
     PLAY_RATE_RANGE.value = newRate;
@@ -646,12 +621,11 @@ function handleCheckBoxClick(...elements) {
     elements.forEach(el => {
         const onlyText = el.id.replace(/[^a-z]/gi, ''); //grab all text except numbers
         el.addEventListener('change', () => {
-            var _a, _b;
             if (onlyText == "Mute" && !isUnloaded(sounds[currentSongIndex])) {
                 Howler.mute(el.checked);
             }
             else if (onlyText == "repeatButton") {
-                (_b = (_a = sounds[currentSongIndex]) === null || _a === void 0 ? void 0 : _a.loop) === null || _b === void 0 ? void 0 : _b.call(_a, el.checked);
+                sounds[currentSongIndex]?.loop?.(el.checked);
                 if (el.checked)
                     el.labels[0].children[0].src = "../Icons/Repeat1Icon.svg";
                 else
@@ -709,38 +683,35 @@ function shuffle() {
         sounds[randomIndex] = tempForSwapping;
     }
 }
-function playSpecificSong(index) {
-    return __awaiter(this, void 0, void 0, function* () {
-        var _a, _b, _c, _d, _e, _f;
-        const checkbox = filePlayingCheckboxes[index];
-        if (((_b = (_a = sounds[currentSongIndex]) === null || _a === void 0 ? void 0 : _a.playing) === null || _b === void 0 ? void 0 : _b.call(_a)) && ((_d = (_c = sounds[currentSongIndex]) === null || _c === void 0 ? void 0 : _c.state) === null || _d === void 0 ? void 0 : _d.call(_c)) == "loaded")
-            (_f = (_e = sounds[currentSongIndex]) === null || _e === void 0 ? void 0 : _e.stop) === null || _f === void 0 ? void 0 : _f.call(_e);
-        Howler.stop();
-        if (!checkbox.checked) {
-            PLAY_BUTTON.checked = PAUSED;
-            currentSongIndex = null;
-            for (var i = 0; i < sounds.length; i++)
-                removeSongFromRam(i);
-            changeStatus(StatusTexts.STOPPED);
-            unHighlightOldCurrentSongRow();
+async function playSpecificSong(index) {
+    const checkbox = filePlayingCheckboxes[index];
+    if (sounds[currentSongIndex]?.playing?.() && sounds[currentSongIndex]?.state?.() == "loaded")
+        sounds[currentSongIndex]?.stop?.();
+    Howler.stop();
+    if (!checkbox.checked) {
+        PLAY_BUTTON.checked = PAUSED;
+        currentSongIndex = null;
+        for (var i = 0; i < sounds.length; i++)
+            removeSongFromRam(i);
+        changeStatus(StatusTexts.STOPPED);
+        unHighlightOldCurrentSongRow();
+        return;
+    }
+    else {
+        currentSongIndex = index;
+        filePlayingCheckboxes.forEach((it) => { if (it.id != checkbox.id)
+            it.checked = false; }); //uncheck the play button for all the other sounds except the one u chose
+        const soundName = sounds[index].name, fileExtension = getFileExtension(soundName);
+        if (SKIP_UNPLAYABLE_CHECKBOX.checked && !VALID_FILE_EXTENSIONS.has(fileExtension)) {
+            displayError("TypeError", `The file type '${fileExtension}' is unsupported.`, "This file is unsupported and cannot be played!", soundName);
+            skipSongQueued = true;
             return;
         }
-        else {
-            currentSongIndex = index;
-            filePlayingCheckboxes.forEach((it) => { if (it.id != checkbox.id)
-                it.checked = false; }); //uncheck the play button for all the other sounds except the one u chose
-            const soundName = sounds[index].name, fileExtension = getFileExtension(soundName);
-            if (SKIP_UNPLAYABLE_CHECKBOX.checked && !VALID_FILE_EXTENSIONS.has(fileExtension)) {
-                displayError("TypeError", `The file type '${fileExtension}' is unsupported.`, "This file is unsupported and cannot be played!", soundName);
-                skipSongQueued = true;
-                return;
-            }
-            changeStatus(StatusTexts.DOWNLOADING);
-            retrieveSound(sounds[index], true, index).then((retrieved) => loadSong(retrieved, index, true));
-            refreshPreloadedSongs();
-            unHighlightOldCurrentSongRow();
-        }
-    });
+        changeStatus(StatusTexts.DOWNLOADING);
+        retrieveSound(sounds[index], true, index).then((retrieved) => loadSong(retrieved, index, true));
+        refreshPreloadedSongs();
+        unHighlightOldCurrentSongRow();
+    }
 }
 function loadSong(retrieved, index, startPlaying) {
     if (retrieved === null)
@@ -792,21 +763,18 @@ function jumpSong(amount) {
     playButtonToActivate.checked = true;
     playButtonToActivate.dispatchEvent(new Event('change'));
 }
-function playButton() {
-    return __awaiter(this, void 0, void 0, function* () {
-        var _a, _b;
-        if (isUnloaded(sounds[currentSongIndex]))
-            return PLAY_BUTTON.checked = !PLAY_BUTTON.checked;
-        if (PLAY_BUTTON.checked == PAUSED) { //if set to paused
-            if (((_b = (_a = sounds[currentSongIndex]) === null || _a === void 0 ? void 0 : _a.pause) === null || _b === void 0 ? void 0 : _b.call(_a)) != undefined)
-                changeStatus(StatusTexts.PAUSED);
-            return;
-        }
-        if (sounds[currentSongIndex].state() != "loaded")
-            yield sounds[currentSongIndex].load();
-        sounds[currentSongIndex].play();
-        changeStatus(StatusTexts.PLAYING);
-    });
+async function playButton() {
+    if (isUnloaded(sounds[currentSongIndex]))
+        return PLAY_BUTTON.checked = !PLAY_BUTTON.checked;
+    if (PLAY_BUTTON.checked == PAUSED) { //if set to paused
+        if (sounds[currentSongIndex]?.pause?.() != undefined)
+            changeStatus(StatusTexts.PAUSED);
+        return;
+    }
+    if (sounds[currentSongIndex].state() != "loaded")
+        await sounds[currentSongIndex].load();
+    sounds[currentSongIndex].play();
+    changeStatus(StatusTexts.PLAYING);
 }
 function isIndexInRangeOfCurrent(index) {
     const distance = parseInt(PRELOAD_DIST_ELEMENT.value);
@@ -821,7 +789,7 @@ function removeSongFromRam(index) {
     try {
         sounds[index].unload();
     }
-    catch (_a) { }
+    catch { }
     sounds[index] = sounds[index].sourceFile;
 }
 function updateFileSizeDisplay(index, bytes) {
@@ -856,12 +824,12 @@ function setProgress(progressEvent, index) {
     fileSizeDisplays[index].textContent = `${(progressEvent.loaded / 1024000).toFixed(2)}/${(progressEvent.total / 1024000).toFixed(2)} MB`;
 }
 function changeStatus(status) { STATUS_TEXT.textContent = status; }
-function isUnloaded(sound) { var _a; return sound === null || sound instanceof File || ((_a = sound === null || sound === void 0 ? void 0 : sound.state) === null || _a === void 0 ? void 0 : _a.call(sound)) != 'loaded'; }
-function isLoading(sound) { var _a; return !(sound instanceof Howl) || ((_a = sound === null || sound === void 0 ? void 0 : sound.state) === null || _a === void 0 ? void 0 : _a.call(sound)) == 'loading'; }
+function isUnloaded(sound) { return sound === null || sound instanceof File || sound?.state?.() != 'loaded'; }
+function isLoading(sound) { return sound instanceof File || sound?.state?.() == 'loading'; }
 function isSongRepeating() { return REPEAT_BUTTON.checked; }
 function onRangeInput(elem, func) { elem.addEventListener('input', func, { passive: true }); }
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
-function isCurrentSoundPaused() { var _a, _b; return !((_b = (_a = sounds[currentSongIndex]) === null || _a === void 0 ? void 0 : _a.playing) === null || _b === void 0 ? void 0 : _b.call(_a)); }
+function isCurrentSoundPaused() { return !sounds[currentSongIndex]?.playing?.(); }
 function getInMegabytes(bytes) { return (bytes / 1048576).toFixed(2); }
 function getFileExtension(fileName) { return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase(); }
 /*            TABLE INTERACTION FUNCTIONS             */

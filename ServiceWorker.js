@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 const OFFLINE_VERSION = 2;
 const CACHE_NAME = 'CosyHamsterMusicPlayerOfflineCache';
 var cacheStorage;
@@ -39,11 +30,11 @@ self.addEventListener("install", (event) => {
         "./Icons/HeadphonesIcon.svg",
         "./Icons/CancelIcon.svg"
     ];
-    event.waitUntil(new Promise((accept, reject) => __awaiter(void 0, void 0, void 0, function* () {
+    event.waitUntil(new Promise(async (accept, reject) => {
         if (!cacheStorage)
-            cacheStorage = yield caches.open(CACHE_NAME);
+            cacheStorage = await caches.open(CACHE_NAME);
         cacheStorage.addAll(contentToCache).then(() => accept()).catch(() => reject("Failed to add all resources to cache on install"));
-    })));
+    }));
 });
 self.addEventListener('activate', (e) => {
     e.waitUntil(clients.claim());
@@ -52,9 +43,9 @@ self.addEventListener("fetch", (e) => {
     if (e.request.method !== "GET")
         return;
     e.preventDefault();
-    e.respondWith(new Promise((resolve, reject) => __awaiter(void 0, void 0, void 0, function* () {
+    e.respondWith(new Promise(async (resolve, reject) => {
         if (!cacheStorage)
-            cacheStorage = yield caches.open(CACHE_NAME);
+            cacheStorage = await caches.open(CACHE_NAME);
         useCache(e.request).then(response => {
             resolve(response);
             useFetchRequestAndCache().catch(() => { });
@@ -65,44 +56,38 @@ self.addEventListener("fetch", (e) => {
                 reject(error);
             });
         });
-        function useFetchRequestAndCache() {
-            return __awaiter(this, void 0, void 0, function* () {
-                return new Promise((resolve, reject) => {
-                    fetch(e.request).then(response => {
-                        if (response.ok) {
-                            console.log(`[Service Worker] Caching resource: ${e.request.url}`);
-                            cacheStorage.put(e.request, response.clone());
-                        }
-                        resolve(response);
-                    }).catch((error) => {
-                        reject(error);
-                    });
+        async function useFetchRequestAndCache() {
+            return new Promise((resolve, reject) => {
+                fetch(e.request).then(response => {
+                    if (response.ok) {
+                        console.log(`[Service Worker] Caching resource: ${e.request.url}`);
+                        cacheStorage.put(e.request, response.clone());
+                    }
+                    resolve(response);
+                }).catch((error) => {
+                    reject(error);
                 });
             });
         }
-        function useCache() {
-            return __awaiter(this, void 0, void 0, function* () {
-                return new Promise((resolve, reject) => {
-                    getCachedResponse(e.request).then(response => {
-                        console.log(`[Service Worker] Returning cached resource: ${e.request.url}`);
-                        resolve(response);
-                    }).catch((errorReason) => {
-                        console.log(`[Service Worker] Uncached resource: ${e.request.url}`);
-                        reject(errorReason);
-                    });
+        async function useCache() {
+            return new Promise((resolve, reject) => {
+                getCachedResponse(e.request).then(response => {
+                    console.log(`[Service Worker] Returning cached resource: ${e.request.url}`);
+                    resolve(response);
+                }).catch((errorReason) => {
+                    console.log(`[Service Worker] Uncached resource: ${e.request.url}`);
+                    reject(errorReason);
                 });
             });
         }
-    })));
+    }));
 });
-function getCachedResponse(request) {
-    return __awaiter(this, void 0, void 0, function* () {
-        return new Promise((accept, reject) => {
-            cacheStorage.match(request).then((response) => {
-                accept(response);
-            }).catch(() => {
-                reject("Cache miss: " + request.url);
-            });
+async function getCachedResponse(request) {
+    return new Promise((accept, reject) => {
+        cacheStorage.match(request).then((response) => {
+            accept(response);
+        }).catch(() => {
+            reject("Cache miss: " + request.url);
         });
     });
 }
