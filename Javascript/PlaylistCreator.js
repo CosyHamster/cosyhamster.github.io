@@ -299,7 +299,7 @@ function makeDocumentDroppable() {
 function onlyFiles(dataTransfer) { return dataTransfer.types.length == 1 && dataTransfer.types[0] == 'Files'; }
 //displayProgress - show progress in seek bar | currentIndex - what index in "fileSizeDisplays" to show loading progress in. This value is nullable to prevent showing loading progress in song chooser.
 function retrieveSound(file, displayProgress, currentIndex) {
-    if (file === null || file instanceof Howl)
+    if (file === null || !(file instanceof File))
         return new Promise((resolve) => { resolve(file); });
     const currentProcessingNumber = processingNumber;
     return new Promise((resolve) => {
