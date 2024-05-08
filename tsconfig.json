@@ -28,7 +28,7 @@
     /* Modules */
     "module": "ES2020",                                /* Specify what module code is generated. */
     "rootDir": "./",                                  /* Specify the root folder within your source files. */
-    // "moduleResolution": "node10",                     /* Specify how TypeScript looks up a file from a given module specifier. */
+    "moduleResolution": "Node16",                     /* Specify how TypeScript looks up a file from a given module specifier. */
     // "baseUrl": "./",                                  /* Specify the base directory to resolve non-relative module names. */
     // "paths": {
     //   "Components/*": [
@@ -111,5 +111,5 @@
     // "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
     "skipLibCheck": true                                 /* Skip type checking all .d.ts files. */
   },
-  "files": ["./Javascript/PlaylistCreator.ts", "ServiceWorker.ts"]
+  "files": ["./Javascript/PlaylistCreator.ts", "ServiceWorker.ts", "node_modules/@types/howler/index.d.ts"]
 }

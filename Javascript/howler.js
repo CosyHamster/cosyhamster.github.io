@@ -2419,7 +2419,7 @@
                 return self._stereo;
             }
         }
-        // Change the streo panning of one or all sounds in group.
+        // Change the stereo panning of one or all sounds in group.
         var ids = self._getSoundIds(id);
         for (var i = 0; i < ids.length; i++) {
             // Get the sound.

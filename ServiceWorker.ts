@@ -44,8 +44,13 @@ self.addEventListener("fetch", (e) => {
         if(!cacheStorage) cacheStorage = await caches.open(CACHE_NAME);
         
         useCache(e.request).then(response => {
-            resolve(response);
-            useFetchRequestAndCache().catch(() => {});
+            if(response instanceof Response){
+                resolve(response);
+                useFetchRequestAndCache(e.request).catch(() => {});
+            }
+            else useFetchRequestAndCache(e.request).then(response => {
+                resolve(response);
+            }).catch(() => {});
         }, rejectReason => {
             useFetchRequestAndCache(e.request).then(response => {
                 resolve(response)
@@ -54,12 +59,12 @@ self.addEventListener("fetch", (e) => {
             })
         });
 
-        async function useFetchRequestAndCache(){
+        async function useFetchRequestAndCache(request: Request){
             return new Promise<Response>((resolve, reject) => {
-                fetch(e.request).then(response => {
+                fetch(request).then(response => {
                     if(response.ok){
-                        console.log(`[Service Worker] Caching resource: ${e.request.url}`);
-                        cacheStorage.put(e.request, response.clone());
+                        console.log(`[Service Worker] Caching resource: ${request.url}`);
+                        cacheStorage.put(request, response.clone());
                     }
                     resolve(response);
                 }).catch((error) => {
@@ -68,13 +73,13 @@ self.addEventListener("fetch", (e) => {
             });
         }
 
-        async function useCache(){
+        async function useCache(request: Request){
             return new Promise<Response>((resolve, reject) => {
-                getCachedResponse(e.request).then(response => {
-                    console.log(`[Service Worker] Returning cached resource: ${e.request.url}`);
+                getCachedResponse(request).then(response => {
+                    console.log(`[Service Worker] Returning cached resource: ${request.url}`);
                     resolve(response);
                 }).catch((errorReason) => {
-                    console.log(`[Service Worker] Uncached resource: ${e.request.url}`); 
+                    console.log(`[Service Worker] Uncached resource: ${request.url}`); 
                     reject(errorReason);  
                 });
             })

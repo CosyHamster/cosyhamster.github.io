@@ -1,6 +1,10 @@
 {
   "devDependencies": {
+    "@types/howler": "^2.2.11",
     "@types/node": "^20.12.4",
     "typescript": "^5.4.3"
+  },
+  "dependencies": {
+    "howler": "^2.2.4"
   }
 }

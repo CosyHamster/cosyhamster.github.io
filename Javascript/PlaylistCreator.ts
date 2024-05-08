@@ -1,4 +1,4 @@
-/* @ts-nocheck */
+//@ts-expect-error
 import("./howler.js").catch((error) => {
   console.warn(error);
   let howlerScript = document.createElement('script');
@@ -6,10 +6,12 @@ import("./howler.js").catch((error) => {
   document.head.appendChild(howlerScript);
 });
 
-const SITE_DEPRECATED = document.URL.toLowerCase().includes('codehs');
+const SITE_DEPRECATED = document.URL.toLowerCase().includes('codehs') || document.URL.includes("127.0.0.1");
 var ON_MOBILE: boolean;
+//@ts-expect-error
 if(navigator.userAgentData) ON_MOBILE = navigator.userAgentData.mobile;
 else {
+  //@ts-expect-error
   let userAgent: string = navigator.userAgent||navigator.vendor||window.opera;
   ON_MOBILE = (/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(userAgent)||/1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(userAgent.substring(0,4)));
 }
@@ -27,44 +29,186 @@ const enum ProgressBarSeekAction {
 }
 
 interface ContextMenuOptions {
-  text: String,
-  icon?: String,
+  text: string,
+  icon?: string,
   action: Function
 }
 
-class OnEventUpdated {
+class SongLoader{
+  song: Song;
+  fileReader: FileReader = new FileReader();
+  finishedLoadingAbortController?: AbortController;
+  constructor(song: Song){
+    this.song = song;
+  }
+  
+  loadSong(): Promise<Howl>{
+    return new Promise<Howl>((resolve, reject) => {
+      if(!this.finishedLoadingAbortController){
+        this.finishedLoadingAbortController = new AbortController();
+      } else {
+        if(this.finishedLoadingAbortController.signal.aborted){
+          if(this.song.howl) resolve(this.song.howl);
+          else reject("Failed to find howl when attempting to load song from a completed SongLoader.");
+          return;
+        } else {
+          this.finishedLoadingAbortController.signal.addEventListener('abort', () => {
+            if(this.song.howl) resolve(this.song.howl);
+            else reject("Failed to find howl after waiting for previous load to finish.");
+          }, {once: true});
+          return;
+        }
+      }
+
+      const onProgress = (progressEvent: ProgressEvent<FileReader>) => {
+        if (sounds[currentSongIndex].file == this.song.file) PROGRESS_BAR.value = (100 * progressEvent.loaded) / progressEvent.total;
+        fileSizeDisplays[this.song.currentRow.rowIndex-1].textContent = `${getInMegabytes(progressEvent.loaded)} MB / ${getInMegabytes(this.song.file.size)} MB`;
+        fileSizeDisplays[this.song.currentRow.rowIndex-1].setAttribute('title', `${progressEvent.loaded} bytes / ${this.song.file.size} bytes`);
+      }
+      const onLoaded = () => {
+        resolve(this.createHowl());
+        this.triggerAbort();
+      }
+      const errorFunc = (progressEvent: ProgressEvent<FileReader>) => {
+        this.triggerAbort();
+        switch (progressEvent.target.error.name) {
+          case "NotFoundError": { displayError(progressEvent.target.error.name, "Failed to find file!", progressEvent.target.error.message, this.song.file.name); break; }
+          default: { displayError(progressEvent.target.error.name, "Unknown Error!", progressEvent.target.error.message, this.song.file.name); break; }
+        }
+
+        reject(progressEvent.target.error.name);
+      }
+      const warnUser = () => {
+        this.triggerAbort();
+        reject(`File Aborted: ${this.song.file.name}`);
+      }
+
+      this.fileReader.addEventListener('progress', onProgress, { passive: true, signal: this.finishedLoadingAbortController.signal });
+      this.fileReader.addEventListener('loadend', onLoaded, { passive: true, signal: this.finishedLoadingAbortController.signal });
+      this.fileReader.addEventListener('error', errorFunc, { passive: true, signal: this.finishedLoadingAbortController.signal });
+      this.fileReader.addEventListener('abort', warnUser, { passive: true, signal: this.finishedLoadingAbortController.signal });
+      this.fileReader.readAsDataURL(this.song.file);
+    });    
+  };
+  quitLoading(){
+    this.triggerAbort();
+    this.fileReader.abort();
+  }
+  triggerAbort(){
+    if(this.finishedLoadingAbortController){
+      this.finishedLoadingAbortController.abort();
+    }
+  }
+  createHowl(): Howl {
+    const sound: Howl = new Howl({
+      src: [this.fileReader.result as string],
+      preload: true,
+      autoplay: false,
+      loop: false,
+    });
+    reapplySoundAttributes(sound);
+    sound.on('end', () => jumpSong()); //jump to next song when they end (or do custom stuff if needed)
+  
+    setFileSizeDisplay(this.song.currentRow.rowIndex-1, this.song.file.size);
+    return sound;
+  }
+}
+class Song{
+  file: File;
+  nativeIndex: number;
+  currentRow: HTMLTableRowElement;
+  songLoader?: SongLoader;
+  howl?: Howl = null;
+
+  constructor(file: File, nativeIndex: number, currentRow: HTMLTableRowElement){
+    this.file = file;
+    this.nativeIndex = nativeIndex;
+    this.currentRow = currentRow;
+  }
+
+  async loadSong(): Promise<boolean>{
+    return new Promise(resolve => {
+      if(this.howl){
+        resolve(true);
+        return;
+      }
+      if(this.songLoader == null || this.songLoader.finishedLoadingAbortController.signal.aborted) this.songLoader = new SongLoader(this);
+      else this.songLoader?.finishedLoadingAbortController?.signal?.addEventListener?.("abort", () => {
+        resolve(!!this.howl);
+      })
+
+      this.songLoader.loadSong().then(howl => {
+        this.howl = howl;
+        resolve(true);
+      }, (error: string) => {
+        console.warn("Failed loading song: " + this.file.name + ". Error: " + error);
+        resolve(false);
+      }).finally(() => {
+        this.songLoader = null;
+      });
+    })
+  }
+
+  unload(){
+    if(this.songLoader){
+      this.songLoader.quitLoading();
+      this.songLoader = null;
+    }
+    if(this.howl){
+      this.howl.unload();
+      this.howl = null;
+    }
+  }
+  
+  isPaused(){
+    return this.isLoaded() && this.howl.playing() == false;
+  }
+  isLoaded(){
+    return this.isInExistence() && this.howl.state() === "loaded";
+  }
+  isLoading(){
+    return this.isInExistence() && this.howl.state() === "loading";
+  }
+  isInExistence(){
+    return this.howl != null;
+  }
+  isUnloaded(){
+    return !this.isInExistence() || this.howl.state() === "unloaded";
+  }
+}
+class RegistrableEvent {
   registeredCallbacks: Function[] = [];
   register(func: Function) {
     this.registeredCallbacks.push(func)
   }
-  unregister(func) {
+  unregister(func: Function) {
     this.registeredCallbacks.splice(this.registeredCallbacks.indexOf(func), 1)
   }
   clearAll() {
     this.registeredCallbacks = [];
   }
-  callAllRegisteredFunctions(data: any) {
+  callAllRegisteredFunctions(data: {timestamp?: number, keyEvent?: KeyboardEvent}) {
     for (var i = 0; i < this.registeredCallbacks.length; i++) this.registeredCallbacks[i](data)
   }
 }
 
-class KeyDownEventRegistrar extends OnEventUpdated {
+class KeyDownEventRegistrar extends RegistrableEvent {
   constructor() {
     super();
-    window.addEventListener('keydown', key => this.callAllRegisteredFunctions(key), { passive: false });
+    window.addEventListener('keydown', key => this.callAllRegisteredFunctions({keyEvent: key}), { passive: false });
   }
 }
 
-class RequestAnimationFrameEventRegistrar extends OnEventUpdated {
+class RequestAnimationFrameEventRegistrar extends RegistrableEvent {
   // @ts-expect-error
-  raf: ((callback: FrameRequestCallback) => number) = (window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame).bind(window)
+  static raf: ((callback: FrameRequestCallback) => number) = (window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame).bind(window)
   constructor() {
     super();
-    this.raf((timestamp) => this.handleRAFCall(timestamp))
+    RequestAnimationFrameEventRegistrar.raf((timestamp) => this.handleRAFCall(timestamp))
   }
   handleRAFCall(timestamp: number) {
-    this.callAllRegisteredFunctions(timestamp)
-    this.raf((timestamp) => this.handleRAFCall(timestamp))
+    this.callAllRegisteredFunctions({timestamp: timestamp})
+    RequestAnimationFrameEventRegistrar.raf((timestamp) => this.handleRAFCall(timestamp))
   }
 }
 
@@ -89,7 +233,7 @@ class Time {
     return `${this.hours}:${this.minutes}:${this.seconds}`
   }
 
-  static numberToDigitalTimeString(number) {
+  static numberToDigitalTimeString(number: number) {
     if (number <= 9) return `0${number}`
 
     return `${number}`
@@ -104,19 +248,20 @@ class DataTransferItemGrabber { //this exists because javascript has bugs (it ke
   phase: PhaseType = PhaseType.COLLECTING;
 
   /** @param dataTransferItemList this can be any array-like containing DataTransferItems or File / Directory entries (from DataTransferItem.webkitGetAsEntry()) */
-  constructor(dataTransferItemList: DataTransferItem[] | FileSystemEntry[]) {
-    this.dataTransferItemList = dataTransferItemList;
+  constructor(dataTransferItemList: DataTransferItemList) {
+    this.dataTransferItemList = dataTransferItemList as unknown as DataTransferItem[];
   }
 
   async retrieveContents(): Promise<File[]> {
     return new Promise(async resolve => {
       if (this.files.length > 0) resolve(this.files);
       let fileEntryArray: FileSystemEntry[] = []; //collect all file entries that need to be scanned
+      //@ts-expect-error
       for (let i = 0; i < this.dataTransferItemList.length; i++) fileEntryArray.push(this.dataTransferItemList[i]?.webkitGetAsEntry?.() ?? this.dataTransferItemList[i]);
       await this.scanFilesInArray(fileEntryArray);
 
       this.phase = PhaseType.RETRIEVING;
-      await new Promise<void>((resolve, reject) => {
+      await new Promise<void>((resolve) => {
         const waitForPromisesToResolve = (() => {
           if(this.activePromises > 0){
             setTimeout(waitForPromisesToResolve, 5);
@@ -138,14 +283,14 @@ class DataTransferItemGrabber { //this exists because javascript has bugs (it ke
       for (let i = 0; i < fileEntries.length; i++) {
         let webkitEntry = fileEntries[i];
         if (webkitEntry.isDirectory) {
-          let reader: FileSystemDirectoryReader = webkitEntry.createReader();
+          let reader: FileSystemDirectoryReader = (<FileSystemDirectoryEntry><unknown>webkitEntry).createReader();
           await this.addFilesInDirectory(reader);
         } else if (webkitEntry.isFile) {
           let index = this.filesCollected++;
           this.files.push(null);
           this.updateLoadingStatus();
 
-          let promise: Promise<File> = this.getFile(webkitEntry);
+          let promise: Promise<File> = this.getFile(<FileSystemFileEntry><unknown>webkitEntry);
           promise.then(file => {
             this.files[index] = file;
             ++this.filesAdded;
@@ -218,123 +363,128 @@ var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(),
   },
   PAUSED = false,
   PLAYING = true,
-  PLAYLIST_VIEWER_TABLE: HTMLTableElement = document.getElementById("Playlist_Viewer"),
-  PRELOAD_DIST_ELEMENT: HTMLInputElement = document.getElementById('preloadDistance'),
+  PLAYLIST_VIEWER_TABLE = document.getElementById("Playlist_Viewer") as HTMLTableElement,
+  PRELOAD_DIST_ELEMENT = document.getElementById('preloadDistance') as HTMLInputElement,
   COMPACT_MODE_LINK_ELEMENT: HTMLLinkElement | null = null,//document.getElementById('compactModeStyleLink'),
-  COMPACT_MODE_TOGGLE: HTMLInputElement = document.getElementById('compactMode'),
-  SEEK_DURATION_NUMBER_INPUT: HTMLInputElement = document.getElementById('seekDuration'),
-  SEEK_DURATION_DISPLAY: HTMLLabelElement = document.getElementById("seekDurationDisplay"),
-  SEEK_DISTANCE_PROPORTIONAL_CHECKBOX: HTMLInputElement = document.getElementById('seekDistanceProportional'),
-  SKIP_UNPLAYABLE_CHECKBOX: HTMLInputElement = document.getElementById('skipUnplayable'),
-  REORDER_FILES_CHECKBOX: HTMLInputElement = document.getElementById('reorderFiles'),
-  UPLOAD_BUTTON: HTMLInputElement = document.getElementById('0input'),
-  UPLOAD_DIRECTORY_BUTTON: HTMLInputElement = document.getElementById('inputDirectory'),
-  PLAY_RATE_RANGE: HTMLInputElement = document.getElementById('0playRateSlider'),
-  SETTINGS_PAGE: HTMLDialogElement = document.getElementById('settingsPage'),
-  ERROR_POPUP: HTMLDialogElement = document.getElementById('errorPopup'),
-  DEPRECATED_POPUP: HTMLDialogElement = document.getElementById('deprecatedPopup'),
-  ERROR_LIST: HTMLDListElement = document.getElementById('errorList'),
-  PROGRESS_BAR: HTMLProgressElement = document.getElementById('progress-bar'),
-  HOVERED_TIME_DISPLAY: HTMLDivElement = document.getElementById('hoveredTimeDisplay'),
-  VOLUME_CHANGER: HTMLInputElement = document.getElementById('0playVolume'),
-  PLAY_RATE: HTMLInputElement = document.getElementById('0playRate'),
-  PLAY_PAN: HTMLInputElement = document.getElementById('0playPan'),
-  SEEK_BACK: HTMLTableCellElement = document.getElementById('seekBack'),
-  SEEK_FORWARD: HTMLTableCellElement = document.getElementById('seekForward'),
-  REPEAT_BUTTON: HTMLInputElement = document.getElementById('repeatButton'),
-  SHUFFLE_BUTTON: HTMLInputElement = document.getElementById('shuffleButton'),
-  MUTE_BUTTON: HTMLInputElement = document.getElementById('0Mute'),
-  PLAY_BUTTON: HTMLInputElement = document.getElementById('playpause'),
-  STATUS_TEXT: HTMLDivElement = document.getElementById('0status'),
-  CURRENT_FILE_NAME: HTMLElement = document.getElementById('currentFileName'),
-  DROPPING_FILE_OVERLAY: HTMLDivElement = document.getElementById("dragOverDisplay"),
-  DURATION_OF_SONG_DISPLAY: HTMLElement = document.getElementById('secondDurationLabel');
+  COMPACT_MODE_TOGGLE = document.getElementById('compactMode') as HTMLInputElement,
+  SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration') as HTMLInputElement,
+  SEEK_DURATION_DISPLAY = document.getElementById("seekDurationDisplay") as HTMLLabelElement,
+  SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional') as HTMLInputElement,
+  SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable') as HTMLInputElement,
+  REORDER_FILES_CHECKBOX = document.getElementById('reorderFiles') as HTMLInputElement,
+  UPLOAD_BUTTON = document.getElementById('0input') as HTMLInputElement,
+  UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory') as HTMLInputElement,
+  PLAY_RATE_RANGE = document.getElementById('0playRateSlider') as HTMLInputElement,
+  SETTINGS_PAGE = document.getElementById('settingsPage') as HTMLDialogElement,
+  ERROR_POPUP = document.getElementById('errorPopup') as HTMLDialogElement,
+  DEPRECATED_POPUP = document.getElementById('deprecatedPopup') as HTMLDialogElement,
+  ERROR_LIST = document.getElementById('errorList') as HTMLDListElement,
+  CONTEXT_MENU = document.getElementById('rightClickContextMenu') as HTMLDivElement,
+  PROGRESS_BAR = document.getElementById('progress-bar') as HTMLProgressElement,
+  HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay') as HTMLDivElement,
+  VOLUME_CHANGER = document.getElementById('0playVolume') as HTMLInputElement,
+  PLAY_RATE = document.getElementById('0playRate') as HTMLInputElement,
+  PLAY_PAN = document.getElementById('0playPan') as HTMLInputElement,
+  SEEK_BACK = document.getElementById('seekBack') as HTMLTableCellElement,
+  SEEK_FORWARD = document.getElementById('seekForward') as HTMLTableCellElement,
+  REPEAT_BUTTON = document.getElementById('repeatButton') as HTMLInputElement,
+  REPEAT_BUTTON_IMAGE = document.getElementById("repeatButtonImg") as HTMLImageElement,
+  SHUFFLE_BUTTON = document.getElementById('shuffleButton') as HTMLInputElement,
+  MUTE_BUTTON = document.getElementById('0Mute') as HTMLInputElement,
+  PLAY_BUTTON = document.getElementById('playpause') as HTMLInputElement,
+  STATUS_TEXT = document.getElementById('0status') as HTMLDivElement,
+  CURRENT_FILE_NAME = document.getElementById('currentFileName') as HTMLElement,
+  DURATION_OF_SONG_DISPLAY = document.getElementById('secondDurationLabel') as HTMLElement,
+  DROPPING_FILE_OVERLAY = document.getElementById("dragOverDisplay") as HTMLDivElement;
 
 var fileNameDisplays: HTMLElement[] = [];
 var filePlayingCheckboxes: HTMLInputElement[] = [];
 var fileSizeDisplays: HTMLElement[] = [];
-var sounds: (PlaylistCreatorHowl | File)[] = [];
+var sounds: Song[] = [];
 var selectedRows: HTMLTableRowElement[] = [];
 var hoveredRowInDragAndDrop: HTMLTableRowElement = null; //does not work with importing files, only when organizing added files
 /** An ID representing what current batch of sounds is being loaded. If the ID increments, then the old sounds being loaded are discarded. */
 var processingNumber: number = 0;
 var skipSongQueued = false;
 var currentSongIndex: number | null = null;
-const start = (() => {
+/* start */(() => {
   if ("serviceWorker" in navigator && !SITE_DEPRECATED) {
     navigator.serviceWorker.register("../ServiceWorker.js");
   }
   KEY_DOWN_EVENT.register(closeContextMenu);
-  registerClickEvent('skipBack', () => jumpSong(-1));
-  registerClickEvent('skipForward', () => jumpSong(1));
-  registerClickEvent('seekBack', () => seek(new Number(SEEK_BACK.getAttribute('seekDirection'))));
-  registerClickEvent('seekForward', () => seek(new Number(SEEK_FORWARD.getAttribute('seekDirection'))));
-  registerClickEvent(CURRENT_FILE_NAME, () => PLAYLIST_VIEWER_TABLE.rows[currentSongIndex + 1].scrollIntoView(false));
   KEY_DOWN_EVENT.register(selectionLogicForKeyboard);
   REQUEST_ANIMATION_FRAME_EVENT.register(keepTrackOfTimes);
   makeDocumentDroppable();
-  document.addEventListener('click', (mouseEvent) => {
-    closeContextMenu();
-    if (mouseEvent.target == document.querySelector("html") || mouseEvent.target == document.body) deselectAll();
-  }, { passive: true });
-  document.addEventListener('touchend', (touchEvent: TouchEvent) => {
-    // if(touchEvent.touches == 1) {
-    //   touchEvent.preventDefault();
-    //   const rect = touchEvent.target.getBoundingClientRect();
-    //   const mouseEvent = new MouseEvent("contextmenu", {
-    //     bubbles: true,
-    //     cancelable: false,
-    //     view: window,
-    //     button: 2,
-    //     buttons: 0,
-    //     clientX: rect.left,
-    //     clientY: rect.top
-    //   });
-    //   touchEvent.target.dispatchEvent(mouseEvent);
-    //   // openRowContextMenu(releasedTouch.clientX, releasedTouch.clientY, releasedTouch.target);
-    // }
-  });
+  // document.addEventListener('touchend', (touchEvent: TouchEvent) => {
+  //   if(touchEvent.touches == 1) {
+  //     touchEvent.preventDefault();
+  //     const rect = touchEvent.target.getBoundingClientRect();
+  //     const mouseEvent = new MouseEvent("contextmenu", {
+  //       bubbles: true,
+  //       cancelable: false,
+  //       view: window,
+  //       button: 2,
+  //       buttons: 0,
+  //       clientX: rect.left,
+  //       clientY: rect.top
+  //     });
+  //     touchEvent.target.dispatchEvent(mouseEvent);
+  //     // openRowContextMenu(releasedTouch.clientX, releasedTouch.clientY, releasedTouch.target);
+  //   }
+  // });
   document.addEventListener("beforeunload", function () {
     Howler.unload();
     sounds = [];
   }, { passive: true });
   initContextMenu();
-  PLAY_BUTTON.addEventListener('change', playButton, { passive: true })
-  COMPACT_MODE_TOGGLE.addEventListener('change', toggleCompactMode, { passive: true });
-  REORDER_FILES_CHECKBOX.addEventListener('change', () => {
-    const checked: boolean = REORDER_FILES_CHECKBOX.checked;
-    const rows: HTMLCollectionOf<HTMLTableRowElement> = PLAYLIST_VIEWER_TABLE.rows;
-    const length: number = PLAYLIST_VIEWER_TABLE.rows.length;
-    for(let i = length-1; i > 0; i--){ //purposely exclude last index. that is the header for the table
-      rows[i].draggable = checked;
-    }
-  })
+  registerClickEvent(document, (mouseEvent) => {
+    closeContextMenu();
+    if (mouseEvent.target == document.querySelector("html") || mouseEvent.target == document.body) deselectAll();
+  });
+  registerClickEvent('skipBack', () => jumpSong(-1));
+  registerClickEvent('skipForward', () => jumpSong());
+  registerClickEvent('seekBack', () => seek(parseFloat(SEEK_BACK.getAttribute('seekDirection'))));
+  registerClickEvent('seekForward', () => seek(parseFloat(SEEK_FORWARD.getAttribute('seekDirection'))));
+  registerClickEvent(CURRENT_FILE_NAME, () => PLAYLIST_VIEWER_TABLE.rows[currentSongIndex + 1].scrollIntoView(false));
   registerClickEvent('settingsButton', async () => SETTINGS_PAGE.showModal());
   registerClickEvent('exitSettingsButton', async () => SETTINGS_PAGE.close());
   registerClickEvent('exitErrorPopup', async () => ERROR_POPUP.close());
   registerClickEvent('exitDeprecatedPopup', async () => DEPRECATED_POPUP.close());
+  registerChangeEvent(PLAY_BUTTON, playButton);
+  registerChangeEvent(COMPACT_MODE_TOGGLE, toggleCompactMode);
+  registerChangeEvent(REORDER_FILES_CHECKBOX, () => {
+    const checked: boolean = REORDER_FILES_CHECKBOX.checked;
+    const rows: HTMLCollectionOf<HTMLTableRowElement> = PLAYLIST_VIEWER_TABLE.rows;
+    for(let i = PLAYLIST_VIEWER_TABLE.rows.length-1; i > 0; i--){ //purposely exclude last index. that is the header for the table
+      rows[i].draggable = checked;
+    }
+  });
+  registerChangeEvent(MUTE_BUTTON, () => { if(sounds[currentSongIndex].isInExistence()) sounds[currentSongIndex].howl.mute(MUTE_BUTTON.checked); });
+  registerChangeEvent(REPEAT_BUTTON, () => { 
+    if(currentSongIndex !== null && sounds[currentSongIndex].isInExistence()){
+      const checked = REPEAT_BUTTON.checked;
+      sounds[currentSongIndex].howl.loop(checked);
+      if (checked) REPEAT_BUTTON_IMAGE.src = "../Icons/Repeat1Icon.svg";
+      else REPEAT_BUTTON_IMAGE.src = "../Icons/RepeatIcon.svg";
+    }
+  });
+  registerChangeEvent(SHUFFLE_BUTTON, () => handleShuffleButton(SHUFFLE_BUTTON.checked));
+  registerChangeEvent(PLAY_RATE, () => onPlayRateUpdate(parseFloat(PLAY_RATE.value)));
+  registerChangeEvent(UPLOAD_BUTTON, () => importFiles(UPLOAD_BUTTON.files));
+  registerChangeEvent(UPLOAD_DIRECTORY_BUTTON, () => importFiles(UPLOAD_DIRECTORY_BUTTON.files));
+  onRangeInput(PLAY_RATE_RANGE, () => { onPlayRateUpdate(parseFloat(PLAY_RATE_RANGE.value)) });
+  onRangeInput(PRELOAD_DIST_ELEMENT, () => { PRELOAD_DIST_ELEMENT.labels[0].textContent = `Value: ${PRELOAD_DIST_ELEMENT.value}` });
+  onRangeInput(PLAY_PAN, () => { if(sounds[currentSongIndex].howl) PLAY_PAN.labels[0].textContent = `${Math.floor(Number(PLAY_PAN.value) * 100)}%`; sounds[currentSongIndex].howl.stereo(Number(PLAY_PAN.value)) });
+  onRangeInput(VOLUME_CHANGER, () => { if (sounds[currentSongIndex].howl) VOLUME_CHANGER.labels[0].textContent = `${Math.floor(Number(VOLUME_CHANGER.value) * 100)}%`; sounds[currentSongIndex].howl.volume(Number(VOLUME_CHANGER.value)); });
   ERROR_POPUP.addEventListener("close", onCloseErrorPopup);
-
-  UPLOAD_BUTTON.addEventListener('change', function () { importFiles(UPLOAD_BUTTON.files) }, { passive: true })
-  UPLOAD_DIRECTORY_BUTTON.addEventListener('change', function () { importFiles(UPLOAD_DIRECTORY_BUTTON.files) }, { passive: true });
-  // document.getElementById('uploadFilesLabel').addEventListener('contextmenu', (pointerEvent) => {
-  //   pointerEvent.preventDefault();
-
-  // })
-  PLAY_RATE.addEventListener('change', () => { onPlayRateUpdate(PLAY_RATE.value) }, { passive: true });
   SEEK_DURATION_NUMBER_INPUT.addEventListener('input', updateSeekDurationDisplay, { passive: true });
-  onRangeInput(PLAY_RATE_RANGE, () => { onPlayRateUpdate(PLAY_RATE_RANGE.value) });
-  onRangeInput(PRELOAD_DIST_ELEMENT, () => { PRELOAD_DIST_ELEMENT.labels[0].textContent = `Value: ${PRELOAD_DIST_ELEMENT.value}` })
-  onRangeInput(PLAY_PAN, () => { PLAY_PAN.labels[0].textContent = `${Math.floor(PLAY_PAN.value * 100)}%`; sounds[currentSongIndex].stereo(parseFloat(PLAY_PAN.value)) })
-  onRangeInput(VOLUME_CHANGER, () => { VOLUME_CHANGER.labels[0].textContent = `${Math.floor(VOLUME_CHANGER.value * 100)}%`; sounds[currentSongIndex].volume(VOLUME_CHANGER.value) })
-  handleCheckBoxClick(MUTE_BUTTON, REPEAT_BUTTON, SHUFFLE_BUTTON)
   PROGRESS_BAR.addEventListener('pointerenter', (pointer) => progressBarSeek(pointer, ProgressBarSeekAction.DISPLAY_TIME), { passive: true })
   PROGRESS_BAR.addEventListener('pointerdown', (pointer) => { if(pointer.button == 0) progressBarSeek(pointer, ProgressBarSeekAction.SEEK_TO); }, { passive: true })
   PROGRESS_BAR.addEventListener('pointermove', (pointer) => progressBarSeek(pointer, ProgressBarSeekAction.DISPLAY_TIME), { passive: true })
   PROGRESS_BAR.addEventListener('pointerleave', (pointer) => progressBarSeek(pointer, ProgressBarSeekAction.STOP_DISPLAYING), { passive: true })
   
   if(SITE_DEPRECATED) DEPRECATED_POPUP.showModal();
-  REORDER_FILES_CHECKBOX.checked = !ON_MOBILE;
+  REORDER_FILES_CHECKBOX.click();//.checked = !ON_MOBILE;
   //END
 })()
 
@@ -358,51 +508,7 @@ function makeDocumentDroppable() {
     importFiles(dataTransfer);
   });
 }
-function onlyFiles(dataTransfer: DataTransfer) { return dataTransfer.types.length == 1 && dataTransfer.types[0] == 'Files' }
-//displayProgress - show progress in seek bar | currentIndex - what index in "fileSizeDisplays" to show loading progress in. This value is nullable to prevent showing loading progress in song chooser.
-function retrieveSound(file: File, displayProgress: boolean, currentIndex: number): Promise<File | null> {
-  if (file === null || !(file instanceof File)) return new Promise((resolve) => { resolve(file) });
-  const currentProcessingNumber = processingNumber;
 
-  return new Promise((resolve) => {
-    const fileReader: FileReader = new FileReader();
-    const finishedLoadingAbortController = new AbortController();
-
-    const onProgress = function (progressEvent: ProgressEvent<FileReader>) {
-      if (processingNumber === currentProcessingNumber && displayProgress) PROGRESS_BAR.value = (100 * progressEvent.loaded) / progressEvent.total;
-      if (currentIndex >= 0) {
-        fileSizeDisplays[currentIndex].textContent = `${getInMegabytes(progressEvent.loaded)} MB / ${getInMegabytes(file.size)} MB`;
-        fileSizeDisplays[currentIndex].setAttribute('title', `${progressEvent.loaded} bytes / ${file.size} bytes`);
-      }
-    }
-    const onLoaded = function () {
-      finishedLoadingAbortController.abort();
-      if (processingNumber !== currentProcessingNumber) resolve(null);
-      resolve(loaded(fileReader, file));
-    }
-    const errorFunc = function (progressEvent: ProgressEvent<FileReader>) {
-      finishedLoadingAbortController.abort();
-      switch (progressEvent.target.error.name) {
-        case "NotFoundError": { displayError(progressEvent.target.error.name, "Failed to find file!", progressEvent.target.error.message, file.name); break; }
-        default: { displayError(progressEvent.target.error.name, "Unknown Error!", progressEvent.target.error.message, file.name); break; }
-      }
-
-      resolve(null);
-    }
-    function warnUser() {
-      finishedLoadingAbortController.abort();
-      console.warn(`File Aborted: ${fileReader.name}`);
-      resolve(null);
-    }
-
-    fileReader.addEventListener('progress', onProgress, { passive: true, signal: finishedLoadingAbortController.signal });
-    fileReader.addEventListener('loadend', onLoaded, { passive: true, signal: finishedLoadingAbortController.signal });
-    fileReader.addEventListener('error', errorFunc, { passive: true, signal: finishedLoadingAbortController.signal });
-    fileReader.addEventListener('abort', warnUser, { passive: true, signal: finishedLoadingAbortController.signal });
-
-    fileReader.readAsDataURL(file);
-  });
-}
 
 function onCloseErrorPopup() {
   let childElement;
@@ -411,9 +517,13 @@ function onCloseErrorPopup() {
   }
 }
 
-function registerClickEvent(element: HTMLElement | string, func: EventListenerOrEventListenerObject) {
+function registerClickEvent(element: EventTarget | string, func: EventListenerOrEventListenerObject) {
   if (typeof element === 'string') element = document.getElementById(element);
-  element.addEventListener('click', func, { passive: true })
+  element.addEventListener( 'click', func, { passive: true })
+}
+function registerChangeEvent(element: EventTarget | string, func: EventListenerOrEventListenerObject) {
+  if (typeof element === 'string') element = document.getElementById(element);
+  element.addEventListener('change', func, { passive: true })
 }
 
 /**
@@ -441,7 +551,7 @@ function createNewSong(fileName: string, index: number): HTMLTableRowElement { /
   setAttributes(songNumber, {
     style: 'float: left; display: inline-block;',
     class: 'songNumber',
-    index: index
+    index: String(index)
   })
 
   const playButton = document.createElement('label');
@@ -449,7 +559,7 @@ function createNewSong(fileName: string, index: number): HTMLTableRowElement { /
   playButton.setAttribute('for', `${index}playButton`);
 
   const checkbox = document.createElement('input');
-  checkbox.addEventListener('change', () => playSpecificSong(filePlayingCheckboxes.indexOf(checkbox)), { passive: true });
+  registerChangeEvent(checkbox, () => playSpecificSong(tryFindTableRowInParents(checkbox).rowIndex-1/*filePlayingCheckboxes.indexOf(checkbox)*/));
   setAttributes(checkbox, {
     type: 'checkbox',
     id: `${index}playButton`,
@@ -466,7 +576,7 @@ function createNewSong(fileName: string, index: number): HTMLTableRowElement { /
   return row;
 }
 
-function setAttributes(element, attrs) {
+function setAttributes(element: HTMLElement, attrs: { [key: string]: string }) {
   for (var key in attrs) element.setAttribute(key, attrs[key]);
 }
 
@@ -483,25 +593,24 @@ async function toggleCompactMode() {
 function keepTrackOfTimes() {
   if (skipSongQueued) {
     skipSongQueued = false;
-    filePlayingCheckboxes[(currentSongIndex + 1) % filePlayingCheckboxes.length].dispatchEvent(new MouseEvent("click"));
+    filePlayingCheckboxes[(currentSongIndex + 1) % filePlayingCheckboxes.length].click();
   }
 
-  PRELOAD_DIST_ELEMENT.max = Math.max(sounds.length - 1, 1);
+  PRELOAD_DIST_ELEMENT.max = String(Math.max(sounds.length - 1, 1));
   if (COMPACT_MODE_LINK_ELEMENT?.sheet) {
     // if(COMPACT_MODE_TOGGLE.disabled) COMPACT_MODE_TOGGLE.disabled = false;
     if (COMPACT_MODE_LINK_ELEMENT.sheet.disabled == COMPACT_MODE_TOGGLE.checked) //if disabled needs to be updated with checkbox (checked is enabled, unchecked is disabled)
       COMPACT_MODE_LINK_ELEMENT.sheet.disabled = !COMPACT_MODE_TOGGLE.checked;
   }
 
-  if (isUnloaded(sounds[currentSongIndex])) return cannotUpdateProgress(isLoading(sounds[currentSongIndex]));
-  if (sounds[currentSongIndex].playing() && (STATUS_TEXT.textContent == StatusTexts.PROCESSING || STATUS_TEXT.textContent == StatusTexts.DOWNLOADING)) onLatePlayStart();
-  let songDuration = sounds[currentSongIndex].duration();
-  let currentTime = sounds[currentSongIndex].seek(sounds[currentSongIndex]);
+  if (currentSongIndex === null || !sounds[currentSongIndex].isLoaded()) return cannotUpdateProgress(sounds[currentSongIndex]?.isLoading?.());
+  else if(sounds[currentSongIndex].howl.playing() && (STATUS_TEXT.textContent == StatusTexts.PROCESSING || STATUS_TEXT.textContent == StatusTexts.DOWNLOADING)) onLatePlayStart();
+  let songDuration = sounds[currentSongIndex].howl.duration();
+  let currentTime = sounds[currentSongIndex].howl.seek();
 
-  const timeToSet = currentTime / songDuration * 100;
+  const timeToSet = (currentTime / songDuration) * 100;
   if (Number.isFinite(timeToSet)) PROGRESS_BAR.value = timeToSet;
   updateCurrentTimeDisplay(currentTime, songDuration);
-
   highlightCurrentSongRow();
 }
 function unHighlightOldCurrentSongRow() {
@@ -511,21 +620,20 @@ function unHighlightOldCurrentSongRow() {
 }
 function highlightCurrentSongRow() {
   const style = PLAYLIST_VIEWER_TABLE.rows[currentSongIndex + 1].style;
-  if (currentSongIndex != null && style.backgroundColor == RowColors.NONE) style.backgroundColor = RowColors.PLAYING;
+  if (currentSongIndex !== null && style.backgroundColor == RowColors.NONE) style.backgroundColor = RowColors.PLAYING;
 }
 function onLatePlayStart() {
   changeStatus(StatusTexts.PLAYING);
+  reapplySoundAttributes(sounds[currentSongIndex].howl);
 }
 function cannotUpdateProgress(isProcessing: boolean) {
   if (isProcessing) changeStatus(StatusTexts.PROCESSING);
-  if (DURATION_OF_SONG_DISPLAY.textContent != "00:00") {
-    HOVERED_TIME_DISPLAY.style.left = '-9999px';
-    DURATION_OF_SONG_DISPLAY.textContent = "00:00";
-  }
+  if (DURATION_OF_SONG_DISPLAY.textContent != "00:00") DURATION_OF_SONG_DISPLAY.textContent = "00:00";
+  if (HOVERED_TIME_DISPLAY.style.left != '-9999px') HOVERED_TIME_DISPLAY.style.left = '-9999px';
 }
 function reapplySoundAttributes(howl: Howl) {
-  howl.rate(PLAY_RATE.value);
-  howl.volume(VOLUME_CHANGER.value);
+  howl.rate(parseFloat(PLAY_RATE.value));
+  howl.volume(parseFloat(VOLUME_CHANGER.value));
   howl.mute(MUTE_BUTTON.checked);
   howl.stereo(parseFloat(PLAY_PAN.value));
 }
@@ -546,54 +654,29 @@ function updateCurrentTimeDisplay(currentTime: number, songDurationInSeconds: nu
   HOVERED_TIME_DISPLAY.style.left = `${left}px`;
 }
 
-function progressBarSeek(mouse: MouseEvent, hoverType: ProgressBarSeekAction) {
-  if ((mouse?.pointerType == "touch" && hoverType !== ProgressBarSeekAction.SEEK_TO) || sounds[currentSongIndex] == null || sounds[currentSongIndex]?.state?.() != 'loaded' || hoverType === ProgressBarSeekAction.STOP_DISPLAYING) return HOVERED_TIME_DISPLAY.setAttribute('inUse', "0");
+function progressBarSeek(mouse: PointerEvent, hoverType: ProgressBarSeekAction): void {
+  if (currentSongIndex === null || !sounds[currentSongIndex].isInExistence() || (mouse?.pointerType == "touch" && hoverType !== ProgressBarSeekAction.SEEK_TO) || hoverType === ProgressBarSeekAction.STOP_DISPLAYING){
+    HOVERED_TIME_DISPLAY.setAttribute('inUse', "0");
+    return;
+  }
 
   const offsetX = mouse.offsetX,
     progressBarWidth = PROGRESS_BAR.clientWidth,
-    currentSongLength: number = sounds[currentSongIndex].duration();
+    currentSongLength: number = sounds[currentSongIndex].howl.duration();
 
   let seekToTime = Math.max(offsetX * (currentSongLength / progressBarWidth), 0);
   switch (hoverType) {
-    case (ProgressBarSeekAction.SEEK_TO): return sounds[currentSongIndex].seek(seekToTime);
-    case (ProgressBarSeekAction.DISPLAY_TIME):
+    case (ProgressBarSeekAction.SEEK_TO): {
+      sounds[currentSongIndex].howl.seek(seekToTime);
+      return;
+    }
+    case (ProgressBarSeekAction.DISPLAY_TIME): {
       HOVERED_TIME_DISPLAY.setAttribute('inUse', "1");
       HOVERED_TIME_DISPLAY.style.left = `${(mouse.x - HOVERED_TIME_DISPLAY.getBoundingClientRect().width / 2) + 1}px`;
       HOVERED_TIME_DISPLAY.firstChild.textContent = new Time(seekToTime).toString();
+      return;
+    }
   }
-}
-
-interface PlaylistCreatorHowl extends Howl{
-  nativeIndex: number;
-  /** Size of the file in Bytes */
-  size: number;
-  name: string;
-  sourceFile: PlaylistCreatorFile;
-}
-interface PlaylistCreatorFile extends File{
-  nativeIndex: number;
-}
-
-function loaded(fileReader: FileReader, sourceFileObject: PlaylistCreatorFile): PlaylistCreatorHowl {
-  //@ts-expect-error
-  let result: string = fileReader.result;
-  const index: number = sourceFileObject.nativeIndex;
-
-  const sound: PlaylistCreatorHowl = new Howl({
-    src: [result],
-    preload: false,
-    autoplay: false,
-    loop: false,
-  });
-  reapplySoundAttributes(sound);
-  sound.nativeIndex = index; //if the songs in sounds[] are shuffled, use this property to know what index the song originally belonged to
-  sound.name = sourceFileObject.name;
-  sound.size = sourceFileObject.size;
-  sound.sourceFile = sourceFileObject;
-  sound.on('end', () => jumpSong(+1)); //jump to next song when they end (or do custom stuff if needed)
-
-  updateFileSizeDisplay(index, sounds[index].size);
-  return sound;
 }
 
 /**
@@ -626,20 +709,20 @@ function displayError(errorType: string, errorText: string, errorMessage: string
   console.error(`${errorType}: ${errorText} ${errorMessage}`);
 }
 
-function seek(seekDirection) { //controls audio seeking, seekDuration: usually +1 || -1
-  if (isUnloaded(sounds[currentSongIndex])) return;
-  const seekDuration = new Number(SEEK_DURATION_NUMBER_INPUT.value) * seekDirection;
-  const numToAdd = (SEEK_DISTANCE_PROPORTIONAL_CHECKBOX.checked) ? seekDuration * PLAY_RATE.value : seekDuration;
-  const currentTime = sounds[currentSongIndex].seek(sounds[currentSongIndex]);
-  sounds[currentSongIndex].seek(Math.max(currentTime + numToAdd, 0));
+function seek(seekDirection: number) { //controls audio seeking, seekDuration: usually +1 || -1
+  if (sounds[currentSongIndex].isUnloaded()) return;
+  const seekDuration = parseFloat(SEEK_DURATION_NUMBER_INPUT.value) * seekDirection;
+  const numToAdd = (SEEK_DISTANCE_PROPORTIONAL_CHECKBOX.checked) ? seekDuration * parseFloat(PLAY_RATE.value) : seekDuration;
+  const currentTime = sounds[currentSongIndex].howl.seek();
+  sounds[currentSongIndex].howl.seek(Math.max(currentTime + numToAdd, 0));
 }
 
-async function importFiles(element) {
-  const songTableRows = [];
+async function importFiles(element: DataTransfer | ArrayLike<File>) {
+  const songTableRows: HTMLTableRowElement[] = [];
   if (element instanceof FileList) {
     addFiles(element);
   } else if (element instanceof DataTransfer) {
-    let dataTransferItemList = element?.items;
+    let dataTransferItemList: DataTransferItemList = element?.items;
     if (!dataTransferItemList || dataTransferItemList.length == 0) return;
 
     changeStatus(StatusTexts.RETRIEVING);
@@ -662,15 +745,17 @@ async function importFiles(element) {
         ++offsetBecauseOfSkipped;
         continue;
       }
+      const nativeIndex: number = i + lengthBeforeBegin - offsetBecauseOfSkipped;
+      const tableRow: HTMLTableRowElement = createNewSong(file.name, nativeIndex);
+      const song = new Song(file, nativeIndex, tableRow);
 
-      file.nativeIndex = i + lengthBeforeBegin - offsetBecauseOfSkipped;
-      songTableRows.push(createNewSong(file.name, file.nativeIndex)); //index (2nd parameter) is used to number the checkboxes
-      updateFileSizeDisplay(file.nativeIndex, file.size);
-      sounds.push(file);
+      songTableRows.push(tableRow); //index (2nd parameter) is used to number the checkboxes
+      setFileSizeDisplay(nativeIndex, file.size);
+      sounds.push(song);
     }
+
     const QUANTUM = 32768;
     const playlistTableBody = PLAYLIST_VIEWER_TABLE.tBodies[0];
-
     for (let i = 0; i < songTableRows.length; i += QUANTUM) {
       playlistTableBody.append( ...songTableRows.slice(i, Math.min(i + QUANTUM, songTableRows.length)) );
     }
@@ -678,65 +763,54 @@ async function importFiles(element) {
   }
 }
 
-function onPlayRateUpdate(newRate) {
-  PLAY_RATE_RANGE.value = newRate;
-  PLAY_RATE.value = newRate;
-  if (sounds[currentSongIndex] === undefined || sounds[currentSongIndex] instanceof File) return;
-  if (newRate <= 0) return sounds[currentSongIndex].pause(); //the rate cant be set to 0. the progress tracker will glitch back to 0.
-
-  if (isCurrentSoundPaused() && STATUS_TEXT.textContent == StatusTexts.PLAYING) {
-    const currentTime = sounds[currentSongIndex].seek(sounds[currentSongIndex]);
-    sounds[currentSongIndex].rate(newRate);
-    sounds[currentSongIndex].play(); //this starts the song over
-    sounds[currentSongIndex].seek(currentTime, sounds[currentSongIndex]); //jump back to where we were
+function onPlayRateUpdate(newRate: number) {
+  let stringRate = String(newRate);
+  PLAY_RATE_RANGE.value = stringRate;
+  PLAY_RATE.value = stringRate;
+  if (!sounds[currentSongIndex].isInExistence()) return;
+  if (newRate <= 0) {
+    sounds[currentSongIndex].howl.pause(); //the rate cant be set to 0. the progress tracker will glitch back to 0.
     return;
   }
 
-  sounds[currentSongIndex].rate(newRate);
+  if (sounds[currentSongIndex].isPaused() && STATUS_TEXT.textContent == StatusTexts.PLAYING) {
+    const currentTime = sounds[currentSongIndex].howl.seek();
+    sounds[currentSongIndex].howl.rate(newRate);
+    sounds[currentSongIndex].howl.play(); //this starts the song over
+    sounds[currentSongIndex].howl.seek(currentTime); //jump back to where we were
+    return;
+  }
+
+  sounds[currentSongIndex].howl.rate(newRate);
 }
 
 function updateSeekDurationDisplay() {
-  let duration = SEEK_DURATION_NUMBER_INPUT.value;
+  let duration = Number(SEEK_DURATION_NUMBER_INPUT.value);
   if (duration < 1) {
-    SEEK_DURATION_DISPLAY.textContent = `${new Number(duration) * 1000} ms`;
+    SEEK_DURATION_DISPLAY.textContent = `${duration * 1000} ms`;
   } else {
-    SEEK_DURATION_DISPLAY.textContent = `${new Number(duration)} sec`;
+    SEEK_DURATION_DISPLAY.textContent = `${duration} sec`;
   }
-
 }
 
-function handleCheckBoxClick(...elements) {
-  elements.forEach(el => {
-    const onlyText = el.id.replace(/[^a-z]/gi, ''); //grab all text except numbers
-    el.addEventListener('change', () => {
-      if (onlyText == "Mute" && !isUnloaded(sounds[currentSongIndex])) { Howler.mute(el.checked); }
-      else if (onlyText == "repeatButton") {
-        sounds[currentSongIndex]?.loop?.(el.checked);
-        if (el.checked) el.labels[0].children[0].src = "../Icons/Repeat1Icon.svg";
-        else el.labels[0].children[0].src = "../Icons/RepeatIcon.svg";
-      }
-      else if (onlyText == "shuffleButton") handleShuffleButton(el.checked);
-    }, { passive: true })
-  })
-}
-
-function handleShuffleButton(checked) {
-  if (checked) {
+function handleShuffleButton(enable: boolean) {
+  if (enable) {
     shuffle();
     refreshSongNames();
     for (var i = 0; i < sounds.length; i++) {
-      updateFileSizeDisplay(i, sounds[i].size);
+      setFileSizeDisplay(i, sounds[i].file.size);
     }
     return;
   }
 
   let tempArray = sounds,
     foundCurrentPlayingSong = false;
-  sounds = [].fill(null, 0, tempArray.length);
+  // sounds = [].fill(null, 0, tempArray.length);
+  sounds = new Array(tempArray.length);
   for (var i = 0; i < tempArray.length; i++) {
     let sound = tempArray[i];
     sounds[sound.nativeIndex] = sound;
-    updateFileSizeDisplay(sound.nativeIndex, sound.size);
+    setFileSizeDisplay(sound.nativeIndex, sound.file.size);
 
     if (!foundCurrentPlayingSong && currentSongIndex !== null && i == currentSongIndex) {
       currentSongIndex = sound.nativeIndex;
@@ -768,52 +842,61 @@ function shuffle() {
 
     let tempForSwapping = sounds[currentIndex];
     sounds[currentIndex] = sounds[randomIndex];
+
+    tempForSwapping.currentRow = PLAYLIST_VIEWER_TABLE.rows[randomIndex+1];
+    sounds[randomIndex].currentRow = PLAYLIST_VIEWER_TABLE.rows[currentIndex+1];
+
     sounds[randomIndex] = tempForSwapping;
   }
 }
 
-async function playSpecificSong(index) { //called by HTML element
+function onClickSpecificPlaySong(index: number){
   const checkbox = filePlayingCheckboxes[index];
-  if (sounds[currentSongIndex]?.playing?.() && sounds[currentSongIndex]?.state?.() == "loaded") sounds[currentSongIndex]?.stop?.();
+  // if(!checkbox.checked)
+}
+
+function quitPlayingMusic(){
+  PLAY_BUTTON.checked = PAUSED;
+  currentSongIndex = null;
+  for (var i = 0; i < sounds.length; i++) sounds[i].unload();
+  changeStatus(StatusTexts.STOPPED);
+  unHighlightOldCurrentSongRow();
+  return;
+}
+
+async function playSpecificSong(index: number) { //called by HTML element
+  const checkbox = filePlayingCheckboxes[index];
+  if (sounds[index].isInExistence()) sounds[index].howl.stop();
   Howler.stop();
 
   if (!checkbox.checked) {
-    PLAY_BUTTON.checked = PAUSED;
-    currentSongIndex = null;
-    for (var i = 0; i < sounds.length; i++) removeSongFromRam(i);
-    changeStatus(StatusTexts.STOPPED);
-    unHighlightOldCurrentSongRow();
-    return;
+    quitPlayingMusic();
   } else {
     currentSongIndex = index;
     filePlayingCheckboxes.forEach((it) => { if (it.id != checkbox.id) it.checked = false; }) //uncheck the play button for all the other sounds except the one u chose
 
-    const soundName = sounds[index].name, fileExtension = getFileExtension(soundName);
+    const soundName = sounds[index].file.name, fileExtension = getFileExtension(soundName);
     if (SKIP_UNPLAYABLE_CHECKBOX.checked && !isValidExtension(fileExtension)) {
       displayError("TypeError", `The file type '${fileExtension}' is unsupported.`, "This file is unsupported and cannot be played!", soundName);
       skipSongQueued = true;
       return;
     }
     changeStatus(StatusTexts.DOWNLOADING);
-    retrieveSound(sounds[index], true, index).then((retrieved) => loadSong(retrieved, index, true));
+    let song = sounds[index];
+    song.loadSong().then(succeeded => {
+      if(succeeded) startPlayingSong(song);
+    })
     refreshPreloadedSongs();
     unHighlightOldCurrentSongRow();
   }
 }
-function loadSong(retrieved, index, startPlaying) {
-  if (retrieved === null) return;
-  sounds[index] = retrieved; //make sure its loaded
-  if (sounds[index].state() == 'unloaded') sounds[index].load();
 
-  if (startPlaying) startPlayingSong();
-}
+function startPlayingSong(song: Song) {
+  setCurrentFileName(song.file.name);
+  reapplySoundAttributes(song.howl);
 
-function startPlayingSong() {
-  setCurrentFileName(sounds[currentSongIndex].name);
-  reapplySoundAttributes(sounds[currentSongIndex]);
-
-  if (PLAY_RATE.value != 0) {
-    sounds[currentSongIndex].play();
+  if (Number(PLAY_RATE.value) != 0) {
+    song.howl.play();
     PLAY_BUTTON.checked = PLAYING;
   }
 }
@@ -823,21 +906,21 @@ function refreshPreloadedSongs() {
     if (i == currentSongIndex) continue;
 
     if (!isIndexInRangeOfCurrent(i)) {
-      if (sounds[i] !== null) removeSongFromRam(i);
+      sounds[i].unload();
       continue;
     }
 
-    retrieveSound(sounds[i], false, i).then(retrieved => loadSong(retrieved, i, false));
+    sounds[i].loadSong();
   }
 }
-function jumpSong(amount) { // amount can be negative or positive ;)
+function jumpSong(amount?: number) { // amount can be negative or positive ;)
   amount = amount || 1 //if no value inputted, assume u want to jump ahead one song
 
   const repeating = REPEAT_BUTTON.checked
   if (repeating) {
-    if (isCurrentSoundPaused()) {
-      sounds[currentSongIndex].stop();
-      sounds[currentSongIndex].play();
+    if (sounds[currentSongIndex].isInExistence() && !sounds[currentSongIndex].howl.playing()) {
+      sounds[currentSongIndex].howl.stop();
+      sounds[currentSongIndex].howl.play();
     }
     return;
   }
@@ -847,47 +930,45 @@ function jumpSong(amount) { // amount can be negative or positive ;)
   else if (currentSongIndex < 0) currentSongIndex = Math.max(currentSongIndex + sounds.length, 0) //idk a real solution to this
 
   const playButtonToActivate = filePlayingCheckboxes[currentSongIndex];
-  playButtonToActivate.checked = true;
-  playButtonToActivate.dispatchEvent(new Event('change'));
+  playButtonToActivate.click();
 }
 
 async function playButton() { //controls playAll button, called by HTML element
-  if (isUnloaded(sounds[currentSongIndex])) return PLAY_BUTTON.checked = !PLAY_BUTTON.checked;
-
-  if (PLAY_BUTTON.checked == PAUSED) { //if set to paused
-    if (sounds[currentSongIndex]?.pause?.() != undefined) changeStatus(StatusTexts.PAUSED);
+  if (!sounds[currentSongIndex].isInExistence()){
+    PLAY_BUTTON.checked = !PLAY_BUTTON.checked;
     return;
   }
 
-  if (sounds[currentSongIndex].state() != "loaded") await sounds[currentSongIndex].load();
-  sounds[currentSongIndex].play();
+  if (PLAY_BUTTON.checked == PAUSED) { //if set to paused
+    sounds[currentSongIndex].howl.pause()
+    changeStatus(StatusTexts.PAUSED);
+    return;
+  }
+
+  sounds[currentSongIndex].howl.play();
   changeStatus(StatusTexts.PLAYING);
 }
 
-function isIndexInRangeOfCurrent(index) {
+function isIndexInRangeOfCurrent(index: number) {
   const distance = parseInt(PRELOAD_DIST_ELEMENT.value);
   const withinRange = index >= currentSongIndex - distance && index <= currentSongIndex + distance;
   const inRangeWrappedToBegin = index + distance >= sounds.length && (index + distance) % sounds.length >= currentSongIndex;
   const inRangeWrappedToEnd = index - distance < 0 && (index - distance) + sounds.length <= currentSongIndex;
   return withinRange || inRangeWrappedToBegin || inRangeWrappedToEnd
 }
-function removeSongFromRam(index) {
-  if (sounds[index] instanceof File) return;
-  try { sounds[index].unload(); } catch { }
-  sounds[index] = sounds[index].sourceFile;
-}
-function updateFileSizeDisplay(index, bytes) {
-  const megabytes = (bytes / 1_048_576).toFixed(2);
+
+function setFileSizeDisplay(index: number, bytes: number) {
+  const megabytes: string = (bytes / 1_048_576).toFixed(2);
   fileSizeDisplays[index].textContent = `${megabytes} MB`;
   fileSizeDisplays[index].setAttribute('title', `${bytes} bytes`);
 }
 function refreshSongNames() {
   for (var i = 0; i < sounds.length; i++) {
-    fileNameDisplays[i].textContent = sounds[i].name;
-    fileNameDisplays[i].setAttribute('title', sounds[i].name);
+    fileNameDisplays[i].textContent = sounds[i].file.name;
+    fileNameDisplays[i].setAttribute('title', sounds[i].file.name);
   }
 }
-function setCurrentFileName(name) {
+function setCurrentFileName(name: string) {
   if (CURRENT_FILE_NAME.textContent != name) {
     CURRENT_FILE_NAME.textContent = name; //name is compressed by CSS formatting if too large
     CURRENT_FILE_NAME.setAttribute('title', name);
@@ -896,26 +977,21 @@ function setCurrentFileName(name) {
 }
 function updateSeekButtonTexts() {
   document.querySelectorAll('button').forEach(element => {
-    const secondsSkipAmount = precisionRound(10 * PLAY_RATE.value, 3);
+    const secondsSkipAmount = precisionRound(10 * Number(PLAY_RATE.value), 3);
     element.textContent = `${element.textContent[0]}${secondsSkipAmount} Seconds`;
   });
 }
-function precisionRound(number, precision) {
+function precisionRound(number: number, precision: number) {
   var factor = Math.pow(10, precision);
   return Math.round(number * factor) / factor;
 }
-function setProgress(progressEvent, index) {
-  fileSizeDisplays[index].textContent = `${(progressEvent.loaded / 1_024_000).toFixed(2)}/${(progressEvent.total / 1_024_000).toFixed(2)} MB`
-}
 function changeStatus(status: string) { STATUS_TEXT.textContent = status; }
-function isUnloaded(sound: File | Howl) { return sound === null || sound instanceof File || sound?.state?.() != 'loaded'; }
-function isLoading(sound: File | Howl) { return sound instanceof File || sound?.state?.() == 'loading'; }
+function onlyFiles(dataTransfer: DataTransfer) { return dataTransfer.types.length == 1 && dataTransfer.types[0] === 'Files' }
 function isValidExtension(extension: string) { return Howler.codecs(extension); }
 function isSongRepeating(): boolean { return REPEAT_BUTTON.checked; }
-function onRangeInput(elem: HTMLInputElement, func: Function) { elem.addEventListener('input', func, { passive: true }); }
+function onRangeInput(elem: HTMLInputElement, func: EventListenerOrEventListenerObject) { elem.addEventListener('input', func, { passive: true }); }
 function sleep(ms: number): Promise<void> { return new Promise(resolve => setTimeout(resolve, ms)); }
-function isCurrentSoundPaused(): boolean { return !sounds[currentSongIndex]?.playing?.(); }
-function getInMegabytes(bytes: number): number { return (bytes / 1_048_576).toFixed(2); }
+function getInMegabytes(bytes: number): string { return (bytes / 1_048_576).toFixed(2); }
 function getFileExtension(fileName: string): string { return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase(); }
 
 /*            TABLE INTERACTION FUNCTIONS             */
@@ -937,28 +1013,29 @@ function initializeRowEvents(row: HTMLTableRowElement) {
   });
   row.addEventListener('drop', onDropRow);
 }
-function whileDraggingRows(event: DragEvent) {
+function whileDraggingRows(event: DragEvent): void  {
   if (onlyFiles(event.dataTransfer)) return;
   stopHighlightingRow();
 
-  hoveredRowInDragAndDrop = event.target;
-  if (!rowValid(hoveredRowInDragAndDrop)) {
-    hoveredRowInDragAndDrop = tryFindTableRowInParents(hoveredRowInDragAndDrop);
-    if (!rowValid(hoveredRowInDragAndDrop)) return hoveredRowInDragAndDrop = null;
+  
+  let hoveredElement = findValidTableRow(event.target as Element);
+  if(!hoveredElement){
+    return;
   }
+  hoveredRowInDragAndDrop = hoveredElement;
   hoveredRowInDragAndDrop.style.borderBottomColor = "blue"
   event.stopPropagation();
 }
-function onDropRow(event) {
+function onDropRow(event: DragEvent) {
   if (event.dataTransfer.getData("text/plain") != "action:reorganizingPlaylist") return;
   stopHighlightingRow();
   sortSelectedRows();
-  let row = event.target;
+  let row: Element = event.target as Element;
   if (!rowValid(row)) {
     row = tryFindTableRowInParents(row);
     if (!rowValid(row)) return;
   }
-  moveSelectedSongs(row.rowIndex - 1);
+  moveSelectedSongs((row as HTMLTableRowElement).rowIndex - 1);
   event.stopPropagation();
 }
 function stopHighlightingRow() {
@@ -967,20 +1044,20 @@ function stopHighlightingRow() {
     hoveredRowInDragAndDrop.style.borderTopColor = "";
   }
 }
-function onSingleClick(pointerEvent) {
-  let row = pointerEvent.target;
+function onSingleClick(mouseEvent: MouseEvent) {
+  let row: Element = mouseEvent.target as Element;
   if (!rowValid(row)) {
     row = tryFindTableRowInParents(row);
     if (!rowValid(row)) return;
   }
 
-  const indexOf = selectedRows.indexOf(row);
-  if (pointerEvent.ctrlKey) {
-    if (indexOf != -1) return deselectRow(row, indexOf);
-  } else if (pointerEvent.shiftKey && selectedRows.length != 0) {
+  const indexOf = selectedRows.indexOf(row as HTMLTableRowElement);
+  if (mouseEvent.ctrlKey) {
+    if (indexOf != -1) return deselectRow(row as HTMLTableRowElement, indexOf);
+  } else if (mouseEvent.shiftKey && selectedRows.length != 0) {
     sortSelectedRows();
     let startingIndex = selectedRows[selectedRows.length - 1].rowIndex;
-    const endingIndex = row.rowIndex;
+    const endingIndex = (row as HTMLTableRowElement).rowIndex;
     if (endingIndex > startingIndex) {
       for (let i = startingIndex + 1; i < endingIndex; i++) selectRow(PLAYLIST_VIEWER_TABLE.rows[i]);
     } else {
@@ -991,7 +1068,7 @@ function onSingleClick(pointerEvent) {
     deselectAll();
   }
 
-  selectRow(row);
+  selectRow(row as HTMLTableRowElement);
 }
 // function onRightClick(pointerEvent){
 //   let row = pointerEvent.target;
@@ -1016,22 +1093,28 @@ function onSingleClick(pointerEvent) {
 //   spawnContextMenu(clientX, clientY, contextOptions, true);
 // }
 
-function selectRow(row) {
+function selectRow(row: HTMLTableRowElement) {
   if (selectedRows.includes(row)) return;
-  if (!rowValid(row)) {
-    row = tryFindTableRowInParents(row);
-    if (!rowValid(row)) return;
-  }
+  row = findValidTableRow(row);
+  if(!row) return;
   row.style.backgroundColor = RowColors.SELECTING;
   selectedRows.push(row);
-  row.scrollIntoViewIfNeeded();
+  //@ts-expect-error
+  if(row.scrollIntoViewIfNeeded){
+    //@ts-expect-error
+    row.scrollIntoViewIfNeeded();
+  } else {
+    //@ts-expect-error
+    row.scrollIntoView(false, {behavior: "instant", block: "nearest"});
+  }
 }
-function onDoubleClick(pointerEvent) {
+function onDoubleClick(mouseEvent: MouseEvent) {
   deselectAll();
-  playRow(pointerEvent.target);
+  let row: HTMLTableRowElement | null = findValidTableRow(mouseEvent.target as Element);
+  if(row) playRow(row);
 }
 /** @param removeIndex (-1) = won't remove any elems from array */
-function deselectRow(row, removeIndex) {
+function deselectRow(row: HTMLTableRowElement, removeIndex: number) {
   row.style.backgroundColor = RowColors.NONE;
   if (removeIndex >= 0) selectedRows.splice(removeIndex, 1);
 }
@@ -1039,77 +1122,60 @@ function deselectAll() {
   for (let i = 0; i < selectedRows.length; i++) deselectRow(selectedRows[i], -1);
   selectedRows = [];
 }
-function playRow(row) {
-  if (!rowValid(row)) {
-    row = tryFindTableRowInParents(row);
-    if (!rowValid(row)) return;
-  }
+function playRow(row: HTMLTableRowElement) {
+  row = findValidTableRow(row);
   const index = row.rowIndex - 1;
   filePlayingCheckboxes[index].checked = !filePlayingCheckboxes[index].checked;
   playSpecificSong(index);
 }
 function deleteSelectedSongs() {
+  const tableBody = PLAYLIST_VIEWER_TABLE.firstElementChild;
   for (let i = 0; i < selectedRows.length; i++) {
     const index = selectedRows[i].rowIndex - 1;
-    if (index == currentSongIndex) {
+    if (index === currentSongIndex) {
       filePlayingCheckboxes[currentSongIndex].checked = false;
       playSpecificSong(currentSongIndex); //stop playing
       PROGRESS_BAR.value = 0;
+    } else if (currentSongIndex !== null && currentSongIndex > index){
+      --currentSongIndex;
     }
-    const tableBody = PLAYLIST_VIEWER_TABLE.firstElementChild;
+
     tableBody.removeChild(selectedRows[i]);
     for (let i = 0; i < sounds.length; i++) {
-      if (sounds[i] != sounds[index] && sounds[i].nativeIndex >= sounds[index].nativeIndex) { //warning: branch prediction failure
+      if (sounds[i].nativeIndex > sounds[index].nativeIndex) {
         --sounds[i].nativeIndex;
-        if (sounds[i] instanceof Howl) --sounds[i].sourceFile.nativeIndex;
       }
     }
-    if (currentSongIndex != null && currentSongIndex > index) --currentSongIndex;
+    
     sounds.splice(index, 1);
     filePlayingCheckboxes.splice(index, 1);
     fileNameDisplays.splice(index, 1);
     fileSizeDisplays.splice(index, 1);
   }
-  selectedRows = [];
+  deselectAll();
   updateSongNumberings();
   refreshPreloadedSongs();
 }
-function moveSelectedSongs(toIndex) {
+function moveSelectedSongs(toIndex: number) {
+  const tableBody: HTMLTableSectionElement = PLAYLIST_VIEWER_TABLE.firstElementChild as HTMLTableSectionElement;
   for (let i = selectedRows.length - 1; i >= 0; i--) {
+    const currentlyPlayingRow: HTMLTableRowElement = PLAYLIST_VIEWER_TABLE.rows[currentSongIndex+1];
     const index = selectedRows[i].rowIndex - 1;
-    // if(index == currentSongIndex){
-    //   filePlayingCheckboxes[currentSongIndex].checked = false;
-    //   playSpecificSong(currentSongIndex); //stop playing
-    // }
-    const tableBody = PLAYLIST_VIEWER_TABLE.firstElementChild;
     tableBody.removeChild(selectedRows[i]);
-    for (let i = 0; i < sounds.length; i++) {
-      if (sounds[i] != sounds[index] && sounds[i].nativeIndex >= sounds[index].nativeIndex) { //warning: branch prediction failure
-        --sounds[i].nativeIndex;
-        if (sounds[i] instanceof Howl) --sounds[i].sourceFile.nativeIndex;
-      }
-    }
-    if (index < currentSongIndex) --currentSongIndex;
-    if (currentSongIndex == index) currentSongIndex = toIndex;
     sounds.splice(toIndex, 0, sounds.splice(index, 1)[0]);
     filePlayingCheckboxes.splice(toIndex, 0, filePlayingCheckboxes.splice(index, 1)[0]);
     fileNameDisplays.splice(toIndex, 0, fileNameDisplays.splice(index, 1)[0]);
     fileSizeDisplays.splice(toIndex, 0, fileSizeDisplays.splice(index, 1)[0]);
     tableBody.insertBefore(selectedRows[i], tableBody.children[toIndex + 1])
-    for (let i = 0; i < sounds.length; i++) {
-      if (sounds[i] != sounds[toIndex] && sounds[i].nativeIndex >= sounds[toIndex].nativeIndex) { //warning: branch prediction failure
-        ++sounds[i].nativeIndex;
-        if (sounds[i] instanceof Howl) ++sounds[i].sourceFile.nativeIndex;
-      }
-    }
-    if (toIndex < currentSongIndex) ++currentSongIndex;
+    currentSongIndex = currentlyPlayingRow.rowIndex-1;
   }
   deselectAll();
   updateSongNumberings();
   refreshPreloadedSongs();
 }
-function selectionLogicForKeyboard(keyboardEvent) {
+function selectionLogicForKeyboard(data: {keyEvent: KeyboardEvent}) {
   if (selectedRows.length == 0) return;
+  const keyboardEvent: KeyboardEvent = data.keyEvent;
   switch (keyboardEvent.code) {
     case "Escape": return deselectAll();
     case "ArrowUp": return arrowSelection(keyboardEvent, -1);
@@ -1120,7 +1186,7 @@ function selectionLogicForKeyboard(keyboardEvent) {
     case "Enter": return startPlayingFromKeyboard(keyboardEvent);
   }
 }
-function arrowSelection(keyboardEvent, indexIncrement) {
+function arrowSelection(keyboardEvent: KeyboardEvent, indexIncrement: number) {
   keyboardEvent.preventDefault();
   sortSelectedRows();
   if (isTyping(keyboardEvent)) return;
@@ -1138,14 +1204,14 @@ function arrowSelection(keyboardEvent, indexIncrement) {
     selectRow(oneElement);
   }
 }
-function deleteSongsFromKeyboard(keyboardEvent) { if (!isTyping(keyboardEvent)) deleteSelectedSongs(); }
-function startPlayingFromKeyboard(keyboardEvent) {
+function deleteSongsFromKeyboard(keyboardEvent: KeyboardEvent) { if (!isTyping(keyboardEvent)) deleteSelectedSongs(); }
+function startPlayingFromKeyboard(keyboardEvent: KeyboardEvent) {
   if (isTyping(keyboardEvent) || selectedRows.length != 1) return;
   keyboardEvent.preventDefault();
   playRow(selectedRows[0])
   deselectAll();
 }
-function tryFindTableRowInParents(element) {
+function tryFindTableRowInParents(element: Element): HTMLTableRowElement | null {
   return element.closest('tr');
 }
 function updateSongNumberings() {
@@ -1157,28 +1223,34 @@ function updateSongNumberings() {
     songNumber.textContent = `${row.rowIndex}. `;
   }
 }
-function rowValid(row) { return row instanceof HTMLTableRowElement && row != PLAYLIST_VIEWER_TABLE.rows[0] && row.closest('table') == PLAYLIST_VIEWER_TABLE; }
+function rowValid(row: Element) { return row instanceof HTMLTableRowElement && row != PLAYLIST_VIEWER_TABLE.rows[0] && row.closest('table') == PLAYLIST_VIEWER_TABLE; }
+function findValidTableRow(topLevelElement: Element): HTMLTableRowElement | null{
+  if(rowValid(topLevelElement)) return topLevelElement as HTMLTableRowElement;
+  else{
+    topLevelElement = tryFindTableRowInParents(topLevelElement);
+    if (rowValid(topLevelElement)) return topLevelElement as HTMLTableRowElement;
+    else return null;
+  }
+}
 function sortSelectedRows() { selectedRows.sort((a, b) => a.rowIndex - b.rowIndex) }
 function isTyping(keyboardEvent: KeyboardEvent): boolean { return keyboardEvent.target instanceof HTMLInputElement; }
 
 
 /*                       CONTEXT MENU                      */
 
-const CONTEXT_MENU: HTMLDialogElement = document.getElementById('rightClickContextMenu');
-
 function initContextMenu() {
   document.addEventListener('contextmenu', (pointerEvent) => {
     pointerEvent.preventDefault()
     selectingSongRow: { //if clicking a row
-      let row = pointerEvent.target;
+      let row: Element = pointerEvent.target as Element;
       if (!rowValid(row)) {
-        row = tryFindTableRowInParents(row);
+        row = tryFindTableRowInParents(row as Element);
         if (!rowValid(row)) break selectingSongRow;
       }
 
-      if (!selectedRows.includes(row)) {
+      if (!selectedRows.includes(row as HTMLTableRowElement)) {
         deselectAll();
-        selectRow(row);
+        selectRow(row as HTMLTableRowElement);
       }
 
       const contextOptions: ContextMenuOptions[] = [];
@@ -1188,11 +1260,11 @@ function initContextMenu() {
       return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, contextOptions, true);
     }
 
-    switch (pointerEvent.target.getAttribute('data-onRightClick')) {
+    switch ((pointerEvent.target as Element).getAttribute('data-onRightClick')) {
       case "uploadFileMenu": {
         return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, [
-          { text: "Upload Files", icon: "../Icons/UploadIcon.svg", action: () => UPLOAD_BUTTON.dispatchEvent(new MouseEvent('click')) },
-          { text: "Upload Folder", icon: "../Icons/UploadIcon.svg", action: () => UPLOAD_DIRECTORY_BUTTON.dispatchEvent(new MouseEvent('click')) }
+          { text: "Upload Files", icon: "../Icons/UploadIcon.svg", action: () => UPLOAD_BUTTON.click() },
+          { text: "Upload Folder", icon: "../Icons/UploadIcon.svg", action: () => UPLOAD_DIRECTORY_BUTTON.click() }
         ], false);
       }
       default: {
@@ -1202,16 +1274,16 @@ function initContextMenu() {
   })
 }
 
-function spawnContextMenu(clientX: Number, clientY: Number, contextOptions: ContextMenuOptions[], allowDefaultOptions: Boolean) {
+function spawnContextMenu(clientX: number, clientY: number, contextOptions: ContextMenuOptions[], allowDefaultOptions: Boolean) {
   let childElement: HTMLElement;
-  while ((childElement = CONTEXT_MENU.lastChild) != null) {
+  while ((childElement = CONTEXT_MENU.lastChild as HTMLElement) != null) {
     CONTEXT_MENU.removeChild(childElement);
   }
 
   if (allowDefaultOptions) {
     contextOptions = contextOptions.concat([
-      { text: COMPACT_MODE_TOGGLE.checked ? "Disable Compact Mode" : "Enable Compact Mode", action: () => { COMPACT_MODE_TOGGLE.dispatchEvent(new MouseEvent('click')) } },
-      { text: REORDER_FILES_CHECKBOX.checked ? "Disable Song Reordering" : "Enable Song Reordering", action: () => { REORDER_FILES_CHECKBOX.dispatchEvent(new MouseEvent('click')) } }
+      { text: COMPACT_MODE_TOGGLE.checked ? "Disable Compact Mode" : "Enable Compact Mode", action: () => { COMPACT_MODE_TOGGLE.click() } },
+      { text: REORDER_FILES_CHECKBOX.checked ? "Disable Song Reordering" : "Enable Song Reordering", action: () => { REORDER_FILES_CHECKBOX.click() } }
     ]);
   }
 
