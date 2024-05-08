@@ -194,8 +194,7 @@ class RequestAnimationFrameEventRegistrar extends RegistrableEvent {
 }
 // @ts-expect-error
 RequestAnimationFrameEventRegistrar.raf = (window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame).bind(window);
-/** Splits inputted seconds into hours, minutes, & seconds. toString() returns the time in digital format.
-*/
+/** Splits inputted seconds into hours, minutes, & seconds. toString() returns the time in digital format. */
 class Time {
     constructor(seconds) {
         this.seconds = 0;

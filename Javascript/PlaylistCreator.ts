@@ -212,8 +212,7 @@ class RequestAnimationFrameEventRegistrar extends RegistrableEvent {
   }
 }
 
-/** Splits inputted seconds into hours, minutes, & seconds. toString() returns the time in digital format.
-*/
+/** Splits inputted seconds into hours, minutes, & seconds. toString() returns the time in digital format. */
 class Time {
   seconds: string | number = 0
   minutes: string | number = 0
