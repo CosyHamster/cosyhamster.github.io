@@ -88,6 +88,7 @@ class SongLoader {
         if (this.finishedLoadingAbortController) {
             this.finishedLoadingAbortController.abort();
         }
+        setFileSizeDisplay(this.song.currentRow.rowIndex - 1, this.song.file.size);
     }
     createHowl() {
         const sound = new Howl({
@@ -347,7 +348,7 @@ var currentSongIndex = null;
     }
     KEY_DOWN_EVENT.register(closeContextMenu);
     KEY_DOWN_EVENT.register(selectionLogicForKeyboard);
-    REQUEST_ANIMATION_FRAME_EVENT.register(keepTrackOfTimes);
+    REQUEST_ANIMATION_FRAME_EVENT.register(onFrameStepped);
     makeDocumentDroppable();
     // document.addEventListener('touchend', (touchEvent: TouchEvent) => {
     //   if(touchEvent.touches == 1) {
@@ -425,7 +426,7 @@ var currentSongIndex = null;
     PROGRESS_BAR.addEventListener('pointerleave', (pointer) => progressBarSeek(pointer, 2 /* ProgressBarSeekAction.STOP_DISPLAYING */), { passive: true });
     if (SITE_DEPRECATED)
         DEPRECATED_POPUP.showModal();
-    REORDER_FILES_CHECKBOX.click(); //.checked = !ON_MOBILE;
+    REORDER_FILES_CHECKBOX.dispatchEvent(new MouseEvent('click')); //.checked = !ON_MOBILE;
     //END
 })();
 function makeDocumentDroppable() {
@@ -521,10 +522,11 @@ async function toggleCompactMode() {
         document.head.appendChild(COMPACT_MODE_LINK_ELEMENT);
     }
 }
-function keepTrackOfTimes() {
+function onFrameStepped() {
     if (skipSongQueued) {
         skipSongQueued = false;
-        filePlayingCheckboxes[(currentSongIndex + 1) % filePlayingCheckboxes.length].click();
+        filePlayingCheckboxes[(currentSongIndex + 1) % filePlayingCheckboxes.length].dispatchEvent(new MouseEvent('click'));
+        ;
     }
     PRELOAD_DIST_ELEMENT.max = String(Math.max(sounds.length - 1, 1));
     if (COMPACT_MODE_LINK_ELEMENT?.sheet) {
@@ -542,18 +544,7 @@ function keepTrackOfTimes() {
     if (Number.isFinite(timeToSet))
         PROGRESS_BAR.value = timeToSet;
     updateCurrentTimeDisplay(currentTime, songDuration);
-    highlightCurrentSongRow();
-}
-function unHighlightOldCurrentSongRow() {
-    for (let i = 0; i < PLAYLIST_VIEWER_TABLE.rows.length; i++) {
-        if (PLAYLIST_VIEWER_TABLE.rows[i].style.backgroundColor == RowColors.PLAYING)
-            PLAYLIST_VIEWER_TABLE.rows[i].style.backgroundColor = RowColors.NONE;
-    }
-}
-function highlightCurrentSongRow() {
-    const style = PLAYLIST_VIEWER_TABLE.rows[currentSongIndex + 1].style;
-    if (currentSongIndex !== null && style.backgroundColor == RowColors.NONE)
-        style.backgroundColor = RowColors.PLAYING;
+    updateRowColor(PLAYLIST_VIEWER_TABLE.rows[currentSongIndex + 1]);
 }
 function onLatePlayStart() {
     changeStatus(StatusTexts.PLAYING);
@@ -770,12 +761,13 @@ function onClickSpecificPlaySong(index) {
     // if(!checkbox.checked)
 }
 function quitPlayingMusic() {
+    const currentRow = PLAYLIST_VIEWER_TABLE.rows[currentSongIndex + 1];
     PLAY_BUTTON.checked = PAUSED;
     currentSongIndex = null;
     for (var i = 0; i < sounds.length; i++)
         sounds[i].unload();
     changeStatus(StatusTexts.STOPPED);
-    unHighlightOldCurrentSongRow();
+    updateRowColor(currentRow);
     return;
 }
 async function playSpecificSong(index) {
@@ -803,7 +795,6 @@ async function playSpecificSong(index) {
                 startPlayingSong(song);
         });
         refreshPreloadedSongs();
-        unHighlightOldCurrentSongRow();
     }
 }
 function startPlayingSong(song) {
@@ -843,7 +834,7 @@ function jumpSong(amount) {
     else if (currentSongIndex < 0)
         currentSongIndex = Math.max(currentSongIndex + sounds.length, 0); //idk a real solution to this
     const playButtonToActivate = filePlayingCheckboxes[currentSongIndex];
-    playButtonToActivate.click();
+    playButtonToActivate.dispatchEvent(new MouseEvent('click'));
 }
 async function playButton() {
     if (!sounds[currentSongIndex].isInExistence()) {
@@ -922,6 +913,25 @@ function initializeRowEvents(row) {
     });
     row.addEventListener('drop', onDropRow);
 }
+var previouslyActiveRow = null;
+function setRowActive(row) {
+    if (previouslyActiveRow != null && previouslyActiveRow != row) {
+        previouslyActiveRow.style.backgroundColor = RowColors.NONE;
+    }
+    row.style.backgroundColor = RowColors.PLAYING;
+    previouslyActiveRow = row;
+}
+function updateRowColor(row) {
+    if (row.getAttribute("data-selected") === "true") {
+        row.style.backgroundColor = RowColors.SELECTING;
+    }
+    else if (row.rowIndex - 1 === currentSongIndex) {
+        setRowActive(row);
+    }
+    else {
+        row.style.backgroundColor = RowColors.NONE;
+    }
+}
 function whileDraggingRows(event) {
     if (onlyFiles(event.dataTransfer))
         return;
@@ -961,10 +971,9 @@ function onSingleClick(mouseEvent) {
         if (!rowValid(row))
             return;
     }
-    const indexOf = selectedRows.indexOf(row);
     if (mouseEvent.ctrlKey) {
-        if (indexOf != -1)
-            return deselectRow(row, indexOf);
+        if (row.getAttribute("data-selected") === "true")
+            return deselectRow(selectedRows.indexOf(row));
     }
     else if (mouseEvent.shiftKey && selectedRows.length != 0) {
         sortSelectedRows();
@@ -1005,12 +1014,13 @@ function onSingleClick(mouseEvent) {
 //   spawnContextMenu(clientX, clientY, contextOptions, true);
 // }
 function selectRow(row) {
-    if (selectedRows.includes(row))
-        return;
     row = findValidTableRow(row);
     if (!row)
         return;
-    row.style.backgroundColor = RowColors.SELECTING;
+    if (row.getAttribute("data-selected") === "true")
+        return;
+    row.setAttribute("data-selected", "true");
+    updateRowColor(row);
     selectedRows.push(row);
     //@ts-expect-error
     if (row.scrollIntoViewIfNeeded) {
@@ -1029,14 +1039,16 @@ function onDoubleClick(mouseEvent) {
         playRow(row);
 }
 /** @param removeIndex (-1) = won't remove any elems from array */
-function deselectRow(row, removeIndex) {
-    row.style.backgroundColor = RowColors.NONE;
-    if (removeIndex >= 0)
+function deselectRow(removeIndex, removeFromArray = true) {
+    const row = selectedRows[removeIndex];
+    row.removeAttribute("data-selected");
+    updateRowColor(row);
+    if (removeFromArray)
         selectedRows.splice(removeIndex, 1);
 }
 function deselectAll() {
     for (let i = 0; i < selectedRows.length; i++)
-        deselectRow(selectedRows[i], -1);
+        deselectRow(i, false);
     selectedRows = [];
 }
 function playRow(row) {
@@ -1115,7 +1127,7 @@ function arrowSelection(keyboardEvent, indexIncrement) {
                 selectRow(row);
         }
         else {
-            deselectRow(selectedRows[selectedRows.length - 1], selectedRows.length - 1);
+            deselectRow(selectedRows.length - 1);
         }
     }
     else {
@@ -1186,8 +1198,8 @@ function initContextMenu() {
         switch (pointerEvent.target.getAttribute('data-onRightClick')) {
             case "uploadFileMenu": {
                 return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, [
-                    { text: "Upload Files", icon: "../Icons/UploadIcon.svg", action: () => UPLOAD_BUTTON.click() },
-                    { text: "Upload Folder", icon: "../Icons/UploadIcon.svg", action: () => UPLOAD_DIRECTORY_BUTTON.click() }
+                    { text: "Upload Files", icon: "../Icons/UploadIcon.svg", action: () => UPLOAD_BUTTON.dispatchEvent(new MouseEvent('click')) },
+                    { text: "Upload Folder", icon: "../Icons/UploadIcon.svg", action: () => UPLOAD_DIRECTORY_BUTTON.dispatchEvent(new MouseEvent('click')) }
                 ], false);
             }
             default: {
@@ -1203,8 +1215,8 @@ function spawnContextMenu(clientX, clientY, contextOptions, allowDefaultOptions)
     }
     if (allowDefaultOptions) {
         contextOptions = contextOptions.concat([
-            { text: COMPACT_MODE_TOGGLE.checked ? "Disable Compact Mode" : "Enable Compact Mode", action: () => { COMPACT_MODE_TOGGLE.click(); } },
-            { text: REORDER_FILES_CHECKBOX.checked ? "Disable Song Reordering" : "Enable Song Reordering", action: () => { REORDER_FILES_CHECKBOX.click(); } }
+            { text: COMPACT_MODE_TOGGLE.checked ? "Disable Compact Mode" : "Enable Compact Mode", action: () => { COMPACT_MODE_TOGGLE.dispatchEvent(new MouseEvent('click')); } },
+            { text: REORDER_FILES_CHECKBOX.checked ? "Disable Song Reordering" : "Enable Song Reordering", action: () => { REORDER_FILES_CHECKBOX.dispatchEvent(new MouseEvent('click')); } }
         ]);
     }
     for (let i = 0; i < contextOptions.length; i++) {

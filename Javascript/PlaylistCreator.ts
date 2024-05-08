@@ -98,6 +98,7 @@ class SongLoader{
     if(this.finishedLoadingAbortController){
       this.finishedLoadingAbortController.abort();
     }
+    setFileSizeDisplay(this.song.currentRow.rowIndex-1, this.song.file.size);
   }
   createHowl(): Howl {
     const sound: Howl = new Howl({
@@ -113,6 +114,7 @@ class SongLoader{
     return sound;
   }
 }
+
 class Song{
   file: File;
   nativeIndex: number;
@@ -135,7 +137,7 @@ class Song{
       if(this.songLoader == null || this.songLoader.finishedLoadingAbortController.signal.aborted) this.songLoader = new SongLoader(this);
       else this.songLoader?.finishedLoadingAbortController?.signal?.addEventListener?.("abort", () => {
         resolve(!!this.howl);
-      })
+      });
 
       this.songLoader.loadSong().then(howl => {
         this.howl = howl;
@@ -176,6 +178,7 @@ class Song{
     return !this.isInExistence() || this.howl.state() === "unloaded";
   }
 }
+
 class RegistrableEvent {
   registeredCallbacks: Function[] = [];
   register(func: Function) {
@@ -238,6 +241,7 @@ class Time {
     return `${number}`
   }
 }
+
 class DataTransferItemGrabber { //this exists because javascript has bugs (it keeps deleting the references in FileSystemEntry[])
   dataTransferItemList: DataTransferItem[] | FileSystemEntry[] = [];
   files: (File | null)[] = [];
@@ -406,13 +410,14 @@ var hoveredRowInDragAndDrop: HTMLTableRowElement = null; //does not work with im
 var processingNumber: number = 0;
 var skipSongQueued = false;
 var currentSongIndex: number | null = null;
+
 /* start */(() => {
   if ("serviceWorker" in navigator && !SITE_DEPRECATED) {
     navigator.serviceWorker.register("../ServiceWorker.js");
   }
   KEY_DOWN_EVENT.register(closeContextMenu);
   KEY_DOWN_EVENT.register(selectionLogicForKeyboard);
-  REQUEST_ANIMATION_FRAME_EVENT.register(keepTrackOfTimes);
+  REQUEST_ANIMATION_FRAME_EVENT.register(onFrameStepped);
   makeDocumentDroppable();
   // document.addEventListener('touchend', (touchEvent: TouchEvent) => {
   //   if(touchEvent.touches == 1) {
@@ -483,7 +488,7 @@ var currentSongIndex: number | null = null;
   PROGRESS_BAR.addEventListener('pointerleave', (pointer) => progressBarSeek(pointer, ProgressBarSeekAction.STOP_DISPLAYING), { passive: true })
   
   if(SITE_DEPRECATED) DEPRECATED_POPUP.showModal();
-  REORDER_FILES_CHECKBOX.click();//.checked = !ON_MOBILE;
+  REORDER_FILES_CHECKBOX.dispatchEvent(new MouseEvent('click'));//.checked = !ON_MOBILE;
   //END
 })()
 
@@ -589,10 +594,10 @@ async function toggleCompactMode() {
     document.head.appendChild(COMPACT_MODE_LINK_ELEMENT);
   }
 }
-function keepTrackOfTimes() {
+function onFrameStepped() {
   if (skipSongQueued) {
     skipSongQueued = false;
-    filePlayingCheckboxes[(currentSongIndex + 1) % filePlayingCheckboxes.length].click();
+    filePlayingCheckboxes[(currentSongIndex + 1) % filePlayingCheckboxes.length].dispatchEvent(new MouseEvent('click'));;
   }
 
   PRELOAD_DIST_ELEMENT.max = String(Math.max(sounds.length - 1, 1));
@@ -610,17 +615,9 @@ function keepTrackOfTimes() {
   const timeToSet = (currentTime / songDuration) * 100;
   if (Number.isFinite(timeToSet)) PROGRESS_BAR.value = timeToSet;
   updateCurrentTimeDisplay(currentTime, songDuration);
-  highlightCurrentSongRow();
+  updateRowColor(PLAYLIST_VIEWER_TABLE.rows[currentSongIndex+1]);
 }
-function unHighlightOldCurrentSongRow() {
-  for (let i = 0; i < PLAYLIST_VIEWER_TABLE.rows.length; i++) {
-    if (PLAYLIST_VIEWER_TABLE.rows[i].style.backgroundColor == RowColors.PLAYING) PLAYLIST_VIEWER_TABLE.rows[i].style.backgroundColor = RowColors.NONE;
-  }
-}
-function highlightCurrentSongRow() {
-  const style = PLAYLIST_VIEWER_TABLE.rows[currentSongIndex + 1].style;
-  if (currentSongIndex !== null && style.backgroundColor == RowColors.NONE) style.backgroundColor = RowColors.PLAYING;
-}
+
 function onLatePlayStart() {
   changeStatus(StatusTexts.PLAYING);
   reapplySoundAttributes(sounds[currentSongIndex].howl);
@@ -855,11 +852,12 @@ function onClickSpecificPlaySong(index: number){
 }
 
 function quitPlayingMusic(){
+  const currentRow = PLAYLIST_VIEWER_TABLE.rows[currentSongIndex+1];
   PLAY_BUTTON.checked = PAUSED;
   currentSongIndex = null;
   for (var i = 0; i < sounds.length; i++) sounds[i].unload();
   changeStatus(StatusTexts.STOPPED);
-  unHighlightOldCurrentSongRow();
+  updateRowColor(currentRow);
   return;
 }
 
@@ -886,7 +884,6 @@ async function playSpecificSong(index: number) { //called by HTML element
       if(succeeded) startPlayingSong(song);
     })
     refreshPreloadedSongs();
-    unHighlightOldCurrentSongRow();
   }
 }
 
@@ -929,7 +926,7 @@ function jumpSong(amount?: number) { // amount can be negative or positive ;)
   else if (currentSongIndex < 0) currentSongIndex = Math.max(currentSongIndex + sounds.length, 0) //idk a real solution to this
 
   const playButtonToActivate = filePlayingCheckboxes[currentSongIndex];
-  playButtonToActivate.click();
+  playButtonToActivate.dispatchEvent(new MouseEvent('click'));
 }
 
 async function playButton() { //controls playAll button, called by HTML element
@@ -1012,6 +1009,26 @@ function initializeRowEvents(row: HTMLTableRowElement) {
   });
   row.addEventListener('drop', onDropRow);
 }
+
+var previouslyActiveRow: HTMLTableRowElement = null;
+function setRowActive(row: HTMLTableRowElement){
+  if(previouslyActiveRow != null && previouslyActiveRow != row){
+    previouslyActiveRow.style.backgroundColor = RowColors.NONE;
+  }
+  row.style.backgroundColor = RowColors.PLAYING;
+  previouslyActiveRow = row;
+}
+
+function updateRowColor(row: HTMLTableRowElement){
+  if(row.getAttribute("data-selected") === "true"){
+    row.style.backgroundColor = RowColors.SELECTING;
+  } else if(row.rowIndex-1 === currentSongIndex){
+    setRowActive(row);
+  } else {
+    row.style.backgroundColor = RowColors.NONE;
+  }
+}
+
 function whileDraggingRows(event: DragEvent): void  {
   if (onlyFiles(event.dataTransfer)) return;
   stopHighlightingRow();
@@ -1050,9 +1067,8 @@ function onSingleClick(mouseEvent: MouseEvent) {
     if (!rowValid(row)) return;
   }
 
-  const indexOf = selectedRows.indexOf(row as HTMLTableRowElement);
   if (mouseEvent.ctrlKey) {
-    if (indexOf != -1) return deselectRow(row as HTMLTableRowElement, indexOf);
+    if (row.getAttribute("data-selected") === "true") return deselectRow(selectedRows.indexOf(row as HTMLTableRowElement));
   } else if (mouseEvent.shiftKey && selectedRows.length != 0) {
     sortSelectedRows();
     let startingIndex = selectedRows[selectedRows.length - 1].rowIndex;
@@ -1093,10 +1109,11 @@ function onSingleClick(mouseEvent: MouseEvent) {
 // }
 
 function selectRow(row: HTMLTableRowElement) {
-  if (selectedRows.includes(row)) return;
   row = findValidTableRow(row);
   if(!row) return;
-  row.style.backgroundColor = RowColors.SELECTING;
+  if(row.getAttribute("data-selected") === "true") return;
+  row.setAttribute("data-selected", "true");
+  updateRowColor(row);
   selectedRows.push(row);
   //@ts-expect-error
   if(row.scrollIntoViewIfNeeded){
@@ -1113,12 +1130,14 @@ function onDoubleClick(mouseEvent: MouseEvent) {
   if(row) playRow(row);
 }
 /** @param removeIndex (-1) = won't remove any elems from array */
-function deselectRow(row: HTMLTableRowElement, removeIndex: number) {
-  row.style.backgroundColor = RowColors.NONE;
-  if (removeIndex >= 0) selectedRows.splice(removeIndex, 1);
+function deselectRow(removeIndex: number, removeFromArray: boolean = true) {
+  const row: HTMLTableRowElement = selectedRows[removeIndex];
+  row.removeAttribute("data-selected"); //clean up ram
+  updateRowColor(row);
+  if(removeFromArray) selectedRows.splice(removeIndex, 1);
 }
 function deselectAll() {
-  for (let i = 0; i < selectedRows.length; i++) deselectRow(selectedRows[i], -1);
+  for (let i = 0; i < selectedRows.length; i++) deselectRow(i, false);
   selectedRows = [];
 }
 function playRow(row: HTMLTableRowElement) {
@@ -1194,7 +1213,7 @@ function arrowSelection(keyboardEvent: KeyboardEvent, indexIncrement: number) {
       const row = PLAYLIST_VIEWER_TABLE.rows[selectedRows[selectedRows.length - 1].rowIndex + indexIncrement];
       if (row) selectRow(row);
     } else {
-      deselectRow(selectedRows[selectedRows.length - 1], selectedRows.length - 1);
+      deselectRow(selectedRows.length - 1);
     }
   } else {
     const oneElement = (indexIncrement > 0) ? PLAYLIST_VIEWER_TABLE.rows[selectedRows[selectedRows.length - 1].rowIndex + 1] : PLAYLIST_VIEWER_TABLE.rows[selectedRows[selectedRows.length - 1].rowIndex - 1];
@@ -1262,8 +1281,8 @@ function initContextMenu() {
     switch ((pointerEvent.target as Element).getAttribute('data-onRightClick')) {
       case "uploadFileMenu": {
         return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, [
-          { text: "Upload Files", icon: "../Icons/UploadIcon.svg", action: () => UPLOAD_BUTTON.click() },
-          { text: "Upload Folder", icon: "../Icons/UploadIcon.svg", action: () => UPLOAD_DIRECTORY_BUTTON.click() }
+          { text: "Upload Files", icon: "../Icons/UploadIcon.svg", action: () => UPLOAD_BUTTON.dispatchEvent(new MouseEvent('click')) },
+          { text: "Upload Folder", icon: "../Icons/UploadIcon.svg", action: () => UPLOAD_DIRECTORY_BUTTON.dispatchEvent(new MouseEvent('click')) }
         ], false);
       }
       default: {
@@ -1281,8 +1300,8 @@ function spawnContextMenu(clientX: number, clientY: number, contextOptions: Cont
 
   if (allowDefaultOptions) {
     contextOptions = contextOptions.concat([
-      { text: COMPACT_MODE_TOGGLE.checked ? "Disable Compact Mode" : "Enable Compact Mode", action: () => { COMPACT_MODE_TOGGLE.click() } },
-      { text: REORDER_FILES_CHECKBOX.checked ? "Disable Song Reordering" : "Enable Song Reordering", action: () => { REORDER_FILES_CHECKBOX.click() } }
+      { text: COMPACT_MODE_TOGGLE.checked ? "Disable Compact Mode" : "Enable Compact Mode", action: () => { COMPACT_MODE_TOGGLE.dispatchEvent(new MouseEvent('click')); } },
+      { text: REORDER_FILES_CHECKBOX.checked ? "Disable Song Reordering" : "Enable Song Reordering", action: () => { REORDER_FILES_CHECKBOX.dispatchEvent(new MouseEvent('click')); } }
     ]);
   }
 

@@ -151,7 +151,7 @@
         },
         /**
          * Check for codec support of specific extension.
-         * @param  {String} ext Audio file extention.
+         * @param  {String} ext Audio file extension.
          * @return {Boolean}
          */
         codecs: function (ext) {
