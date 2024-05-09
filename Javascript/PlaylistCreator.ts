@@ -477,10 +477,10 @@ var currentSongIndex: number | null = null;
   registerChangeEvent(PLAY_RATE, () => onPlayRateUpdate(parseFloat(PLAY_RATE.value)));
   registerChangeEvent(UPLOAD_BUTTON, () => importFiles(UPLOAD_BUTTON.files));
   registerChangeEvent(UPLOAD_DIRECTORY_BUTTON, () => importFiles(UPLOAD_DIRECTORY_BUTTON.files));
-  onRangeInput(PLAY_RATE_RANGE, () => { onPlayRateUpdate(parseFloat(PLAY_RATE_RANGE.value)) });
-  onRangeInput(PRELOAD_DIST_ELEMENT, () => { PRELOAD_DIST_ELEMENT.labels[0].textContent = `Value: ${PRELOAD_DIST_ELEMENT.value}` });
-  onRangeInput(PLAY_PAN, () => { if(sounds[currentSongIndex].howl) PLAY_PAN.labels[0].textContent = `${Math.floor(Number(PLAY_PAN.value) * 100)}%`; sounds[currentSongIndex].howl.stereo(Number(PLAY_PAN.value)) });
-  onRangeInput(VOLUME_CHANGER, () => { if (sounds[currentSongIndex].howl) VOLUME_CHANGER.labels[0].textContent = `${Math.floor(Number(VOLUME_CHANGER.value) * 100)}%`; sounds[currentSongIndex].howl.volume(Number(VOLUME_CHANGER.value)); });
+  registerInputEvent(PLAY_RATE_RANGE, () => { onPlayRateUpdate(parseFloat(PLAY_RATE_RANGE.value)) });
+  registerInputEvent(PRELOAD_DIST_ELEMENT, () => { PRELOAD_DIST_ELEMENT.labels[0].textContent = `Value: ${PRELOAD_DIST_ELEMENT.value}` });
+  registerInputEvent(PLAY_PAN, () => { if(sounds[currentSongIndex].howl) PLAY_PAN.labels[0].textContent = `${Math.floor(Number(PLAY_PAN.value) * 100)}%`; sounds[currentSongIndex].howl.stereo(Number(PLAY_PAN.value)) });
+  registerInputEvent(VOLUME_CHANGER, () => { if (sounds[currentSongIndex].howl) VOLUME_CHANGER.labels[0].textContent = `${Math.floor(Number(VOLUME_CHANGER.value) * 100)}%`; sounds[currentSongIndex].howl.volume(Number(VOLUME_CHANGER.value)); });
   ERROR_POPUP.addEventListener("close", onCloseErrorPopup);
   SEEK_DURATION_NUMBER_INPUT.addEventListener('input', updateSeekDurationDisplay, { passive: true });
   PROGRESS_BAR.addEventListener('pointerenter', (pointer) => progressBarSeek(pointer, ProgressBarSeekAction.DISPLAY_TIME), { passive: true })
@@ -529,6 +529,9 @@ function registerClickEvent(element: EventTarget | string, func: EventListenerOr
 function registerChangeEvent(element: EventTarget | string, func: EventListenerOrEventListenerObject) {
   if (typeof element === 'string') element = document.getElementById(element);
   element.addEventListener('change', func, { passive: true })
+}
+function registerInputEvent(elem: HTMLInputElement, func: EventListenerOrEventListenerObject){
+  elem.addEventListener('input', func, { passive: true });
 }
 
 /**
@@ -581,10 +584,6 @@ function createNewSong(fileName: string, index: number): HTMLTableRowElement { /
   return row;
 }
 
-function setAttributes(element: HTMLElement, attrs: { [key: string]: string }) {
-  for (var key in attrs) element.setAttribute(key, attrs[key]);
-}
-
 async function toggleCompactMode() {
   if (COMPACT_MODE_LINK_ELEMENT === null) {
     COMPACT_MODE_LINK_ELEMENT = document.createElement('link');
@@ -595,6 +594,7 @@ async function toggleCompactMode() {
     document.head.appendChild(COMPACT_MODE_LINK_ELEMENT);
   }
 }
+
 function onFrameStepped() {
   if (skipSongQueued) {
     skipSongQueued = false;
@@ -991,7 +991,7 @@ function changeStatus(status: string) { STATUS_TEXT.textContent = status; }
 function onlyFiles(dataTransfer: DataTransfer) { return dataTransfer.types.length == 1 && dataTransfer.types[0] === 'Files' }
 function isValidExtension(extension: string) { return Howler.codecs(extension); }
 function isSongRepeating(): boolean { return REPEAT_BUTTON.checked; }
-function onRangeInput(elem: HTMLInputElement, func: EventListenerOrEventListenerObject) { elem.addEventListener('input', func, { passive: true }); }
+function setAttributes(element: HTMLElement, attrs: { [key: string]: string }) { for (var key in attrs) element.setAttribute(key, attrs[key]); }
 function sleep(ms: number): Promise<void> { return new Promise(resolve => setTimeout(resolve, ms)); }
 function getInMegabytes(bytes: number): string { return (bytes / 1_048_576).toFixed(2); }
 function getFileExtension(fileName: string): string { return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase(); }
@@ -1019,7 +1019,7 @@ function initializeRowEvents(row: HTMLTableRowElement) {
 var previouslyActiveRow: HTMLTableRowElement = null;
 function setRowActive(row: HTMLTableRowElement){
   if(previouslyActiveRow != null && previouslyActiveRow != row){
-    previouslyActiveRow.style.backgroundColor = RowColors.NONE;
+    updateRowColor(previouslyActiveRow); //previouslyActiveRow.style.backgroundColor = RowColors.NONE;
   }
   row.style.backgroundColor = RowColors.PLAYING;
   previouslyActiveRow = row;

@@ -412,11 +412,11 @@ var currentSongIndex = null;
     registerChangeEvent(PLAY_RATE, () => onPlayRateUpdate(parseFloat(PLAY_RATE.value)));
     registerChangeEvent(UPLOAD_BUTTON, () => importFiles(UPLOAD_BUTTON.files));
     registerChangeEvent(UPLOAD_DIRECTORY_BUTTON, () => importFiles(UPLOAD_DIRECTORY_BUTTON.files));
-    onRangeInput(PLAY_RATE_RANGE, () => { onPlayRateUpdate(parseFloat(PLAY_RATE_RANGE.value)); });
-    onRangeInput(PRELOAD_DIST_ELEMENT, () => { PRELOAD_DIST_ELEMENT.labels[0].textContent = `Value: ${PRELOAD_DIST_ELEMENT.value}`; });
-    onRangeInput(PLAY_PAN, () => { if (sounds[currentSongIndex].howl)
+    registerInputEvent(PLAY_RATE_RANGE, () => { onPlayRateUpdate(parseFloat(PLAY_RATE_RANGE.value)); });
+    registerInputEvent(PRELOAD_DIST_ELEMENT, () => { PRELOAD_DIST_ELEMENT.labels[0].textContent = `Value: ${PRELOAD_DIST_ELEMENT.value}`; });
+    registerInputEvent(PLAY_PAN, () => { if (sounds[currentSongIndex].howl)
         PLAY_PAN.labels[0].textContent = `${Math.floor(Number(PLAY_PAN.value) * 100)}%`; sounds[currentSongIndex].howl.stereo(Number(PLAY_PAN.value)); });
-    onRangeInput(VOLUME_CHANGER, () => { if (sounds[currentSongIndex].howl)
+    registerInputEvent(VOLUME_CHANGER, () => { if (sounds[currentSongIndex].howl)
         VOLUME_CHANGER.labels[0].textContent = `${Math.floor(Number(VOLUME_CHANGER.value) * 100)}%`; sounds[currentSongIndex].howl.volume(Number(VOLUME_CHANGER.value)); });
     ERROR_POPUP.addEventListener("close", onCloseErrorPopup);
     SEEK_DURATION_NUMBER_INPUT.addEventListener('input', updateSeekDurationDisplay, { passive: true });
@@ -468,6 +468,9 @@ function registerChangeEvent(element, func) {
         element = document.getElementById(element);
     element.addEventListener('change', func, { passive: true });
 }
+function registerInputEvent(elem, func) {
+    elem.addEventListener('input', func, { passive: true });
+}
 /**
  * @satisfies New song was not pushed to sounds array beforehand.
  * @param fileName The name of the song to be added to the Playlist Table.
@@ -508,10 +511,6 @@ function createNewSong(fileName, index) {
     fileNameDisplays.push(songName);
     filePlayingCheckboxes.push(checkbox);
     return row;
-}
-function setAttributes(element, attrs) {
-    for (var key in attrs)
-        element.setAttribute(key, attrs[key]);
 }
 async function toggleCompactMode() {
     if (COMPACT_MODE_LINK_ELEMENT === null) {
@@ -762,7 +761,7 @@ function onClickSpecificPlaySong(checkbox) {
     startOrUnloadSong(index, checkbox.checked);
 }
 function startOrUnloadSong(index, startPlaying) {
-    filePlayingCheckboxes.forEach((checkbox) => { checkbox.checked = false; }); //uncheck the play button for all the other sounds except the one u chose
+    filePlayingCheckboxes.forEach(checkbox => { checkbox.checked = false; }); //uncheck the play button for all the other sounds except the one u chose
     filePlayingCheckboxes[index].checked = startPlaying;
     if (startPlaying)
         startPlayingSpecificSong(index);
@@ -771,9 +770,10 @@ function startOrUnloadSong(index, startPlaying) {
 }
 function quitPlayingMusic() {
     const currentRow = PLAYLIST_VIEWER_TABLE.rows[currentSongIndex + 1];
-    PLAY_BUTTON.checked = false;
     filePlayingCheckboxes[currentSongIndex].checked = false;
+    PLAY_BUTTON.checked = false;
     currentSongIndex = null;
+    PROGRESS_BAR.value = 0;
     for (var i = 0; i < sounds.length; i++)
         sounds[i].unload();
     Howler.stop();
@@ -891,7 +891,8 @@ function changeStatus(status) { STATUS_TEXT.textContent = status; }
 function onlyFiles(dataTransfer) { return dataTransfer.types.length == 1 && dataTransfer.types[0] === 'Files'; }
 function isValidExtension(extension) { return Howler.codecs(extension); }
 function isSongRepeating() { return REPEAT_BUTTON.checked; }
-function onRangeInput(elem, func) { elem.addEventListener('input', func, { passive: true }); }
+function setAttributes(element, attrs) { for (var key in attrs)
+    element.setAttribute(key, attrs[key]); }
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 function getInMegabytes(bytes) { return (bytes / 1048576).toFixed(2); }
 function getFileExtension(fileName) { return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase(); }
@@ -919,7 +920,7 @@ function initializeRowEvents(row) {
 var previouslyActiveRow = null;
 function setRowActive(row) {
     if (previouslyActiveRow != null && previouslyActiveRow != row) {
-        previouslyActiveRow.style.backgroundColor = RowColors.NONE;
+        updateRowColor(previouslyActiveRow); //previouslyActiveRow.style.backgroundColor = RowColors.NONE;
     }
     row.style.backgroundColor = RowColors.PLAYING;
     previouslyActiveRow = row;
