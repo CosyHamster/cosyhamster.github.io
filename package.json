@@ -2,9 +2,11 @@
   "devDependencies": {
     "@types/howler": "^2.2.11",
     "@types/node": "^20.12.4",
+    "@types/serviceworker": "^0.0.85",
     "typescript": "^5.4.3"
   },
   "dependencies": {
+    "@types/service_worker_api": "^0.0.9",
     "howler": "^2.2.4"
   }
 }

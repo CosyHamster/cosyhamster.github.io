@@ -3,7 +3,7 @@ const CACHE_NAME = 'CosyHamsterMusicPlayerOfflineCache';
 var cacheStorage: Cache;
 self.addEventListener("install", (event) => {
     console.log("[Service Worker] Install");
-    const contentToCache = [
+    const contentToCache: string[] = [
         "/",
         "./index.html",
         "./HTML/WebLooper.html",
@@ -40,7 +40,7 @@ self.addEventListener('activate', (e) => {
 self.addEventListener("fetch", (e) => {
     if(e.request.method !== "GET") return;
     e.preventDefault();
-    e.respondWith(new Promise(async (resolve, reject) => {        
+    e.respondWith(new Promise(async (resolve, reject) => {
         if(!cacheStorage) cacheStorage = await caches.open(CACHE_NAME);
         
         useCache(e.request).then(response => {
