@@ -1,6 +1,6 @@
 //@ts-expect-error
 import("./howler.js").catch((error) => {
-  console.warn(error);
+  console.warn(error + "\nLoading Howler using script element instead.");
   let howlerScript = document.createElement('script');
   howlerScript.src = "../Javascript/howler.js";
   document.head.appendChild(howlerScript);
@@ -455,7 +455,7 @@ var currentSongIndex: number | null = null;
   registerClickEvent('exitSettingsButton', async () => SETTINGS_PAGE.close());
   registerClickEvent('exitErrorPopup', async () => ERROR_POPUP.close());
   registerClickEvent('exitDeprecatedPopup', async () => DEPRECATED_POPUP.close());
-  registerChangeEvent(PLAY_BUTTON, playButton);
+  registerChangeEvent(PLAY_BUTTON, () => pauseOrUnpauseCurrentSong(!PLAY_BUTTON.checked));
   registerChangeEvent(COMPACT_MODE_TOGGLE, toggleCompactMode);
   registerChangeEvent(REORDER_FILES_CHECKBOX, () => {
     const checked: boolean = REORDER_FILES_CHECKBOX.checked;
@@ -466,12 +466,10 @@ var currentSongIndex: number | null = null;
   });
   registerChangeEvent(MUTE_BUTTON, () => { if(sounds[currentSongIndex].isInExistence()) sounds[currentSongIndex].howl.mute(MUTE_BUTTON.checked); });
   registerChangeEvent(REPEAT_BUTTON, () => { 
-    if(currentSongIndex !== null && sounds[currentSongIndex].isInExistence()){
       const checked = REPEAT_BUTTON.checked;
-      sounds[currentSongIndex].howl.loop(checked);
+      if(currentSongIndex !== null && sounds[currentSongIndex].isInExistence()) sounds[currentSongIndex].howl.loop(checked);
       if (checked) REPEAT_BUTTON_IMAGE.src = "../Icons/Repeat1Icon.svg";
       else REPEAT_BUTTON_IMAGE.src = "../Icons/RepeatIcon.svg";
-    }
   });
   registerChangeEvent(SHUFFLE_BUTTON, () => handleShuffleButton(SHUFFLE_BUTTON.checked));
   registerChangeEvent(PLAY_RATE, () => onPlayRateUpdate(parseFloat(PLAY_RATE.value)));
@@ -497,18 +495,18 @@ function makeDocumentDroppable() {
   window.addEventListener("dragover", (event) => {
     if (!onlyFiles(event.dataTransfer)) return;
     event.preventDefault();
-    DROPPING_FILE_OVERLAY.setAttribute("draggingOver", "true");
+    DROPPING_FILE_OVERLAY.toggleAttribute("draggingOver", true);
     stopHighlightingRow();
   });
   window.addEventListener("dragleave", () => {
-    DROPPING_FILE_OVERLAY.setAttribute("draggingOver", "false");
+    DROPPING_FILE_OVERLAY.toggleAttribute("draggingOver", false);
     stopHighlightingRow();
   }, { passive: true })
   window.addEventListener("drop", (event) => {
     const dataTransfer = event.dataTransfer;
     if (!onlyFiles(dataTransfer)) return;
     event.preventDefault();
-    DROPPING_FILE_OVERLAY.setAttribute("draggingOver", "false");
+    DROPPING_FILE_OVERLAY.toggleAttribute("draggingOver", false);
     stopHighlightingRow();
     importFiles(dataTransfer);
   });
@@ -544,21 +542,21 @@ function createNewSong(fileName: string, index: number): HTMLTableRowElement { /
   const cell1 = row.insertCell(0);
   initializeRowEvents(row);
 
-  const fileSize = document.createElement('text');
-  fileSize.setAttribute('class', 'songName');
+  const fileSize = document.createElement('div');
+  fileSize.setAttribute('class', 'songName test');
   fileSize.setAttribute('style', 'position: absolute; transform: translate(-100%, 0); left: calc(100% - 3px);');
   fileSize.setAttribute('id', `${index}playButtonLabel`)
 
-  const songName = document.createElement('text')
-  songName.setAttribute('class', 'songName')
+  const songName = document.createElement('div')
+  songName.setAttribute('class', 'songName text')
   songName.setAttribute('title', `${fileName}`)
   songName.textContent = fileName
 
-  const songNumber = document.createElement('text');
+  const songNumber = document.createElement('div');
   songNumber.textContent = `${sounds.length + 1}. `;
   setAttributes(songNumber, {
     style: 'float: left; display: inline-block;',
-    class: 'songNumber',
+    class: 'songNumber text',
     index: String(index)
   })
 
@@ -694,7 +692,7 @@ function displayError(errorType: string, errorText: string, errorMessage: string
   const songTitle = document.createElement('dt');
   songTitle.textContent = errorCategory;
   const songError = document.createElement('dd');
-  songError.textContent = errorType + ": " + errorText;
+  songError.textContent = errorType.concat(": ", errorText);
   songError.title = errorMessage;
 
   if (insertAfter) {
@@ -726,7 +724,6 @@ async function importFiles(element: DataTransfer | ArrayLike<File>) {
     let fileReceiver = new DataTransferItemGrabber(dataTransferItemList);
     addFiles(await fileReceiver.retrieveContents());
   }
-
   
   function addFiles(files: ArrayLike<File> /*FileList or File[]*/) {
     const lengthBeforeBegin = sounds.length;
@@ -943,13 +940,14 @@ function jumpSong(amount?: number) { // amount can be negative or positive ;)
   playButtonToActivate.dispatchEvent(new MouseEvent('click'));
 }
 
-async function playButton() { //controls playAll button, called by HTML element
-  if (!sounds[currentSongIndex].isInExistence()){
+function pauseOrUnpauseCurrentSong(pause: boolean){ //controls playAll button, called by HTML element
+  if (!sounds[currentSongIndex] || !sounds[currentSongIndex].isInExistence()){
     PLAY_BUTTON.checked = !PLAY_BUTTON.checked;
     return;
   }
 
-  if (PLAY_BUTTON.checked == PAUSED) { //if set to paused
+  if (pause) { //if set to paused
+    PLAY_BUTTON.checked = PAUSED;
     sounds[currentSongIndex].howl.pause()
     changeStatus(StatusTexts.PAUSED);
     return;
@@ -1067,11 +1065,8 @@ function stopHighlightingRow() {
   }
 }
 function onSingleClick(mouseEvent: MouseEvent) {
-  let row: Element = mouseEvent.target as Element;
-  if (!rowValid(row)) {
-    row = tryFindTableRowInParents(row);
-    if (!rowValid(row)) return;
-  }
+  let row = findValidTableRow(mouseEvent.target as Element)
+  if(row == null) return;
 
   if (mouseEvent.ctrlKey) {
     if (row.hasAttribute("data-selected")) return deselectRow(selectedRows.indexOf(row as HTMLTableRowElement));
@@ -1126,8 +1121,7 @@ function selectRow(row: HTMLTableRowElement) {
     //@ts-expect-error
     row.scrollIntoViewIfNeeded();
   } else {
-    //@ts-expect-error
-    row.scrollIntoView(false, {behavior: "instant", block: "nearest"});
+    row.scrollIntoView({behavior: "instant", block: "nearest"});
   }
 }
 function onDoubleClick(mouseEvent: MouseEvent) {
@@ -1316,7 +1310,7 @@ function spawnContextMenu(clientX: number, clientY: number, contextOptions: Cont
     const contextButton = document.createElement('div');
     contextButton.setAttribute('class', 'contextOption');
     if (i < contextOptions.length - 1) contextButton.style.borderBottomWidth = "1px";
-    contextButton.addEventListener('click', (event) => { if (CONTEXT_MENU.getAttribute('open') == 'true') contextOption.action(event) });
+    contextButton.addEventListener('click', (event) => { if (CONTEXT_MENU.hasAttribute('open')) contextOption.action(event) });
 
     if (contextOption.icon) {
       const contextIcon = document.createElement('img');
@@ -1345,7 +1339,7 @@ function spawnContextMenu(clientX: number, clientY: number, contextOptions: Cont
   }
   CONTEXT_MENU.style.left = `${leftOffset}px`;
   CONTEXT_MENU.style.top = `${downOffset}px`;
-  CONTEXT_MENU.setAttribute('open', 'true');
+  CONTEXT_MENU.toggleAttribute('open', true);
 }
 
-function closeContextMenu() { CONTEXT_MENU.setAttribute('open', 'false'); CONTEXT_MENU.style.height = '0'; };
+function closeContextMenu() { CONTEXT_MENU.toggleAttribute('open', false); CONTEXT_MENU.style.height = '0'; };

@@ -12,6 +12,10 @@ table{
     border-spacing: 1px;
     border-color: gray;
 }
+.text{
+    display: inline;
+    unicode-bidi: normal;
+}
 .playpause div {
     display: inline-block;
     box-sizing: border-box;
@@ -55,7 +59,7 @@ table{
     transition-duration: 200ms;
     z-index: 10;
 }
-.hoverToDrop[draggingOver=true]{ opacity: 1; }
+.hoverToDrop[draggingOver]{ opacity: 1; }
 
 [id="rightClickContextMenu"]{
     width: max-content;
@@ -74,7 +78,10 @@ table{
         transition-property: opacity, height;
     }
 }
-[id="rightClickContextMenu"][open=true]{
+[id="rightClickContextMenu"]:not([open]){
+    pointer-events: none;
+}
+[id="rightClickContextMenu"][open]{
     opacity: 1;
 }
 .contextOption{

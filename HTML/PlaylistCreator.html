@@ -15,13 +15,13 @@
 
     </head>
     <body>
-        <div draggingOver="false" id="dragOverDisplay" class="hoverToDrop"><text style="position: fixed; top: 50vh; left: 50vw; transform: translate(-50%, -50%);"><b>Drop Here to add Music</b></text></div>
-        <div style="z-index: -2; background-color: lightgrey; width: max-content; margin-top: 20px; left: -9999px; position: absolute; pointer-events: none;" id="hoveredTimeDisplay" inuse="0"><text style="margin-left:1ch; margin-right:1ch; color: black;" class="prevent-select"></text></div>
+        <div id="dragOverDisplay" class="hoverToDrop"><div style="position: fixed; top: 50vh; left: 50vw; transform: translate(-50%, -50%);" class="text" ><b>Drop Here to add Music</b></div></div>
+        <div style="z-index: -2; background-color: lightgrey; width: max-content; margin-top: 20px; left: -9999px; position: absolute; pointer-events: none;" id="hoveredTimeDisplay"><div style="margin-left:1ch; margin-right:1ch; color: black;" class="prevent-select text"></div></div>
 
         <input type="file" style="display: none;" id="0input" multiple>
         <input type="file" style="display: none;" id="inputDirectory" multiple webkitdirectory>
         <label for="0input"><img id="uploadFilesLabel" class="clickableButton" data-onRightClick="uploadFileMenu" src="../Icons/UploadIcon.svg" width=20 height=20 alt=""/></label> <!--https://commons.wikimedia.org/wiki/File:OOjs_UI_icon_upload.svg-->
-        <text style="cursor: pointer;" class="largerSize songName playingStatus" id="currentFileName">Upload Files to Begin!</text>
+        <div style="cursor: pointer;" class="largerSize songName playingStatus text" id="currentFileName">Upload Files to Begin!</div>
         <img class="clickableButton" id="settingsButton" width=20 height=20 style="float: right;" src="../Icons/SettingsIcon.svg"/> <!--https://en.m.wikipedia.org/wiki/File:Ic_settings_48px.svg-->
 
         <table border=1px style="position: absolute; width:calc(100% - 20px); top:40vh; transform: translate(0%, 0%); z-index: -2;">
@@ -30,9 +30,9 @@
                     <td style="position: absolute; width:100%; white-space: nowrap; transform: translate(0%, -100%); height: 10ch;">
                         <div style="margin-left: auto; margin-right: auto; text-align: center;">
                             <div class="fileStatus" id="0status"></div>
-                            <text id="firstDurationLabel" style="margin-right: 1ch;">00:00</text>
+                            <div id="firstDurationLabel" style="margin-right: 1ch;" class="text">00:00</div>
                             <progress value="0" max="100" id="progress-bar" style="accent-color:white; z-index: 0;"></progress>
-                            <text id="secondDurationLabel" style="margin-left: 1ch;">00:00</text>
+                            <div id="secondDurationLabel" style="margin-left: 1ch;" class="text">00:00</div>
                         </div>
                     </td>
                 </tr>
@@ -120,7 +120,7 @@
             <div>
                 <img class="clickableButton" id="exitSettingsButton" style="border-radius: 8px; float: right; width: 20px; height: 20px;" src="../Icons/CancelIcon.svg"/> <!--https://en.m.wikipedia.org/wiki/File:Ic_settings_48px.svg-->
                 <div>
-                    <text class="largerSize songName" style="display: block;" title="Preload Songs Distance (# of songs before and after current song are preloaded (RAM INTENSIVE)):">Preload Songs Distance (# of songs before and after current song are preloaded (RAM INTENSIVE)):</text>
+                    <div class="largerSize songName text" style="display: block;" title="Preload Songs Distance (# of songs before and after current song are preloaded (RAM INTENSIVE)):">Preload Songs Distance (# of songs before and after current song are preloaded (RAM INTENSIVE)):</div>
                     <input type="range" id="preloadDistance" max=1 min=0 value=1 step=1 style="width: 75%; display: inline-block; position: relative; top: -4px; transform: translate(0%, 50%);">
                     <label for="preloadDistance" style="display: inline-block;">Value: 1</label>
                 </div>
@@ -171,7 +171,7 @@
             </div>
         </dialog>
 
-        <div id="rightClickContextMenu" open="false">
+        <div id="rightClickContextMenu">
             <div class="contextOption"></div>
         </div>
     </body>
