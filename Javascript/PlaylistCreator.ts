@@ -109,7 +109,16 @@ class SongLoader{
       loop: false,
     });
     reapplySoundAttributes(sound);
-    sound.on('end', () => jumpSong()); //jump to next song when they end (or do custom stuff if needed)
+    sound.on('end', () => {
+      if(REPEAT_BUTTON.checked) {
+        if (sounds[currentSongIndex].isInExistence() && !sounds[currentSongIndex].howl.playing()) {
+          sounds[currentSongIndex].howl.stop();
+          sounds[currentSongIndex].howl.play();
+        }
+        return;
+      }
+      jumpSong();
+    }); //jump to next song when they end (or do custom stuff if needed)
   
     setFileSizeDisplay(this.song.currentRow.rowIndex-1, this.song.file.size);
     return sound;
@@ -633,13 +642,14 @@ function reapplySoundAttributes(howl: Howl) {
   howl.stereo(parseFloat(PLAY_PAN.value));
 }
 function updateCurrentTimeDisplay(currentTime: number, songDurationInSeconds: number) {
+  const songDurationFormatted = new Time(songDurationInSeconds).toString()
+  if (DURATION_OF_SONG_DISPLAY.textContent != songDurationFormatted) DURATION_OF_SONG_DISPLAY.textContent = songDurationFormatted;
   if (HOVERED_TIME_DISPLAY.hasAttribute('inUse')) return;
+
   const progressBarDomRect: DOMRect = PROGRESS_BAR.getBoundingClientRect();
   if (progressBarDomRect.top + 50 < 0) return; //return if you scrolled away from the progress bar (+50 to include the hoveredTimeDisplay)
 
-  const songDurationFormatted = new Time(songDurationInSeconds).toString(),
-        currentTimeString = new Time(currentTime).toString();
-  if (DURATION_OF_SONG_DISPLAY.textContent != songDurationFormatted) DURATION_OF_SONG_DISPLAY.textContent = songDurationFormatted;
+  const currentTimeString = new Time(currentTime).toString();
   if (HOVERED_TIME_DISPLAY.children[0].textContent != currentTimeString) HOVERED_TIME_DISPLAY.children[0].textContent = currentTimeString;
 
   const top = progressBarDomRect.top + window.scrollY,
@@ -921,20 +931,12 @@ function isIndexInRangeOfCurrent(index: number) {
 }
 
 function jumpSong(amount?: number) { // amount can be negative or positive ;)
-  amount = amount || 1 //if no value inputted, assume u want to jump ahead one song
+  amount = amount ?? 1 //if no value inputted, assume u want to jump ahead one song
 
-  const repeating = REPEAT_BUTTON.checked
-  if (repeating) {
-    if (sounds[currentSongIndex].isInExistence() && !sounds[currentSongIndex].howl.playing()) {
-      sounds[currentSongIndex].howl.stop();
-      sounds[currentSongIndex].howl.play();
-    }
-    return;
-  }
-
-  currentSongIndex += amount
-  if (currentSongIndex > sounds.length - 1) currentSongIndex %= sounds.length;
-  else if (currentSongIndex < 0) currentSongIndex = Math.max(currentSongIndex + sounds.length, 0) //idk a real solution to this
+  currentSongIndex = currentSongIndex+(sounds.length+amount)%sounds.length;
+  // currentSongIndex += amount
+  // if (currentSongIndex > sounds.length - 1) currentSongIndex %= sounds.length;
+  // else if (currentSongIndex < 0) currentSongIndex = Math.max(currentSongIndex + sounds.length, 0) //idk a real solution to this
 
   const playButtonToActivate = filePlayingCheckboxes[currentSongIndex];
   playButtonToActivate.dispatchEvent(new MouseEvent('click'));
