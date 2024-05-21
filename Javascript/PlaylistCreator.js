@@ -839,7 +839,7 @@ function isIndexInRangeOfCurrent(index) {
 }
 function jumpSong(amount) {
     amount = amount ?? 1; //if no value inputted, assume u want to jump ahead one song
-    currentSongIndex = currentSongIndex + (sounds.length + amount) % sounds.length;
+    currentSongIndex = (currentSongIndex + (sounds.length + amount)) % sounds.length;
     // currentSongIndex += amount
     // if (currentSongIndex > sounds.length - 1) currentSongIndex %= sounds.length;
     // else if (currentSongIndex < 0) currentSongIndex = Math.max(currentSongIndex + sounds.length, 0) //idk a real solution to this
