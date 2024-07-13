@@ -62,6 +62,10 @@ class SongLoader {
                         displayError(progressEvent.target.error.name, "Failed to find file!", progressEvent.target.error.message, this.song.file.name);
                         break;
                     }
+                    case "NotReadableError": {
+                        displayError(progressEvent.target.error.name, "This file needs to be reimported to the playlist!", progressEvent.target.error.message, this.song.file.name);
+                        break;
+                    }
                     default: {
                         displayError(progressEvent.target.error.name, "Unknown Error!", progressEvent.target.error.message, this.song.file.name);
                         break;
@@ -115,6 +119,7 @@ class SongLoader {
 }
 class Song {
     constructor(file, nativeIndex, currentRow) {
+        this.songLoader = null;
         this.howl = null;
         this.file = file;
         this.nativeIndex = nativeIndex;
@@ -378,7 +383,7 @@ var currentSongIndex = null;
     //   }
     // });
     document.addEventListener("beforeunload", function () {
-        Howler.unload();
+        quitPlayingMusic();
         sounds = [];
     }, { passive: true });
     initContextMenu();
