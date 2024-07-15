@@ -441,6 +441,8 @@ var currentSongIndex = null;
     if (SITE_DEPRECATED)
         DEPRECATED_POPUP.showModal();
     REORDER_FILES_CHECKBOX.dispatchEvent(new MouseEvent('click')); //.checked = !ON_MOBILE;
+    SEEK_DISTANCE_PROPORTIONAL_CHECKBOX.checked = true;
+    SKIP_UNPLAYABLE_CHECKBOX.checked = true;
     //END
 })();
 function makeDocumentDroppable() {
