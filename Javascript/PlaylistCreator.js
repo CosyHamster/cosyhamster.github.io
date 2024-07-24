@@ -591,9 +591,10 @@ function updateCurrentTimeDisplay(currentTime, songDurationInSeconds) {
     const currentTimeString = new Time(currentTime).toString();
     if (HOVERED_TIME_DISPLAY.children[0].textContent != currentTimeString)
         HOVERED_TIME_DISPLAY.children[0].textContent = currentTimeString;
-    const top = progressBarDomRect.top + window.scrollY, left = (progressBarDomRect.left - HOVERED_TIME_DISPLAY.getBoundingClientRect().width / 2) + (progressBarDomRect.width * currentTime / songDurationInSeconds) - 1;
-    HOVERED_TIME_DISPLAY.style.top = `${top}px`;
-    HOVERED_TIME_DISPLAY.style.left = `${left}px`;
+    const beginningOfProgressBar = (progressBarDomRect.left - HOVERED_TIME_DISPLAY.getBoundingClientRect().width / 2) + scrollX;
+    const pixelsAcrossProgressBar = (progressBarDomRect.width * currentTime / songDurationInSeconds) - 1;
+    HOVERED_TIME_DISPLAY.style.top = `${progressBarDomRect.top + scrollY}px`;
+    HOVERED_TIME_DISPLAY.style.left = `${beginningOfProgressBar + pixelsAcrossProgressBar}px`;
 }
 function progressBarSeek(mouse, hoverType) {
     if (currentSongIndex === null || !sounds[currentSongIndex].isInExistence() || (mouse?.pointerType == "touch" && hoverType !== 0 /* ProgressBarSeekAction.SEEK_TO */) || hoverType === 2 /* ProgressBarSeekAction.STOP_DISPLAYING */) {
