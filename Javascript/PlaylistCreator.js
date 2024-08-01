@@ -98,7 +98,7 @@ class SongLoader {
     createHowl() {
         const sound = new Howl({
             src: [this.fileReader.result],
-            preload: true,
+            preload: PRELOAD_TYPE_SELECTOR.value === "process",
             autoplay: false,
             loop: false,
         });
@@ -345,7 +345,7 @@ var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(), K
     PLAYING: "rgb(172, 172, 172)",
     SELECTING: "lightblue",
     NONE: ""
-}, PAUSED = false, PLAYING = true, PLAYLIST_VIEWER_TABLE = document.getElementById("Playlist_Viewer"), PRELOAD_DIST_ELEMENT = document.getElementById('preloadDistance'), COMPACT_MODE_LINK_ELEMENT = null, //document.getElementById('compactModeStyleLink'),
+}, PAUSED = false, PLAYING = true, PLAYLIST_VIEWER_TABLE = document.getElementById("Playlist_Viewer"), PRELOAD_DIST_ELEMENT = document.getElementById('preloadDistance'), PRELOAD_TYPE_SELECTOR = document.getElementById("preloadType"), COMPACT_MODE_LINK_ELEMENT = null, //document.getElementById('compactModeStyleLink'),
 COMPACT_MODE_TOGGLE = document.getElementById('compactMode'), SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration'), SEEK_DURATION_DISPLAY = document.getElementById("seekDurationDisplay"), SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional'), SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable'), REORDER_FILES_CHECKBOX = document.getElementById('reorderFiles'), UPLOAD_BUTTON = document.getElementById('0input'), UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory'), PLAY_RATE_RANGE = document.getElementById('0playRateSlider'), SETTINGS_PAGE = document.getElementById('settingsPage'), ERROR_POPUP = document.getElementById('errorPopup'), DEPRECATED_POPUP = document.getElementById('deprecatedPopup'), ERROR_LIST = document.getElementById('errorList'), CONTEXT_MENU = document.getElementById('rightClickContextMenu'), PROGRESS_BAR = document.getElementById('progress-bar'), HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay'), VOLUME_CHANGER = document.getElementById('0playVolume'), PLAY_RATE = document.getElementById('0playRate'), PLAY_PAN = document.getElementById('0playPan'), SEEK_BACK = document.getElementById('seekBack'), SEEK_FORWARD = document.getElementById('seekForward'), REPEAT_BUTTON = document.getElementById('repeatButton'), REPEAT_BUTTON_IMAGE = document.getElementById("repeatButtonImg"), SHUFFLE_BUTTON = document.getElementById('shuffleButton'), MUTE_BUTTON = document.getElementById('0Mute'), PLAY_BUTTON = document.getElementById('playpause'), STATUS_TEXT = document.getElementById('0status'), CURRENT_FILE_NAME = document.getElementById('currentFileName'), DURATION_OF_SONG_DISPLAY = document.getElementById('secondDurationLabel'), DROPPING_FILE_OVERLAY = document.getElementById("dragOverDisplay");
 var fileNameDisplays = [];
 var filePlayingCheckboxes = [];
@@ -821,6 +821,8 @@ function startPlayingSong(song) {
     setCurrentFileName(song.file.name);
     reapplySoundAttributes(song.howl);
     if (Number(PLAY_RATE.value) != 0) {
+        if (song.isUnloaded())
+            song.howl.load();
         song.howl.play();
         PLAY_BUTTON.checked = PLAYING;
     }

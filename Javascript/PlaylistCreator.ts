@@ -105,7 +105,7 @@ class SongLoader{
   createHowl(): Howl {
     const sound: Howl = new Howl({
       src: [this.fileReader.result as string],
-      preload: true,
+      preload: PRELOAD_TYPE_SELECTOR.value === "process",
       autoplay: false,
       loop: false,
     });
@@ -359,6 +359,7 @@ class DataTransferItemGrabber { //this exists because javascript has bugs (it ke
     }
   }
 }
+
 var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(),
   KEY_DOWN_EVENT = new KeyDownEventRegistrar(),
   StatusTexts = {
@@ -379,6 +380,7 @@ var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(),
   PLAYING = true,
   PLAYLIST_VIEWER_TABLE = document.getElementById("Playlist_Viewer") as HTMLTableElement,
   PRELOAD_DIST_ELEMENT = document.getElementById('preloadDistance') as HTMLInputElement,
+  PRELOAD_TYPE_SELECTOR = document.getElementById("preloadType") as HTMLSelectElement,
   COMPACT_MODE_LINK_ELEMENT: HTMLLinkElement | null = null,//document.getElementById('compactModeStyleLink'),
   COMPACT_MODE_TOGGLE = document.getElementById('compactMode') as HTMLInputElement,
   SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration') as HTMLInputElement,
@@ -906,6 +908,7 @@ function startPlayingSong(song: Song) {
   reapplySoundAttributes(song.howl);
 
   if (Number(PLAY_RATE.value) != 0) {
+    if(song.isUnloaded()) song.howl.load();
     song.howl.play();
     PLAY_BUTTON.checked = PLAYING;
   }

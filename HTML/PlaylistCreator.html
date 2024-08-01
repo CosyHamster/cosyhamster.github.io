@@ -120,6 +120,12 @@
             <div>
                 <img class="clickableButton" id="exitSettingsButton" style="border-radius: 8px; float: right; width: 20px; height: 20px;" src="../Icons/CancelIcon.svg"/> <!--https://en.m.wikipedia.org/wiki/File:Ic_settings_48px.svg-->
                 <div>
+                    Preload Type: <select id="preloadType" name="preloadType">
+                        <option value="process" selected>Download & Process</option>
+                        <option value="download">Download only</option>
+                    </select>
+                </div>
+                <div>
                     <div class="largerSize songName text" style="display: block;" title="Preload Songs Distance (# of songs before and after current song are preloaded (RAM INTENSIVE)):">Preload Songs Distance (# of songs before and after current song are preloaded (RAM INTENSIVE)):</div>
                     <input type="range" id="preloadDistance" max=1 min=0 value=1 step=1 style="width: 75%; display: inline-block; position: relative; top: -4px; transform: translate(0%, 50%);">
                     <label for="preloadDistance" style="display: inline-block;">Value: 1</label>
