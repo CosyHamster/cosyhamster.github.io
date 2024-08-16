@@ -29,7 +29,7 @@ const enum ProgressBarSeekAction {
   STOP_DISPLAYING
 }
 
-interface ContextMenuOptions {
+interface ContextMenuOption {
   text: string,
   icon?: string,
   action: Function
@@ -989,7 +989,7 @@ function updateSeekButtonTexts() {
   });
 }
 function precisionRound(number: number, precision: number) {
-  var factor = Math.pow(10, precision);
+  const factor = Math.pow(10, precision);
   return Math.round(number * factor) / factor;
 }
 function changeStatus(status: string) { STATUS_TEXT.textContent = status; }
@@ -1211,19 +1211,32 @@ function selectionLogicForKeyboard(data: {keyEvent: KeyboardEvent}) {
     case "Enter": return startPlayingFromKeyboard(keyboardEvent);
   }
 }
+var indexScrollDirection = 0;
 function arrowSelection(keyboardEvent: KeyboardEvent, indexIncrement: number) {
   keyboardEvent.preventDefault();
   sortSelectedRows();
   if (isTyping(keyboardEvent)) return;
-  if (keyboardEvent.ctrlKey || keyboardEvent.shiftKey) {
-    if (indexIncrement > 0) {
-      const row = PLAYLIST_VIEWER_TABLE.rows[selectedRows[selectedRows.length - 1].rowIndex + indexIncrement];
-      if (row) selectRow(row);
+  if (keyboardEvent.shiftKey) { 
+    if(selectedRows.length == 1) indexScrollDirection = Math.sign(indexIncrement);
+    if(Math.sign(indexScrollDirection) == Math.sign(indexIncrement)){
+      let row;
+      if (indexIncrement > 0) {
+        row = PLAYLIST_VIEWER_TABLE.rows[selectedRows[selectedRows.length - 1].rowIndex + indexIncrement];
+      } else {
+        row = PLAYLIST_VIEWER_TABLE.rows[selectedRows[0].rowIndex + indexIncrement];
+      }
+      if(row) selectRow(row);
     } else {
-      deselectRow(selectedRows.length - 1);
+      if(indexIncrement > 0){
+        deselectRow(0);
+      } else {
+        deselectRow(selectedRows.length - 1);
+      }
+      
     }
+    
   } else {
-    const oneElement = (indexIncrement > 0) ? PLAYLIST_VIEWER_TABLE.rows[selectedRows[selectedRows.length - 1].rowIndex + 1] : PLAYLIST_VIEWER_TABLE.rows[selectedRows[selectedRows.length - 1].rowIndex - 1];
+    const oneElement = PLAYLIST_VIEWER_TABLE.rows[selectedRows[selectedRows.length - 1].rowIndex + indexIncrement];
     if (!rowValid(oneElement)) return;
     deselectAll();
     selectRow(oneElement);
@@ -1278,7 +1291,7 @@ function initContextMenu() {
         selectRow(row as HTMLTableRowElement);
       }
 
-      const contextOptions: ContextMenuOptions[] = [];
+      const contextOptions: ContextMenuOption[] = [];
       if (selectedRows.length == 1) contextOptions.push({ text: (currentSongIndex != selectedRows[0].rowIndex - 1) ? "Play" : "Stop", action: () => playRow(selectedRows[0]) });
       contextOptions.push({ text: "Delete", action: deleteSelectedSongs });
 
@@ -1299,7 +1312,7 @@ function initContextMenu() {
   })
 }
 
-function spawnContextMenu(clientX: number, clientY: number, contextOptions: ContextMenuOptions[], allowDefaultOptions: Boolean) {
+function spawnContextMenu(clientX: number, clientY: number, contextOptions: ContextMenuOption[], allowDefaultOptions: Boolean) {
   let childElement: HTMLElement;
   while ((childElement = CONTEXT_MENU.lastChild as HTMLElement) != null) {
     CONTEXT_MENU.removeChild(childElement);
