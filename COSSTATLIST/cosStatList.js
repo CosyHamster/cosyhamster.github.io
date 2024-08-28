@@ -15,8 +15,8 @@ var FLOATING_WINDOW_TABLE = document.getElementById("floatingWindowTable");
 var FLOATING_WINDOW_SEARCH_BAR = document.getElementById("floatingWindowSearchBar");
 var FilterType;
 (function (FilterType) {
-    FilterType[FilterType["CONTAINS"] = 0] = "CONTAINS";
-    FilterType[FilterType["EQUALS"] = 1] = "EQUALS";
+    FilterType[FilterType["EQUALS"] = 0] = "EQUALS";
+    FilterType[FilterType["CONTAINS"] = 1] = "CONTAINS";
     FilterType[FilterType["LESS_THAN"] = 2] = "LESS_THAN";
     FilterType[FilterType["LESS_THAN_EQUALS"] = 3] = "LESS_THAN_EQUALS";
     FilterType[FilterType["GREATER_THAN"] = 4] = "GREATER_THAN";
@@ -38,7 +38,6 @@ class StatValue {
     getDisplayValue(creature) {
         return String(this.getValue(creature));
     }
-    ;
     constructor(displayName, keyName) {
         this.displayName = displayName;
         this.keyName = keyName;
@@ -61,7 +60,7 @@ class ValuelessAbilityStat extends StatValue {
             }
         }).bind(this);
         // override initializeCreatureObject(creature: Creature){ /* let value = parseFloat(creature[this.keyName] as string); if(isNaN(value)) return; else creature.abilities[this.keyName] = value; */ }
-        this.sort = ((creature1, creature2) => {
+        this.sort = ((creature1, _) => {
             return (this.getValue(creature1) ? -1 : 1) * (sortAscending ? -1 : 1);
         }).bind(this);
         this.filter = ((creature, filterType, testVal) => {
@@ -230,7 +229,7 @@ function initializeStatList() {
     statList.push(new KeyedStringStatValue("Breath Type", "breath"));
     statList.push(new KeyedStringStatValue("Concept Artist(s)", "conceptBy"));
     statList.push(new KeyedNumberStatValue("Bite Damage", "damage"));
-    statList.push(new KeyedNumberStatValue("Tail Damage", "damage2"));
+    statList.push(new KeyedNumberStatValue("Secondary Damage", "damage2"));
     statList.push(new KeyedNumberStatValue("Dart Power", "dartPower"));
     statList.push(new KeyedNumberStatValue("Dart Stamina Cost", "dartStamina"));
     statList.push(new KeyedStringStatValue("Creation Date", "dateAdded"));
@@ -343,20 +342,25 @@ function initializeStatList() {
     statList.push(new AbilityStringStatValue("Charge", "Charge"));
     statList.push(new AbilityStringStatValue("Totem", "Totem"));
 }
-async function initializeCreatureStats() {
-    return new Promise((resolve, reject) => {
-        fetch("creatureStats.json").then(response => {
-            response.body.getReader().read().then(async (data) => {
-                let stats = JSON.parse(new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(data.value));
-                for (const [_, value] of Object.entries(stats)) {
-                    initializeCreatureObject(value);
-                    COSStatList.push(value);
-                }
-                console.log(COSStatList);
-                resolve();
-            }).catch(reject);
-        }).catch(reject);
-    });
+function initializeCreatureStats() {
+    function onError(reason) {
+        setTimeout(initializeCreatureStats, 3000);
+        console.error(reason);
+        console.log("Retrying in 3000ms");
+    }
+    fetch("creatureStats.json", { priority: "high" }).then(response => {
+        if (!response.ok)
+            throw new Error("Response is not ok");
+        response.json().then((uninitializedCreatureStats) => {
+            const creatureStats = [];
+            for (const [_, value] of Object.entries(uninitializedCreatureStats)) {
+                initializeCreatureObject(value);
+                creatureStats.push(value);
+            }
+            COSStatList = creatureStats;
+            updateCreatureStatsTable();
+        }).catch(onError);
+    }).catch(onError);
 }
 function initializeCreatureObject(creature) {
     creature.passive = creature.passive.toLowerCase();
@@ -457,7 +461,9 @@ function updateCreatureStatsTable() {
 function applyFilters() {
     activeFilters = [];
     for (const div of FILTER_CONTAINING_DIV.children) {
-        if (div.id == "floatingWindow")
+        if (!(div instanceof HTMLDivElement) || div.id == "floatingWindow")
+            continue;
+        if (!div.querySelector("label[data-labelType='active']").querySelector("input[type='checkbox']").checked)
             continue;
         const statTypeIndex = Number(div.querySelector("button[name='statTypeSelect']").value);
         if (isNaN(statTypeIndex) || statTypeIndex == -1)
@@ -466,7 +472,7 @@ function applyFilters() {
         if (filterType == null)
             continue;
         const inputtedText = div.querySelector("input[type='text']").value;
-        const reverseFilter = div.querySelector("label").querySelector("input[type='checkbox']").checked;
+        const reverseFilter = div.querySelector("label[data-labelType='reverse']").querySelector("input[type='checkbox']").checked;
         activeFilters.push(new Filter(statList[statTypeIndex], filterType, inputtedText, reverseFilter));
     }
     updateCreatureStatsTable();
@@ -500,6 +506,46 @@ function getFilterTypeFromValue(value) {
         case "greaterThanEquals": return FilterType.GREATER_THAN_EQUALS;
         default: return null;
     }
+}
+function createFilter() {
+    const div = document.createElement("div");
+    const button = document.createElement("button"); //div.querySelector("button[name='statTypeSelect']")
+    button.name = "statTypeSelect";
+    button.value = "-1";
+    button.style.width = "28ch";
+    button.textContent = "SELECT STAT TYPE";
+    button.addEventListener("click", () => {
+        openChooseTypeMenu(button);
+    });
+    const deleteFilterButton = document.createElement("button");
+    deleteFilterButton.name = "deleteFilter";
+    deleteFilterButton.textContent = "Delete";
+    deleteFilterButton.addEventListener("click", () => {
+        deleteFilterButton.closest("div").remove();
+    });
+    const select = document.createElement("select");
+    select.name = "equalityType";
+    select.append(createOption("equals", "EQUALS"), createOption("contains", "CONTAINS"), createOption("lessThan", "<"), createOption("lessThanEquals", "≤"), createOption("greaterThan", ">"), createOption("greaterThanEquals", "≥"));
+    const textInput = document.createElement("input");
+    textInput.type = "text";
+    textInput.style.width = "20ch";
+    const reverseLabel = document.createElement("label");
+    reverseLabel.setAttribute("data-labelType", "reverse");
+    reverseLabel.style.marginRight = "5px";
+    const reverseCheckbox = document.createElement("input");
+    reverseCheckbox.type = "checkbox";
+    reverseCheckbox.name = "reverseCheckbox";
+    const activeLabel = document.createElement("label");
+    activeLabel.setAttribute("data-labelType", "active");
+    activeLabel.style.marginRight = "5px";
+    const activeCheckbox = document.createElement("input");
+    activeCheckbox.type = "checkbox";
+    activeCheckbox.name = "activeCheckbox";
+    activeCheckbox.checked = true;
+    reverseLabel.append(reverseCheckbox, "Reverse");
+    activeLabel.append(activeCheckbox, "Active");
+    div.append(button, select, textInput, reverseLabel, activeLabel, deleteFilterButton);
+    return div;
 }
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 function onHeaderCellClick(headerCell) {
@@ -548,35 +594,6 @@ function chooseTypeSearchBarUpdate() {
             tableRow.style.display = "none";
         }
     }
-}
-function createFilter() {
-    const div = document.createElement("div");
-    const button = document.createElement("button"); //div.querySelector("button[name='statTypeSelect']")
-    button.name = "statTypeSelect";
-    button.value = "-1";
-    button.textContent = "SELECT STAT TYPE";
-    button.addEventListener("click", () => {
-        openChooseTypeMenu(button);
-    });
-    const deleteFilterButton = document.createElement("button");
-    deleteFilterButton.name = "deleteFilter";
-    deleteFilterButton.textContent = "Delete";
-    deleteFilterButton.style.marginLeft = "5px";
-    deleteFilterButton.addEventListener("click", () => {
-        deleteFilterButton.closest("div").remove();
-    });
-    const select = document.createElement("select");
-    select.name = "equalityType";
-    select.append(createOption("equals", "EQUALS"), createOption("contains", "CONTAINS"), createOption("lessThan", "<"), createOption("lessThanEquals", "≤"), createOption("greaterThan", ">"), createOption("greaterThanEquals", "≥"));
-    const textInput = document.createElement("input");
-    textInput.type = "text";
-    const label = document.createElement("label");
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.name = "reverseCheckbox";
-    label.append(checkbox, "Reverse");
-    div.append(button, select, textInput, label, deleteFilterButton);
-    return div;
 }
 function createOption(value, text) {
     const option = document.createElement("option");
@@ -662,12 +679,12 @@ function closeFloatingWindow() {
     FLOATING_WINDOW_SEARCH_BAR.value = "";
     FLOATING_WINDOW.style.display = "none";
 }
-function onFrame(time) {
+function onFrame(_) {
     FLOATING_WINDOW.querySelector("img").style.top = `${FLOATING_WINDOW.scrollTop}px`;
     requestAnimationFrame(onFrame);
 }
 (async () => {
-    const initializeCreatureStatsPromise = initializeCreatureStats();
+    initializeCreatureStats();
     initializeStatList();
     nameStat = getStatValueWithKeyName("common");
     selectedStats.push(nameStat);
@@ -685,9 +702,6 @@ function onFrame(time) {
         FILTER_CONTAINING_DIV.appendChild(createFilter());
     });
     FILTER_CONTAINING_DIV.appendChild(createFilter());
-    initializeCreatureStatsPromise.then(() => {
-        updateCreatureStatsTable();
-    });
     requestAnimationFrame(onFrame);
 })();
 //# sourceMappingURL=cosStatList.js.map

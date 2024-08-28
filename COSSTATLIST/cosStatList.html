@@ -24,10 +24,10 @@
         <script src="cosStatList.js" defer></script>
     </head>
     <body>
-        <p style="font-weight: bold; text-align: center;">Filters</p>
-        <p style="text-align: center;">Concentrate your search!</p>
-        <div id="filterConfigurations"></div>
-        <div style="margin-bottom: 5px;">
+        <div id="filterConfigurations">
+            <p style="font-weight: bold;margin-bottom: 0;">Filters</p>
+        </div>
+        <div style="margin-bottom: 15px;">
             <button id="applyFilters">Submit Filter Changes</button>
             <button id="createFilter">Add Filter</button>
         </div>
@@ -35,7 +35,7 @@
         <div>
             <button id="addStatTypesButton">Configure stat types</button>
         </div>
-        <div style="position: relative;width: max-content;max-width:75vw;height: 50vh;background-color: white;display: none;overflow:scroll;" id="floatingWindow">
+        <div style="position:relative;width: max-content;max-width:75vw;height: 50vh;background-color:white;display: none;overflow:scroll;border:gray solid 1px;" id="floatingWindow">
             <img class="clickableButton" style="z-index: 2; border-radius: 8px; float: right; width: 20px; height: 20px;" src="../Icons/CancelIcon.svg"/>
             <input type="search" id="floatingWindowSearchBar">
             <table id="floatingWindowTable">
