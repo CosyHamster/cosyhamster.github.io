@@ -1,7 +1,19 @@
 {
     "cSpell.words": [
         "codehs",
+        "hoverable",
         "playpause",
         "smallplaypause"
+    ],
+    "cSpell.ignorePaths": [
+        "package-lock.json",
+        "node_modules",
+        "vscode-extension",
+        ".git/objects",
+        ".vscode",
+        ".vscode-insiders",
+        "./COSSTATLIST/statList.json",
+        "./COSSTATLIST/creatureStatsLuaToJS.py",
+        "./tsconfig.json"
     ]
 }

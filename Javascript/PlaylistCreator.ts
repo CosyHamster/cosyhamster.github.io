@@ -1338,7 +1338,7 @@ function spawnContextMenu(clientX: number, clientY: number, contextOptions: Cont
       contextIcon.src = contextOption.icon;
       contextButton.append(contextIcon, contextOption.text);
     } else {
-      contextButton.innerText = contextOption.text;
+      contextButton.textContent = contextOption.text;
     }
     CONTEXT_MENU.appendChild(contextButton);
   }

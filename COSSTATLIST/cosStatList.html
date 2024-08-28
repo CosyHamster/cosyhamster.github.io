@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            .clickableButton{
+                position: relative;
+                z-index: 0;
+                transition-property: background-color, box-shadow;
+                transition-duration: 200ms;
+                border-radius: 5px;
+                user-select: none;
+                -webkit-user-drag: none;
+                cursor: pointer;
+            }
+            .clickableButton:hover{ background-color: rgb(200, 200, 200); }
+            .clickableButton:active{
+                transition-duration: 100ms;
+                background-color: rgb(255, 255, 255);
+                box-shadow: 0 5px 5px 0 rgba(0,0,0,0.24), 0 17px 50px 0 rgba(0,0,0,0.19);
+            }
+            .hoverable:hover{ background-color: rgb(200, 200, 200); }
+        </style>
+        <script src="cosStatList.js" defer></script>
+    </head>
+    <body>
+        <p style="font-weight: bold; text-align: center;">Filters</p>
+        <p style="text-align: center;">Concentrate your search!</p>
+        <div id="filterConfigurations"></div>
+        <div style="margin-bottom: 5px;">
+            <button id="applyFilters">Submit Filter Changes</button>
+            <button id="createFilter">Add Filter</button>
+        </div>
+
+        <div>
+            <button id="addStatTypesButton">Configure stat types</button>
+        </div>
+        <div style="position: relative;width: max-content;max-width:75vw;height: 50vh;background-color: white;display: none;overflow:scroll;" id="floatingWindow">
+            <img class="clickableButton" style="z-index: 2; border-radius: 8px; float: right; width: 20px; height: 20px;" src="../Icons/CancelIcon.svg"/>
+            <input type="search" id="floatingWindowSearchBar">
+            <table id="floatingWindowTable">
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <table id="statList" style="border-width: 1px;border-style: solid;">
+            <thead>
+                <tr>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </body>
+</html>

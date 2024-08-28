@@ -1259,7 +1259,7 @@ function spawnContextMenu(clientX, clientY, contextOptions, allowDefaultOptions)
             contextButton.append(contextIcon, contextOption.text);
         }
         else {
-            contextButton.innerText = contextOption.text;
+            contextButton.textContent = contextOption.text;
         }
         CONTEXT_MENU.appendChild(contextButton);
     }
