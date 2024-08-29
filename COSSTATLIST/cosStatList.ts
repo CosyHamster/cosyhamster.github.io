@@ -53,11 +53,11 @@ class Filter{
 abstract class StatValue{
     displayName: string;
     keyName: string;
+    canBeDisabled = true;
     getDisplayValue(creature: Creature): string{
         return String(this.getValue(creature));
     }
     abstract getValue(creature: Creature): unknown;
-    // abstract initializeCreatureObject(creatureObject: Creature): void
     abstract sort(creature1: Creature, creature2: Creature): number;
     abstract filter(creature: Creature, filterType: FilterType, testVal: string): boolean;
     constructor(displayName: string, keyName: string){
@@ -79,7 +79,6 @@ class ValuelessAbilityStat extends StatValue{
             return true;
         }
     }).bind(this)
-    // override initializeCreatureObject(creature: Creature){ /* let value = parseFloat(creature[this.keyName] as string); if(isNaN(value)) return; else creature.abilities[this.keyName] = value; */ }
     override sort = ((creature1: Creature, _: Creature): number => {
         return (this.getValue(creature1) ? -1 : 1) * (sortAscending ? -1 : 1);
     }).bind(this);
@@ -104,7 +103,6 @@ class KeyedNumberStatValue extends StatValue{
     override getValue = ((creature: Creature): number => {
         return parseFloat(creature[this.keyName] as string);
     }).bind(this);
-    // override initializeCreatureObject(creature: Creature){ /* let value = parseFloat(creature[this.keyName] as string); if(isNaN(value)) return; else creature.abilities[this.keyName] = value; */ }
     override sort = ((creature1: Creature, creature2: Creature): number => {
         let creature1Value = this.getValue(creature1);
         let creature2Value = this.getValue(creature2);
@@ -146,7 +144,6 @@ class AbilityNumberStatValue extends StatValue{
         let abilityValue = searchString.substring(searchString.indexOf("(", abilityNameEndIndex)+1, searchString.indexOf(")", abilityNameEndIndex))
         return parseFloat(abilityValue);
     }).bind(this);
-    // override initializeCreatureObject(creature: Creature){ /* let value = parseFloat(creature[this.keyName] as string); if(isNaN(value)) return; else creature.abilities[this.keyName] = value; */ }
     override sort = ((creature1: Creature, creature2: Creature): number => {
         let creature1Value = this.getValue(creature1);
         let creature2Value = this.getValue(creature2);
@@ -174,7 +171,6 @@ class KeyedStringStatValue extends StatValue{
     override getValue = ((creature: Creature): string => {
         return creature[this.keyName] as string;
     }).bind(this);
-    // override initializeCreatureObject(creature: Creature){ /* let value = parseFloat(creature[this.keyName] as string); if(isNaN(value)) return; else creature.abilities[this.keyName] = value; */ }
     override sort = ((creature1: Creature, creature2: Creature): number => {
         const creature1Val = this.getValue(creature1);
         const creature2Val = this.getValue(creature2);
@@ -207,7 +203,6 @@ class AbilityStringStatValue extends StatValue{
         let abilityValue = searchString.substring(searchString.indexOf("(", abilityNameEndIndex)+1, searchString.indexOf(")", abilityNameEndIndex))
         return abilityValue;
     }).bind(this);
-    // override initializeCreatureObject(creature: Creature){ /* let value = parseFloat(creature[this.keyName] as string); if(isNaN(value)) return; else creature.abilities[this.keyName] = value; */ }
     override sort = ((creature1: Creature, creature2: Creature): number => {
         const creature1Val = this.getValue(creature1);
         const creature2Val = this.getValue(creature2);
@@ -228,7 +223,9 @@ class AbilityStringStatValue extends StatValue{
 }
 
 function initializeStatList(){
-    statList.push(new KeyedStringStatValue("Name", "common"));
+    nameStat = new KeyedStringStatValue("Name", "common")
+    nameStat.canBeDisabled = false;
+    statList.push(nameStat);
     statList.push(new KeyedStringStatValue("Class", "class"));
     statList.push(new KeyedStringStatValue("Type", "type"));
     statList.push(new KeyedStringStatValue("Diet", "diet"));
@@ -256,7 +253,7 @@ function initializeStatList(){
     statList.push(new KeyedNumberStatValue("Hunger Drain", "hungerDrain"));
     statList.push(new KeyedNumberStatValue("Thirst Drain", "thirstDrain"));
     statList.push(new KeyedStringStatValue("Image Link", "imageLink")); //I'll probably do something with this at some point lol
-    statList.push(new KeyedNumberStatValue("Minimum Age to Jump", "jumpAge"));
+    statList.push(new KeyedNumberStatValue("Minimum Age to use Spacebar", "jumpAge"));
     statList.push(new KeyedNumberStatValue("Jump Power", "jumpPower"));
     statList.push(new KeyedNumberStatValue("Jump Stamina Cost", "jumpStamina"));
     statList.push(new KeyedNumberStatValue("Moisture Duration (seconds)", "moistureTime"));
@@ -383,14 +380,14 @@ function initializeCreatureObject(creature: Creature){
     creature.passive = creature.passive.toLowerCase();
     creature.activated = creature.activated.toLowerCase();
     creature.tableRow = document.createElement("tr");
-    creature.tableRow.setAttribute("class", "hoverable");
+    creature.tableRow.setAttribute("class", "hoverable creatureTableRow");
     creature.tableRow.title = creature.common;
 }
 
 function addStatValueToCreatureRows(statValue: StatValue){
     for(let i = 0; i < COSStatList.length; i++){
         const newCell = document.createElement("td");
-        newCell.style.textAlign = "center";
+        newCell.setAttribute("class", "creatureStatCell");
         newCell.textContent = statValue.getDisplayValue(COSStatList[i]);
         COSStatList[i].tableRow.appendChild(newCell);
     }
@@ -430,8 +427,14 @@ function updateCreatureStatsTable(){
     if(COSStatList.length == 0) return; //it's not initialized yet!
 
     console.time("updateTable");
+    let removedTableBody = false;
     const statTableBody = STAT_LIST_TABLE.querySelector("tbody");
-    statTableBody.remove();
+    function ensureTableBodyRemoved(){
+        if(!removedTableBody){
+            statTableBody.remove();
+            removedTableBody = true;
+        }
+    }
 
     filterCreatures();
     let tableHeaderRow = STAT_LIST_TABLE.querySelector("thead").querySelector("tr");
@@ -444,6 +447,7 @@ function updateCreatureStatsTable(){
         if(getSelectedStatValueWithKeyName(keyName) != null){
             headerCellsKeyNames.push(keyName);
         } else {
+            ensureTableBodyRemoved();
             cell.remove();
             removeStatValueFromCreatureRows(i)
             --i;
@@ -453,11 +457,11 @@ function updateCreatureStatsTable(){
     for(let i = 0; i < selectedStats.length; i++){
         const statValue = selectedStats[i];
         if(!headerCellsKeyNames.includes(statValue.keyName)){
+            ensureTableBodyRemoved();
             let newCell = document.createElement("th");
             newCell.setAttribute("scope", "col");
             newCell.setAttribute("data-keyname", statValue.keyName);
-            newCell.style.userSelect = "none";
-            newCell.style.cursor = "cell";
+            newCell.setAttribute("class", "creatureStatHeaderCell creatureStatCell");
             newCell.addEventListener("click", () => onHeaderCellClick(newCell));
             newCell.textContent = statValue.displayName;
             tableHeaderRow.appendChild(newCell);
@@ -466,6 +470,7 @@ function updateCreatureStatsTable(){
     }
 
     if(sortDirty){
+        // ensureTableBodyRemoved();  //THIS USES MORE PERFORMANCE
         const wasAscending = sortAscending;
         sortAscending = false;
         COSStatList.sort(nameStat.sort);
@@ -477,7 +482,7 @@ function updateCreatureStatsTable(){
         statTableBody.replaceChildren(...rowsToAppend);
         sortDirty = false;
     }
-    STAT_LIST_TABLE.appendChild(statTableBody);
+    if(removedTableBody) STAT_LIST_TABLE.appendChild(statTableBody);
     console.timeEnd("updateTable");
 }
 
@@ -598,7 +603,7 @@ function openChooseTypeMenu(button: HTMLButtonElement){
         const cell = document.createElement("td");
         cell.textContent = statValue.displayName;
         cell.setAttribute("class", "clickableButton");
-        cell.addEventListener("click", () => {
+        row.addEventListener("click", () => {
             closeFloatingWindow();
             button.value = String(i);
             button.textContent = statValue.displayName;
@@ -640,7 +645,6 @@ function openConfigureTypesMenu(){
     const selectAllRow = document.createElement("tr");
     const cell = document.createElement("td");
     const selectAllCheckbox = document.createElement("input");
-    selectAllCheckbox.id = `selectAllStats`;
     selectAllCheckbox.type = "checkbox";
     selectAllCheckbox.checked = selectedStats.length == statList.length;
     selectAllCheckbox.addEventListener("change", () => {
@@ -658,9 +662,9 @@ function openConfigureTypesMenu(){
         updateCreatureStatsTable();
     });
     const label = document.createElement("label");
-    label.setAttribute("for", "selectAllStats");
-    label.textContent = "Select All";
-    cell.append(selectAllCheckbox, label);
+    label.setAttribute("style", "display: block; width: 100%;");
+    label.append(selectAllCheckbox, "Select All");
+    cell.appendChild(label);
     selectAllRow.appendChild(cell);
     rows.push(selectAllRow);
 
@@ -669,8 +673,8 @@ function openConfigureTypesMenu(){
         const row = document.createElement("tr");
         const cell = document.createElement("td");
         const checkbox = document.createElement("input");
-        checkbox.id = `${statValue.keyName}checkBox`;
         checkbox.type = "checkbox";
+        // checkbox.disabled = !statValue.canBeDisabled;
         checkbox.checked = getSelectedStatValueWithKeyName(statValue.keyName) != null;
         checkbox.addEventListener("change", () => {
             const indexOfStatValue = selectedStats.indexOf(statValue);
@@ -682,10 +686,10 @@ function openConfigureTypesMenu(){
             updateCreatureStatsTable();
         });
         const label = document.createElement("label");
-        label.setAttribute("for", `${statValue.keyName}checkBox`);
-        label.textContent = statValue.displayName;
+        label.setAttribute("style", "display: block; width: 100%;");
+        label.append(checkbox, statValue.displayName);
 
-        cell.append(checkbox, label);
+        cell.appendChild(label);
         row.appendChild(cell);
         rows.push(row);
     }
@@ -709,9 +713,10 @@ function configureTypesSearchBarUpdate(){
 }
 
 function closeFloatingWindow(){
-    FLOATING_WINDOW_SEARCH_BAR.oninput = null;
-    FLOATING_WINDOW_SEARCH_BAR.value = "";
     FLOATING_WINDOW.style.display = "none";
+    FLOATING_WINDOW_TABLE.querySelector("tbody").replaceChildren();
+    FLOATING_WINDOW_SEARCH_BAR.oninput = null;
+    FLOATING_WINDOW_SEARCH_BAR.value = "";   
 }
 
 function onFrame(_: DOMHighResTimeStamp){
@@ -724,6 +729,7 @@ function onFrame(_: DOMHighResTimeStamp){
     initializeStatList();
     nameStat = getStatValueWithKeyName("common");
     selectedStats.push(nameStat);
+    selectedStats.push(getStatValueWithKeyName("type"));
     selectedStats.push(getStatValueWithKeyName("diet"));
     selectedStats.push(getStatValueWithKeyName("tier"));
 

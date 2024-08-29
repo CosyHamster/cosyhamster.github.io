@@ -3,7 +3,9 @@
         "codehs",
         "hoverable",
         "playpause",
-        "smallplaypause"
+        "Regen",
+        "smallplaypause",
+        "Spacebar"
     ],
     "cSpell.ignorePaths": [
         "package-lock.json",

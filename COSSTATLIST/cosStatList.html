@@ -2,6 +2,8 @@
 <html>
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="cosStatList.js" defer></script>
+        
         <style>
             .clickableButton{
                 position: relative;
@@ -19,33 +21,39 @@
                 background-color: rgb(255, 255, 255);
                 box-shadow: 0 5px 5px 0 rgba(0,0,0,0.24), 0 17px 50px 0 rgba(0,0,0,0.19);
             }
+            
             .hoverable:hover{ background-color: rgb(200, 200, 200); }
+            table{
+                border-collapse: collapse;
+            }
+            .creatureTableRow{
+                text-align: center;
+                text-wrap: nowrap;
+            }
+            .creatureStatHeaderCell{
+                text-wrap: nowrap; user-select: none; cursor: cell;
+            }
+            .creatureStatCell{
+                max-width: 50vw;
+                overflow-x: auto;
+                scrollbar-width: thin;
+            }
         </style>
-        <script src="cosStatList.js" defer></script>
     </head>
     <body>
         <div style="border: 1px solid black; margin-bottom: 15px;">
+            <p style="font-weight: bold; margin: 0;">Filters</p>
             <div id="filterConfigurations">
-                <p style="font-weight: bold;margin: 0;">Filters</p>
+                
             </div>
-            <div style="">
+            <div>
                 <button id="applyFilters">Submit Filter Changes</button>
                 <button id="createFilter">Add Filter</button>
             </div>
         </div>
 
-        <div>
-            <button id="addStatTypesButton">Configure stat types</button>
-        </div>
-        <div style="position:relative;width: max-content;max-width:75vw;height: 50vh;background-color:white;display: none;overflow:scroll;border:gray solid 1px;" id="floatingWindow">
-            <img class="clickableButton" style="z-index: 2; border-radius: 8px; float: right; width: 20px; height: 20px;" src="../Icons/CancelIcon.svg"/>
-            <input type="search" id="floatingWindowSearchBar">
-            <table id="floatingWindowTable">
-                <tbody></tbody>
-            </table>
-        </div>
-
-        <table id="statList" style="border-width: 1px;border-style: solid;">
+        <button id="addStatTypesButton">Configure stat types</button>
+        <table id="statList" style="border-width: 1px; border-style: solid;">
             <thead>
                 <tr>
                 </tr>
@@ -53,5 +61,13 @@
             <tbody>
             </tbody>
         </table>
+
+        <div id="floatingWindow" style="position:relative;width: max-content;max-width:75vw;height: 50vh;background-color:white;display: none;overflow:scroll;border:gray solid 1px;">
+            <img class="clickableButton" style="z-index: 2; border-radius: 8px; float: right; width: 20px; height: 20px;" src="../Icons/CancelIcon.svg"/>
+            <input type="search" id="floatingWindowSearchBar">
+            <table id="floatingWindowTable" style="width: calc(100% - 20px);">
+                <tbody></tbody>
+            </table>
+        </div>
     </body>
 </html>
