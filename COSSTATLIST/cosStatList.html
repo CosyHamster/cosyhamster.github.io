@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0 minimum-scale=0.5">
         <script src="cosStatList.js" defer></script>
         
         <style>
@@ -23,6 +23,8 @@
             }
             
             .hoverable:hover{ background-color: rgb(200, 200, 200); }
+            .focusable:focus{ border: black solid 1px; }
+            .focusable:focus-visible{ border: black solid 1px; }
             table{
                 border-collapse: collapse;
             }
@@ -53,7 +55,7 @@
         </div>
 
         <button id="addStatTypesButton">Configure stat types</button>
-        <table id="statList" style="border-width: 1px; border-style: solid;">
+        <table id="statList" tabindex="0" style="border-width: 1px; border-style: solid;">
             <thead>
                 <tr>
                 </tr>
@@ -63,7 +65,7 @@
         </table>
 
         <div id="floatingWindow" style="position:relative;width: max-content;max-width:75vw;height: 50vh;background-color:white;display: none;overflow:scroll;border:gray solid 1px;">
-            <img class="clickableButton" style="z-index: 2; border-radius: 8px; float: right; width: 20px; height: 20px;" src="../Icons/CancelIcon.svg"/>
+            <img class="clickableButton" tabindex="0" style="z-index: 2; border-radius: 8px; float: right; width: 20px; height: 20px;" src="../Icons/CancelIcon.svg"/>
             <input type="search" id="floatingWindowSearchBar">
             <table id="floatingWindowTable" style="width: calc(100% - 20px);">
                 <tbody></tbody>

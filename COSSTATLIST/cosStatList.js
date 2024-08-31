@@ -256,6 +256,7 @@ function initializeStatList() {
     statList.push(new KeyedNumberStatValue("Turn Radius", "turn"));
     statList.push(new KeyedNumberStatValue("Weight (lbs)", "weight"));
     statList.push(new ValuelessAbilityStat("Grab", "Grab"));
+    statList.push(new AbilityNumberStatValue("Latch", "Latch"));
     statList.push(new ValuelessAbilityStat("Guilt", "Guilt"));
     statList.push(new ValuelessAbilityStat("Harden", "Harden"));
     statList.push(new ValuelessAbilityStat("Frosty", "Frosty"));
@@ -329,6 +330,7 @@ function initializeStatList() {
     //defensive aliment
     statList.push(new AbilityNumberStatValue("Defensive Bleed", "Defensive Bleed"));
     statList.push(new AbilityNumberStatValue("Defensive Poison", "Defensive Poison"));
+    statList.push(new AbilityNumberStatValue("Toxic Trail", "Toxic Trail"));
     statList.push(new AbilityNumberStatValue("Defensive Necropoison", "Defensive Necropoison"));
     statList.push(new AbilityNumberStatValue("Defensive Burn", "Defensive Burn"));
     statList.push(new AbilityNumberStatValue("Defensive Paralyze", "Defensive Paralyze"));
@@ -370,7 +372,8 @@ function initializeCreatureObject(creature) {
 function addStatValueToCreatureRows(statValue) {
     for (let i = 0; i < COSStatList.length; i++) {
         const newCell = document.createElement("td");
-        newCell.setAttribute("class", "creatureStatCell");
+        newCell.setAttribute("tabindex", "-1");
+        newCell.setAttribute("class", "creatureStatCell focusable");
         newCell.textContent = statValue.getDisplayValue(COSStatList[i]);
         COSStatList[i].tableRow.appendChild(newCell);
     }
@@ -439,10 +442,13 @@ function updateCreatureStatsTable() {
         if (!headerCellsKeyNames.includes(statValue.keyName)) {
             ensureTableBodyRemoved();
             let newCell = document.createElement("th");
+            newCell.setAttribute("tabindex", "0");
             newCell.setAttribute("scope", "col");
             newCell.setAttribute("data-keyname", statValue.keyName);
             newCell.setAttribute("class", "creatureStatHeaderCell creatureStatCell");
             newCell.addEventListener("click", () => onHeaderCellClick(newCell));
+            newCell.addEventListener("keydown", (keyEvent) => { if (keyEvent.key == "Enter")
+                onHeaderCellClick(newCell); });
             newCell.textContent = statValue.displayName;
             tableHeaderRow.appendChild(newCell);
             addStatValueToCreatureRows(statValue);
@@ -577,10 +583,16 @@ function openChooseTypeMenu(button) {
         const cell = document.createElement("td");
         cell.textContent = statValue.displayName;
         cell.setAttribute("class", "clickableButton");
-        row.addEventListener("click", () => {
+        row.setAttribute("tabindex", "0");
+        function onSelectStat() {
             closeFloatingWindow();
             button.value = String(i);
             button.textContent = statValue.displayName;
+        }
+        row.addEventListener("click", onSelectStat);
+        row.addEventListener("keydown", (keyEvent) => {
+            if (keyEvent.key == "Enter")
+                onSelectStat();
         });
         row.appendChild(cell);
         rows.push(row);
@@ -693,7 +705,6 @@ function onFrame(_) {
 (async () => {
     initializeCreatureStats();
     initializeStatList();
-    nameStat = getStatValueWithKeyName("common");
     selectedStats.push(nameStat);
     selectedStats.push(getStatValueWithKeyName("type"));
     selectedStats.push(getStatValueWithKeyName("diet"));
@@ -701,7 +712,10 @@ function onFrame(_) {
     sortFunction = nameStat.sort;
     sortAscending = false;
     sortDirty = true;
-    FLOATING_WINDOW.querySelector("img").addEventListener("click", closeFloatingWindow);
+    const exitFloatingWindowButton = FLOATING_WINDOW.querySelector("img");
+    exitFloatingWindowButton.addEventListener("click", closeFloatingWindow);
+    exitFloatingWindowButton.addEventListener("keydown", (keyEvent) => { if (keyEvent.key == "Enter")
+        closeFloatingWindow(); });
     CONFIGURE_STAT_TYPES_BUTTON.addEventListener("click", openConfigureTypesMenu);
     document.getElementById("applyFilters").addEventListener("click", () => {
         applyFilters();
@@ -712,4 +726,89 @@ function onFrame(_) {
     FILTER_CONTAINING_DIV.appendChild(createFilter());
     requestAnimationFrame(onFrame);
 })();
+STAT_LIST_TABLE.addEventListener("keydown", (keyEvent) => {
+    if (!(keyEvent.target instanceof HTMLElement))
+        return;
+    const STAT_TABLE_BODY = STAT_LIST_TABLE.querySelector("tbody");
+    if (keyEvent.target.closest("thead") != null)
+        return;
+    if (keyEvent.target == STAT_LIST_TABLE) {
+        switch (keyEvent.key) {
+            case "Enter":
+            case "ArrowRight":
+            case "ArrowDown":
+            case "ArrowLeft":
+                keyEvent.preventDefault();
+                STAT_TABLE_BODY.firstElementChild.firstElementChild.focus({ focusVisible: true });
+        }
+    }
+    else if (keyEvent.target instanceof HTMLTableCellElement) {
+        function nextSiblingTillVisibleIsFound(element) {
+            while (true) {
+                element = element.nextElementSibling;
+                if (element) {
+                    if (element.style.display == "none")
+                        continue;
+                    else
+                        return element;
+                }
+                else {
+                    return null; //theres no more elements!
+                }
+            }
+        }
+        function prevSiblingTillVisibleIsFound(element) {
+            while (true) {
+                element = element.previousElementSibling;
+                if (element) {
+                    if (element.style.display == "none")
+                        continue;
+                    else
+                        return element;
+                }
+                else {
+                    return null; //theres no more elements!
+                }
+            }
+        }
+        function goToNeighboringCell(forward) {
+            keyEvent.preventDefault();
+            const nextCell = ((forward) ? keyEvent.target.nextElementSibling : keyEvent.target.previousElementSibling);
+            if (nextCell)
+                nextCell.focus({ focusVisible: true });
+        }
+        function goToNeighboringRow(forward) {
+            keyEvent.preventDefault();
+            const parentRow = keyEvent.target.parentElement;
+            const nextRow = ((forward) ? nextSiblingTillVisibleIsFound(keyEvent.target.parentElement) : prevSiblingTillVisibleIsFound(keyEvent.target.parentElement));
+            const currentChildIndex = Array.prototype.indexOf.call(parentRow.children, keyEvent.target);
+            if (nextRow != null) {
+                const cell = nextRow.children[currentChildIndex];
+                if (cell != null) {
+                    cell.focus({ focusVisible: true });
+                }
+            }
+        }
+        if (keyEvent.key == "ArrowRight") {
+            goToNeighboringCell(true);
+        }
+        else if (keyEvent.key == "ArrowLeft") {
+            goToNeighboringCell(false);
+        }
+        else if (keyEvent.key == "ArrowDown") {
+            goToNeighboringRow(true);
+        }
+        else if (keyEvent.key == "ArrowUp") {
+            goToNeighboringRow(false);
+        }
+        else if (keyEvent.key == "Enter") {
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.selectNode(keyEvent.target);
+            selection.removeAllRanges();
+            selection.addRange(range);
+            navigator.clipboard.writeText(keyEvent.target.textContent);
+        }
+    }
+});
 //# sourceMappingURL=cosStatList.js.map
