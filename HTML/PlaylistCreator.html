@@ -20,9 +20,9 @@
 
         <input type="file" style="display: none;" id="0input" multiple>
         <input type="file" style="display: none;" id="inputDirectory" multiple webkitdirectory>
-        <label for="0input"><img id="uploadFilesLabel" class="clickableButton" data-onRightClick="uploadFileMenu" src="../Icons/UploadIcon.svg" width=20 height=20 alt=""/></label> <!--https://commons.wikimedia.org/wiki/File:OOjs_UI_icon_upload.svg-->
-        <div style="cursor: pointer;" class="largerSize songName playingStatus text" id="currentFileName">Upload Files to Begin!</div>
-        <img class="clickableButton" id="settingsButton" width=20 height=20 style="float: right;" src="../Icons/SettingsIcon.svg"/> <!--https://en.m.wikipedia.org/wiki/File:Ic_settings_48px.svg-->
+        <label for="0input"><img id="uploadFilesLabel" class="clickableButton" tabindex="0" data-onRightClick="uploadFileMenu" src="../Icons/UploadIcon.svg" width=20 height=20 alt=""/></label> <!--https://commons.wikimedia.org/wiki/File:OOjs_UI_icon_upload.svg-->
+        <div style="cursor: pointer;" tabindex="0" class="largerSize songName playingStatus text" id="currentFileName">Upload Files to Begin!</div>
+        <img tabindex="0" class="clickableButton" id="settingsButton" width=20 height=20 style="float: right;" src="../Icons/SettingsIcon.svg"/> <!--https://en.m.wikipedia.org/wiki/File:Ic_settings_48px.svg-->
 
         <table border=1px style="position: absolute; width:calc(100% - 20px); top:40vh; transform: translate(0%, 0%); z-index: -2;">
             <tbody>
@@ -37,13 +37,13 @@
                     </td>
                 </tr>
                 <tr>
-                    <td id="skipBack" class="cell clickableButton" width=20%>
+                    <td id="skipBack" tabindex="0" class="cell clickableButton" width=20%>
                         <img class="playBackIcon" width="30" height="30" style="width:50%; height:50%;" src="../Icons/SkipIcon.svg" alt="Previous Song"/>
                     </td>
-                    <td id="seekBack" seekDirection=-1 class="cell clickableButton" width=20%>
+                    <td id="seekBack" tabindex="0" seekDirection=-1 class="cell clickableButton" width=20%>
                         <img class="playBackIcon" width="60" height="30" style="width:100%; height:100%" src="../Icons/SeekIcon.svg" alt="Seek Backwards"/>
                     </td>
-                    <td class="cell clickableButton" width=20%>
+                    <td tabindex="0" class="cell clickableButton" width=20%>
                         <label for="playpause" class="clickableButton">
                             <div class="playpause">
                                 <input type="checkbox" class="playpause" id="playpause" />
@@ -51,34 +51,34 @@
                             </div>
                         </label>
                     </td>
-                    <td id="seekForward" seekDirection=1 class="cell clickableButton" width=20%>
+                    <td id="seekForward" tabindex="0" seekDirection=1 class="cell clickableButton" width=20%>
                         <img class="playBackIcon" width="60" height="30" style="width:100%; height:100%; transform: scaleX(-1);" src="../Icons/SeekIcon.svg" alt="Seek Forwards"/>
                     </td>
-                    <td id="skipForward" class="cell clickableButton" width=20%>
+                    <td id="skipForward" tabindex="0" class="cell clickableButton" width=20%>
                         <img class="playBackIcon" width="30" height="30" style="width:50%; height:50%; transform: scaleX(-1);" src="../Icons/SkipIcon.svg" alt="Next Song"/>
                     </td>
                 </tr>
                 <tr>
                     <td width=20%>
                         <input type="checkbox" style="visibility: hidden; position: absolute;" id="repeatButton" class="repeatButton" title="Activate to repeat the current song indefinitely">
-                        <label for="repeatButton"><img id="repeatButtonImg" class="clickableButton repeatIcon" enabledVersion="false" alt="Loop Song Toggle" src="../Icons/RepeatIcon.svg"/><!--<img class="clickableButton repeatIcon" enabledVersion="true" alt="Loop Song Enabled" src="../Icons/Repeat1Icon.svg"/>--></label> <!-- (was remixed) https://www.svgrepo.com/svg/523665/repeat; https://www.svgrepo.com/svg/523664/repeat-one; -->
+                        <label for="repeatButton" tabindex="0"><img id="repeatButtonImg" class="clickableButton repeatIcon" enabledVersion="false" alt="Loop Song Toggle" src="../Icons/RepeatIcon.svg"/><!--<img class="clickableButton repeatIcon" enabledVersion="true" alt="Loop Song Enabled" src="../Icons/Repeat1Icon.svg"/>--></label> <!-- (was remixed) https://www.svgrepo.com/svg/523665/repeat; https://www.svgrepo.com/svg/523664/repeat-one; -->
                         <input type="checkbox" style="visibility: hidden; position: absolute;" class="shuffle" id="shuffleButton" title="Activate to play the songs in a random order.">
-                        <label for="shuffleButton"><svg class="clickableButton" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" x="0px" y="0px" viewBox="0 0 100 100" width="50%" height="50%" xml:space="preserve"><path d="M83.745,69.516l-8.181,5.666V67.08c0,0-9.253,0-10.93,0c-15.551,0-29.989-27.566-41.66-27.566H8.069v-6.542h14.906  c18.125,0,29.063,27.65,41.66,27.65c1.76,0,10.93,0,10.93,0V52.52l8.181,5.666l8.186,5.665L83.745,69.516z"/><path d="M50.619,45.877c0.375,0.396,0.749,0.794,1.123,1.19c4.344-4.354,8.521-7.69,12.894-7.69c1.76,0,10.93,0,10.93,0v8.103  l8.181-5.666l8.186-5.666l-8.186-5.666l-8.181-5.665v8.102c0,0-9.253,0-10.93,0c-6.048,0-11.926,4.172-17.539,9.269  C48.298,43.419,49.472,44.659,50.619,45.877z"/><path d="M37.986,54.719c-0.633-0.626-1.276-1.261-1.923-1.894c-4.649,4.337-9.037,7.661-13.088,7.661H8.069v6.541h14.906  c6.979,0,12.889-4.103,18.243-9.145C40.123,56.824,39.044,55.763,37.986,54.719z"/></svg></label> <!-- https://commons.wikimedia.org/wiki/File:Shuffle_(50683)_-_The_Noun_Project.svg -->
+                        <label for="shuffleButton" tabindex="0"><svg class="clickableButton" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" x="0px" y="0px" viewBox="0 0 100 100" width="50%" height="50%" xml:space="preserve"><path d="M83.745,69.516l-8.181,5.666V67.08c0,0-9.253,0-10.93,0c-15.551,0-29.989-27.566-41.66-27.566H8.069v-6.542h14.906  c18.125,0,29.063,27.65,41.66,27.65c1.76,0,10.93,0,10.93,0V52.52l8.181,5.666l8.186,5.665L83.745,69.516z"/><path d="M50.619,45.877c0.375,0.396,0.749,0.794,1.123,1.19c4.344-4.354,8.521-7.69,12.894-7.69c1.76,0,10.93,0,10.93,0v8.103  l8.181-5.666l8.186-5.666l-8.186-5.666l-8.181-5.665v8.102c0,0-9.253,0-10.93,0c-6.048,0-11.926,4.172-17.539,9.269  C48.298,43.419,49.472,44.659,50.619,45.877z"/><path d="M37.986,54.719c-0.633-0.626-1.276-1.261-1.923-1.894c-4.649,4.337-9.037,7.661-13.088,7.661H8.069v6.541h14.906  c6.979,0,12.889-4.103,18.243-9.145C40.123,56.824,39.044,55.763,37.986,54.719z"/></svg></label> <!-- https://commons.wikimedia.org/wiki/File:Shuffle_(50683)_-_The_Noun_Project.svg -->
                     </td>
-                    <td width=20% style="position: relative;">
+                    <td width=20% tabindex="0" style="position: relative;">
                     </td>
                     <td width=20% style="position: relative;">
                         <img class="playBackIcon" src="../Icons/HeadphonesIcon.svg" alt="Pan Changer" style="width:100%; height:100%; position: absolute; left:50%; transform: translate(-50%, -50%)"> <!--https://www.svgrepo.com/svg/103147/headphone-->
-                        <div class="pullsOpen" style="visibility: visible; position: absolute; width: 100%; height: 100%; bottom: 50%; transform: translate(0, 50%);">
+                        <div tabindex="0" class="pullsOpen" style="visibility: visible; position: absolute; width: 100%; height: 100%; bottom: 50%; transform: translate(0, 50%);">
                             <div>
-                                <input type="range" id="0playPan" max=1 min=-1 value=0 step=0.01 list='commonPanValues' style="writing-mode: vertical-lr; direction: rtl; width: 100%; height: 100%; max-height: 50%; top: calc(25% - 2px); left: 50%; transform: translate(-50%, -50%); position: absolute;" />
+                                <input tabindex="0" type="range" id="0playPan" max=1 min=-1 value=0 step=0.01 list='commonPanValues' style="writing-mode: vertical-lr; direction: rtl; width: 100%; height: 100%; max-height: 50%; top: calc(25% - 2px); left: 50%; transform: translate(-50%, -50%); position: absolute;" />
                                 <label for="0playPan" style="color: black;">0%</label>
                             </div>
                         </div>
                     </td>
                     <td width=20% style="position: relative;">
                         <img class="playBackIcon" src="../Icons/PlaybackSpeedIcon.svg" alt="Playback Speed Changer" style="width:100%; height:100%; position: absolute; left:50%; transform: translate(-50%, -50%);"><!--https://www.svgrepo.com/svg/76295/download-speed-->
-                        <div class="pullsOpen" style="visibility: visible; position: absolute; width: 100%; height: 100%; bottom: 50%; transform: translate(0, 50%);">
+                        <div tabindex="0" class="pullsOpen" style="visibility: visible; position: absolute; width: 100%; height: 100%; bottom: 50%; transform: translate(0, 50%);">
                             <div>
                                 <input type="range" id="0playRateSlider" list='commonVolumesAndRates' max=2 min=0 value=1 step=0.01 style="writing-mode: vertical-lr; direction: rtl; position: absolute; width: 100%; height: calc(100% - 38.98px); max-height: calc(50% - 19.49px); top: calc(25% + 9.745px); left: 50%; transform: translate(-50%, -50%);" />
                                 <input type="number" style="width: calc(100% - 7.61px)" class="playRate" id="0playRate" value="1" step="0.01" min="0" inputmode="numeric"></input>
@@ -90,7 +90,7 @@
                         <label for="0Mute" style="cursor: pointer;">
                             <!-- <img  src="../Icons/SpeakerIcon.svg" alt="Volume Changer & Mute Button"/> -->
                             <svg style="width:50%; height:50%; position: relative; left:50%; transform: translate(-50%, 0%)" xmlns="http://www.w3.org/2000/svg" version="1.0" width="500" height="500" viewBox="0 0 75 75"><path d="M39.389,13.769 L22.235,28.606 L6,28.606 L6,47.699 L21.989,47.699 L39.389,62.75 L39.389,13.769z" style="stroke-width:5;stroke-linejoin:round;"/><path d="M48,27.6a19.5,19.5 0 0 1 0,21.4M55.1,20.5a30,30 0 0 1 0,35.6M61.6,14a38.8,38.8 0 0 1 0,48.6" style="fill: none;stroke-width:5;stroke-linecap:round"/></svg>
-                            <div class="pullsOpen" style="visibility: visible; position: absolute; width: 100%; height: 100%; bottom: 50%; transform: translate(0, 50%);">
+                            <div tabindex="0" class="pullsOpen" style="visibility: visible; position: absolute; width: 100%; height: 100%; bottom: 50%; transform: translate(0, 50%);">
                                 <div>
                                     <input type="range" id="0playVolume" list='commonVolumesAndRates' max=1 min=0 value=1 step=0.01 style="writing-mode: vertical-lr; direction: rtl; width: 100%; height: 100%; max-height: 50%; top: calc(25% - 2px); left: 50%; transform: translate(-50%, -50%); position: absolute;" />
                                     <label for="0playVolume" style="color: black;">100%</label>
@@ -101,7 +101,7 @@
                 </tr>
                 <tr>
                     <td colspan=5>
-                        <table style="width:100%" border=1px id="Playlist_Viewer">
+                        <table tabindex="0" style="width:100%" border=1px id="Playlist_Viewer">
                             <tbody>
                                 <tr>
                                     <th>Playlist</th>
@@ -150,7 +150,7 @@
         </dialog>
         <dialog id="errorPopup">
             <div>
-                <img class="clickableButton" id="exitErrorPopup" style="border-radius: 8px; float: right; width: 20px; height: 20px;" src="../Icons/CancelIcon.svg"/> <!--https://en.m.wikipedia.org/wiki/File:Ic_settings_48px.svg-->
+                <img tabindex="0" class="clickableButton" id="exitErrorPopup" style="border-radius: 8px; float: right; width: 20px; height: 20px;" src="../Icons/CancelIcon.svg"/> <!--https://en.m.wikipedia.org/wiki/File:Ic_settings_48px.svg-->
                 <div>
                     <h1>Errors:</h1>
                     <dl id="errorList"></dl>
@@ -163,7 +163,7 @@
                     <tbody>
                         <tr>
                             <th style="text-align: center;">
-                                <img class="clickableButton" id="exitDeprecatedPopup" style="border-radius: 8px; float: right; width: 20px; height: 20px;" src="../Icons/CancelIcon.svg">
+                                <img tabindex="0" class="clickableButton" id="exitDeprecatedPopup" style="border-radius: 8px; float: right; width: 20px; height: 20px;" src="../Icons/CancelIcon.svg">
                                 <h1>INACTIVE</h1>
                             </th>
                         </tr>

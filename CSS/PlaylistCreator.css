@@ -187,7 +187,7 @@ dialog::backdrop{
     opacity: 0;
     z-index: 2;
 }
-.pullsOpen:hover div{
+.pullsOpen:is(:hover, :focus-within) div{
     width: 100%;
     height: 50vh;
     visibility: visible;

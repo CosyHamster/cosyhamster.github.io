@@ -192,7 +192,7 @@ class Song{
 
 class RegistrableEvent {
   registeredCallbacks: Function[] = [];
-  register(func: Function) {
+  register(func: (parameter: unknown) => void) {
     this.registeredCallbacks.push(func)
   }
   unregister(func: Function) {
@@ -201,7 +201,7 @@ class RegistrableEvent {
   clearAll() {
     this.registeredCallbacks = [];
   }
-  callAllRegisteredFunctions(data: {timestamp?: number, keyEvent?: KeyboardEvent}) {
+  callAllRegisteredFunctions(data: (DOMHighResTimeStamp | KeyboardEvent)) {
     for (var i = 0; i < this.registeredCallbacks.length; i++) this.registeredCallbacks[i](data)
   }
 }
@@ -209,7 +209,10 @@ class RegistrableEvent {
 class KeyDownEventRegistrar extends RegistrableEvent {
   constructor() {
     super();
-    window.addEventListener('keydown', key => this.callAllRegisteredFunctions({keyEvent: key}), { passive: false });
+    window.addEventListener('keydown', keyEvent => this.callAllRegisteredFunctions(keyEvent), { passive: false });
+  }
+  override register(func: (keyEvent: KeyboardEvent) => void) {
+    this.registeredCallbacks.push(func)
   }
 }
 
@@ -220,9 +223,12 @@ class RequestAnimationFrameEventRegistrar extends RegistrableEvent {
     super();
     RequestAnimationFrameEventRegistrar.raf((timestamp) => this.handleRAFCall(timestamp))
   }
-  handleRAFCall(timestamp: number) {
-    this.callAllRegisteredFunctions({timestamp: timestamp})
+  handleRAFCall(timestamp: DOMHighResTimeStamp) {
+    this.callAllRegisteredFunctions(timestamp)
     RequestAnimationFrameEventRegistrar.raf((timestamp) => this.handleRAFCall(timestamp))
+  }
+  override register(func: (timestamp: DOMHighResTimeStamp) => void) {
+    this.registeredCallbacks.push(func)
   }
 }
 
@@ -428,7 +434,9 @@ var currentSongIndex: number | null = null;
   if ("serviceWorker" in navigator && !SITE_DEPRECATED) {
     navigator.serviceWorker.register("../ServiceWorker.js");
   }
-  KEY_DOWN_EVENT.register(closeContextMenu);
+  KEY_DOWN_EVENT.register(keyEvent => {
+    if(keyEvent.key != "Tab" && keyEvent.key != "Shift" && keyEvent.key != "Ctrl" && keyEvent.key != "Alt") closeContextMenu();
+  });
   KEY_DOWN_EVENT.register(selectionLogicForKeyboard);
   REQUEST_ANIMATION_FRAME_EVENT.register(onFrameStepped);
   makeDocumentDroppable();
@@ -458,15 +466,16 @@ var currentSongIndex: number | null = null;
     closeContextMenu();
     if (mouseEvent.target == document.querySelector("html") || mouseEvent.target == document.body) deselectAll();
   });
-  registerClickEvent('skipBack', () => jumpSong(-1));
-  registerClickEvent('skipForward', () => jumpSong());
-  registerClickEvent('seekBack', () => seek(parseFloat(SEEK_BACK.getAttribute('seekDirection'))));
-  registerClickEvent('seekForward', () => seek(parseFloat(SEEK_FORWARD.getAttribute('seekDirection'))));
-  registerClickEvent(CURRENT_FILE_NAME, () => PLAYLIST_VIEWER_TABLE.rows[currentSongIndex + 1].scrollIntoView(false));
-  registerClickEvent('settingsButton', async () => SETTINGS_PAGE.showModal());
-  registerClickEvent('exitSettingsButton', async () => SETTINGS_PAGE.close());
-  registerClickEvent('exitErrorPopup', async () => ERROR_POPUP.close());
-  registerClickEvent('exitDeprecatedPopup', async () => DEPRECATED_POPUP.close());
+  registerClickEvent(CURRENT_FILE_NAME, () => PLAYLIST_VIEWER_TABLE.rows[currentSongIndex + 1].scrollIntoView(false))();
+  registerClickEvent('skipBack', () => jumpSong(-1))();
+  registerClickEvent('skipForward', () => jumpSong())();
+  registerClickEvent(SEEK_BACK, () => seek(parseFloat(SEEK_BACK.getAttribute('seekDirection'))))();
+  registerClickEvent('seekForward', () => seek(parseFloat(SEEK_FORWARD.getAttribute('seekDirection'))))();
+  registerClickEvent('settingsButton', () => SETTINGS_PAGE.showModal())();
+  registerClickEvent('exitSettingsButton', () => SETTINGS_PAGE.close())();
+  registerClickEvent('exitErrorPopup', () => ERROR_POPUP.close())();
+  registerClickEvent('exitDeprecatedPopup', () => DEPRECATED_POPUP.close())();
+  registerKeyDownEvent(SEEK_BACK.nextElementSibling, () => PLAY_BUTTON.click());
   registerChangeEvent(PLAY_BUTTON, () => pauseOrUnpauseCurrentSong(!PLAY_BUTTON.checked));
   registerChangeEvent(COMPACT_MODE_TOGGLE, toggleCompactMode);
   registerChangeEvent(REORDER_FILES_CHECKBOX, () => {
@@ -476,21 +485,29 @@ var currentSongIndex: number | null = null;
       rows[i].draggable = checked;
     }
   });
+  registerKeyDownEvent(MUTE_BUTTON.parentElement, () => MUTE_BUTTON.click());
   registerChangeEvent(MUTE_BUTTON, () => { if(sounds[currentSongIndex].isInExistence()) sounds[currentSongIndex].howl.mute(MUTE_BUTTON.checked); });
-  registerChangeEvent(REPEAT_BUTTON, () => { 
+  registerKeyDownEvent(REPEAT_BUTTON.labels[0], () => REPEAT_BUTTON.click());
+  registerChangeEvent(REPEAT_BUTTON, () => {
       const checked = REPEAT_BUTTON.checked;
       if(currentSongIndex !== null && sounds[currentSongIndex].isInExistence()) sounds[currentSongIndex].howl.loop(checked);
       if (checked) REPEAT_BUTTON_IMAGE.src = "../Icons/Repeat1Icon.svg";
       else REPEAT_BUTTON_IMAGE.src = "../Icons/RepeatIcon.svg";
   });
+  registerKeyDownEvent(SHUFFLE_BUTTON.labels[0], () => SHUFFLE_BUTTON.click());
   registerChangeEvent(SHUFFLE_BUTTON, () => handleShuffleButton(SHUFFLE_BUTTON.checked));
   registerChangeEvent(PLAY_RATE, () => onPlayRateUpdate(parseFloat(PLAY_RATE.value)));
+  registerKeyDownEvent(UPLOAD_BUTTON.labels[0].querySelector("img"), () => UPLOAD_BUTTON.click());
   registerChangeEvent(UPLOAD_BUTTON, () => importFiles(UPLOAD_BUTTON.files));
   registerChangeEvent(UPLOAD_DIRECTORY_BUTTON, () => importFiles(UPLOAD_DIRECTORY_BUTTON.files));
   registerInputEvent(PLAY_RATE_RANGE, () => { onPlayRateUpdate(parseFloat(PLAY_RATE_RANGE.value)) });
   registerInputEvent(PRELOAD_DIST_ELEMENT, () => { PRELOAD_DIST_ELEMENT.labels[0].textContent = `Value: ${PRELOAD_DIST_ELEMENT.value}` });
   registerInputEvent(PLAY_PAN, () => { if(sounds[currentSongIndex].howl) PLAY_PAN.labels[0].textContent = `${Math.floor(Number(PLAY_PAN.value) * 100)}%`; sounds[currentSongIndex].howl.stereo(Number(PLAY_PAN.value)) });
   registerInputEvent(VOLUME_CHANGER, () => { if (sounds[currentSongIndex].howl) VOLUME_CHANGER.labels[0].textContent = `${Math.floor(Number(VOLUME_CHANGER.value) * 100)}%`; sounds[currentSongIndex].howl.volume(Number(VOLUME_CHANGER.value)); });
+  PLAYLIST_VIEWER_TABLE.addEventListener("focus", () => {
+    if(selectedRows.length == 0 && PLAYLIST_VIEWER_TABLE.rows[1]) selectRow(PLAYLIST_VIEWER_TABLE.rows[1]);
+  });
+  
   ERROR_POPUP.addEventListener("close", onCloseErrorPopup);
   SEEK_DURATION_NUMBER_INPUT.addEventListener('input', updateSeekDurationDisplay, { passive: true });
   PROGRESS_BAR.addEventListener('pointerenter', (pointer) => progressBarSeek(pointer, ProgressBarSeekAction.DISPLAY_TIME), { passive: true })
@@ -534,9 +551,13 @@ function onCloseErrorPopup() {
   }
 }
 
-function registerClickEvent(element: EventTarget | string, func: EventListenerOrEventListenerObject) {
+function registerClickEvent(element: EventTarget | string, func: EventListenerOrEventListenerObject): () => void {
   if (typeof element === 'string') element = document.getElementById(element);
-  element.addEventListener( 'click', func, { passive: true })
+  element.addEventListener('click', func, { passive: true })
+  return () => registerKeyDownEvent(element, func);
+}
+function registerKeyDownEvent(element: EventTarget, func: EventListenerOrEventListenerObject, keyName = "Enter"){
+  element.addEventListener('keydown', (keyEvent) => { if(keyEvent.key == keyName) func() }, { passive: true })
 }
 function registerChangeEvent(element: EventTarget | string, func: EventListenerOrEventListenerObject) {
   if (typeof element === 'string') element = document.getElementById(element);
@@ -1198,9 +1219,8 @@ function moveSelectedSongs(toIndex: number) {
   updateSongNumberings();
   refreshPreloadedSongs();
 }
-function selectionLogicForKeyboard(data: {keyEvent: KeyboardEvent}) {
+function selectionLogicForKeyboard(keyboardEvent: KeyboardEvent) {
   if (selectedRows.length == 0) return;
-  const keyboardEvent: KeyboardEvent = data.keyEvent;
   switch (keyboardEvent.code) {
     case "Escape": return deselectAll();
     case "ArrowUp": return arrowSelection(keyboardEvent, -1);
@@ -1325,10 +1345,12 @@ function spawnContextMenu(clientX: number, clientY: number, contextOptions: Cont
     ]);
   }
 
+  const contextButtons: HTMLDivElement[] = [];
   for (let i = 0; i < contextOptions.length; i++) {
     const contextOption = contextOptions[i];
     const contextButton = document.createElement('div');
     contextButton.setAttribute('class', 'contextOption');
+    contextButton.tabIndex = 1;
     if (i < contextOptions.length - 1) contextButton.style.borderBottomWidth = "1px";
     contextButton.addEventListener('click', (event) => { if (CONTEXT_MENU.hasAttribute('open')) contextOption.action(event) });
 
@@ -1340,10 +1362,11 @@ function spawnContextMenu(clientX: number, clientY: number, contextOptions: Cont
     } else {
       contextButton.textContent = contextOption.text;
     }
-    CONTEXT_MENU.appendChild(contextButton);
+    contextButtons.push(contextButton);
   }
 
-  CONTEXT_MENU.style.height = `${contextOptions.length * 29}px`;
+  CONTEXT_MENU.append(...contextButtons);
+  CONTEXT_MENU.style.height = `${contextButtons.length * 29}px`;
 
   let leftOffset = clientX + 2,
     downOffset = clientY + 2;
@@ -1360,6 +1383,7 @@ function spawnContextMenu(clientX: number, clientY: number, contextOptions: Cont
   CONTEXT_MENU.style.left = `${leftOffset}px`;
   CONTEXT_MENU.style.top = `${downOffset}px`;
   CONTEXT_MENU.toggleAttribute('open', true);
+  if(contextButtons[0]) contextButtons[0].focus({focusVisible: true});
 }
 
 function closeContextMenu() { CONTEXT_MENU.toggleAttribute('open', false); CONTEXT_MENU.style.height = '0'; };
