@@ -320,6 +320,7 @@ function initializeStatList(){
     statList.push(new AbilityNumberStatValue("Burrower", "Burrower"));
     statList.push(new AbilityNumberStatValue("Radiation", "Radiation"));
     statList.push(new AbilityNumberStatValue("Healing Hunter", "Healing Hunter"));
+    statList.push(new AbilityNumberStatValue("First Strike", "First Strike"));
     //aliment attack
     statList.push(new AbilityNumberStatValue("Bleed Attack", "Bleed Attack"));
     statList.push(new AbilityNumberStatValue("Poison Attack", "Poison Attack"));
