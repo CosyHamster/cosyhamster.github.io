@@ -119,12 +119,12 @@ table{
 .playBackIcon{ pointer-events: none; }
 dialog{
     display: inline-flex;
+    position: fixed;
     top: -100vh;
     width: 0;
     height: 0;
     left: 100%;
     opacity: 0;
-    
     flex-direction: column;
     background-color: white;
     @media not (prefers-reduced-motion) {
@@ -134,20 +134,19 @@ dialog{
 dialog[open] {
     top: 0;
     left: 0;
+    
     height: max-content;
     width: 75%;
     opacity: 1;
+    @media (max-width: 140ch){
+        width: 100%;
+    }
 }
 dialog::backdrop{
     transition: 250ms;
     transition-duration: 250ms;
     animation: darkenColor 250ms ease normal;
     animation-fill-mode: forwards;
-}
-@media (max-width: 140ch){
-    dialog[open] {
-        width: 100%;
-    }
 }
 @keyframes darkenColor{
     from {

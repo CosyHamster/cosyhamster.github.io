@@ -434,10 +434,12 @@ var currentSongIndex: number | null = null;
   if ("serviceWorker" in navigator && !SITE_DEPRECATED) {
     navigator.serviceWorker.register("../ServiceWorker.js");
   }
+
+  registerDialogInertEvents();
   KEY_DOWN_EVENT.register(keyEvent => {
-    if(keyEvent.key != "Tab" && keyEvent.key != "Shift" && keyEvent.key != "Ctrl" && keyEvent.key != "Alt") closeContextMenu();
+    if(keyEvent.key != "Tab" && keyEvent.key != "Shift" && keyEvent.key != "Ctrl" && keyEvent.key != "Alt" && keyEvent.key != "Enter") closeContextMenu();
   });
-  KEY_DOWN_EVENT.register(selectionLogicForKeyboard);
+  KEY_DOWN_EVENT.register((keyboardEvent) => { if(keyboardEvent.key == "Escape") deselectAll()});
   REQUEST_ANIMATION_FRAME_EVENT.register(onFrameStepped);
   makeDocumentDroppable();
   // document.addEventListener('touchend', (touchEvent: TouchEvent) => {
@@ -504,9 +506,13 @@ var currentSongIndex: number | null = null;
   registerInputEvent(PRELOAD_DIST_ELEMENT, () => { PRELOAD_DIST_ELEMENT.labels[0].textContent = `Value: ${PRELOAD_DIST_ELEMENT.value}` });
   registerInputEvent(PLAY_PAN, () => { if(sounds[currentSongIndex].howl) PLAY_PAN.labels[0].textContent = `${Math.floor(Number(PLAY_PAN.value) * 100)}%`; sounds[currentSongIndex].howl.stereo(Number(PLAY_PAN.value)) });
   registerInputEvent(VOLUME_CHANGER, () => { if (sounds[currentSongIndex].howl) VOLUME_CHANGER.labels[0].textContent = `${Math.floor(Number(VOLUME_CHANGER.value) * 100)}%`; sounds[currentSongIndex].howl.volume(Number(VOLUME_CHANGER.value)); });
-  PLAYLIST_VIEWER_TABLE.addEventListener("focus", () => {
-    if(selectedRows.length == 0 && PLAYLIST_VIEWER_TABLE.rows[1]) selectRow(PLAYLIST_VIEWER_TABLE.rows[1]);
+  PLAYLIST_VIEWER_TABLE.addEventListener("keyup", (keyEvent) => {
+    if(keyEvent.key == "Tab"){
+      if(selectedRows.length == 0 && PLAYLIST_VIEWER_TABLE.rows[1]) selectRow(PLAYLIST_VIEWER_TABLE.rows[1]);
+      if(selectedRows[0]) scrollRowIntoView(selectedRows[0]);
+    }
   });
+  PLAYLIST_VIEWER_TABLE.addEventListener("keydown", selectionLogicForKeyboard);
   
   ERROR_POPUP.addEventListener("close", onCloseErrorPopup);
   SEEK_DURATION_NUMBER_INPUT.addEventListener('input', updateSeekDurationDisplay, { passive: true });
@@ -543,6 +549,18 @@ function makeDocumentDroppable() {
   });
 }
 
+function registerDialogInertEvents(){
+  const showModalFunction = HTMLDialogElement.prototype.showModal;
+  HTMLDialogElement.prototype.showModal = function() {
+    this.removeAttribute("inert");
+    return showModalFunction.call(this);
+  }
+  for(const dialog of [SETTINGS_PAGE, DEPRECATED_POPUP, ERROR_POPUP]){
+    dialog.addEventListener("close", () => {
+      dialog.toggleAttribute("inert", true);
+    });
+  }
+}
 
 function onCloseErrorPopup() {
   let childElement;
@@ -557,7 +575,7 @@ function registerClickEvent(element: EventTarget | string, func: EventListenerOr
   return () => registerKeyDownEvent(element, func);
 }
 function registerKeyDownEvent(element: EventTarget, func: EventListenerOrEventListenerObject, keyName = "Enter"){
-  element.addEventListener('keydown', (keyEvent) => { if(keyEvent.key == keyName) func() }, { passive: true })
+  element.addEventListener('keydown', (keyEvent: KeyboardEvent) => { if(keyEvent.key == keyName) func() }, { passive: true })
 }
 function registerChangeEvent(element: EventTarget | string, func: EventListenerOrEventListenerObject) {
   if (typeof element === 'string') element = document.getElementById(element);
@@ -1136,14 +1154,7 @@ function onSingleClick(mouseEvent: MouseEvent) {
 
 //   spawnContextMenu(clientX, clientY, contextOptions, true);
 // }
-
-function selectRow(row: HTMLTableRowElement) {
-  row = findValidTableRow(row);
-  if(!row) return;
-  if(row.hasAttribute("data-selected")) return;
-  row.toggleAttribute("data-selected", true);
-  updateRowColor(row);
-  selectedRows.push(row);
+function scrollRowIntoView(row: HTMLTableRowElement){
   //@ts-expect-error
   if(row.scrollIntoViewIfNeeded){
     //@ts-expect-error
@@ -1151,6 +1162,15 @@ function selectRow(row: HTMLTableRowElement) {
   } else {
     row.scrollIntoView({behavior: "instant", block: "nearest"});
   }
+}
+function selectRow(row: HTMLTableRowElement) {
+  row = findValidTableRow(row);
+  if(!row) return;
+  if(row.hasAttribute("data-selected")) return;
+  row.toggleAttribute("data-selected", true);
+  updateRowColor(row);
+  selectedRows.push(row);
+  scrollRowIntoView(row);
 }
 function onDoubleClick(mouseEvent: MouseEvent) {
   deselectAll();
@@ -1221,8 +1241,7 @@ function moveSelectedSongs(toIndex: number) {
 }
 function selectionLogicForKeyboard(keyboardEvent: KeyboardEvent) {
   if (selectedRows.length == 0) return;
-  switch (keyboardEvent.code) {
-    case "Escape": return deselectAll();
+  switch (keyboardEvent.key) {
     case "ArrowUp": return arrowSelection(keyboardEvent, -1);
     case "ArrowDown": return arrowSelection(keyboardEvent, 1);
     case "Backspace":
@@ -1264,10 +1283,10 @@ function arrowSelection(keyboardEvent: KeyboardEvent, indexIncrement: number) {
 }
 function deleteSongsFromKeyboard(keyboardEvent: KeyboardEvent) { if (!isTyping(keyboardEvent)) deleteSelectedSongs(); }
 function startPlayingFromKeyboard(keyboardEvent: KeyboardEvent) {
-  if (isTyping(keyboardEvent) || selectedRows.length != 1) return;
+  if(isTyping(keyboardEvent) || selectedRows.length != 1) return;
   keyboardEvent.preventDefault();
   playRow(selectedRows[0])
-  deselectAll();
+  // deselectAll();
 }
 function tryFindTableRowInParents(element: Element): HTMLTableRowElement | null {
   return element.closest('tr');

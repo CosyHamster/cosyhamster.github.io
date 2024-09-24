@@ -367,11 +367,13 @@ var currentSongIndex = null;
     if ("serviceWorker" in navigator && !SITE_DEPRECATED) {
         navigator.serviceWorker.register("../ServiceWorker.js");
     }
+    registerDialogInertEvents();
     KEY_DOWN_EVENT.register(keyEvent => {
-        if (keyEvent.key != "Tab" && keyEvent.key != "Shift" && keyEvent.key != "Ctrl" && keyEvent.key != "Alt")
+        if (keyEvent.key != "Tab" && keyEvent.key != "Shift" && keyEvent.key != "Ctrl" && keyEvent.key != "Alt" && keyEvent.key != "Enter")
             closeContextMenu();
     });
-    KEY_DOWN_EVENT.register(selectionLogicForKeyboard);
+    KEY_DOWN_EVENT.register((keyboardEvent) => { if (keyboardEvent.key == "Escape")
+        deselectAll(); });
     REQUEST_ANIMATION_FRAME_EVENT.register(onFrameStepped);
     makeDocumentDroppable();
     // document.addEventListener('touchend', (touchEvent: TouchEvent) => {
@@ -445,10 +447,15 @@ var currentSongIndex = null;
         PLAY_PAN.labels[0].textContent = `${Math.floor(Number(PLAY_PAN.value) * 100)}%`; sounds[currentSongIndex].howl.stereo(Number(PLAY_PAN.value)); });
     registerInputEvent(VOLUME_CHANGER, () => { if (sounds[currentSongIndex].howl)
         VOLUME_CHANGER.labels[0].textContent = `${Math.floor(Number(VOLUME_CHANGER.value) * 100)}%`; sounds[currentSongIndex].howl.volume(Number(VOLUME_CHANGER.value)); });
-    PLAYLIST_VIEWER_TABLE.addEventListener("focus", () => {
-        if (selectedRows.length == 0 && PLAYLIST_VIEWER_TABLE.rows[1])
-            selectRow(PLAYLIST_VIEWER_TABLE.rows[1]);
+    PLAYLIST_VIEWER_TABLE.addEventListener("keyup", (keyEvent) => {
+        if (keyEvent.key == "Tab") {
+            if (selectedRows.length == 0 && PLAYLIST_VIEWER_TABLE.rows[1])
+                selectRow(PLAYLIST_VIEWER_TABLE.rows[1]);
+            if (selectedRows[0])
+                scrollRowIntoView(selectedRows[0]);
+        }
     });
+    PLAYLIST_VIEWER_TABLE.addEventListener("keydown", selectionLogicForKeyboard);
     ERROR_POPUP.addEventListener("close", onCloseErrorPopup);
     SEEK_DURATION_NUMBER_INPUT.addEventListener('input', updateSeekDurationDisplay, { passive: true });
     PROGRESS_BAR.addEventListener('pointerenter', (pointer) => progressBarSeek(pointer, 1 /* ProgressBarSeekAction.DISPLAY_TIME */), { passive: true });
@@ -484,6 +491,18 @@ function makeDocumentDroppable() {
         stopHighlightingRow();
         importFiles(dataTransfer);
     });
+}
+function registerDialogInertEvents() {
+    const showModalFunction = HTMLDialogElement.prototype.showModal;
+    HTMLDialogElement.prototype.showModal = function () {
+        this.removeAttribute("inert");
+        return showModalFunction.call(this);
+    };
+    for (const dialog of [SETTINGS_PAGE, DEPRECATED_POPUP, ERROR_POPUP]) {
+        dialog.addEventListener("close", () => {
+            dialog.toggleAttribute("inert", true);
+        });
+    }
 }
 function onCloseErrorPopup() {
     let childElement;
@@ -1048,6 +1067,16 @@ function onSingleClick(mouseEvent) {
 //   contextOptions.push({text: "Delete", action: deleteSelectedSongs});
 //   spawnContextMenu(clientX, clientY, contextOptions, true);
 // }
+function scrollRowIntoView(row) {
+    //@ts-expect-error
+    if (row.scrollIntoViewIfNeeded) {
+        //@ts-expect-error
+        row.scrollIntoViewIfNeeded();
+    }
+    else {
+        row.scrollIntoView({ behavior: "instant", block: "nearest" });
+    }
+}
 function selectRow(row) {
     row = findValidTableRow(row);
     if (!row)
@@ -1057,14 +1086,7 @@ function selectRow(row) {
     row.toggleAttribute("data-selected", true);
     updateRowColor(row);
     selectedRows.push(row);
-    //@ts-expect-error
-    if (row.scrollIntoViewIfNeeded) {
-        //@ts-expect-error
-        row.scrollIntoViewIfNeeded();
-    }
-    else {
-        row.scrollIntoView({ behavior: "instant", block: "nearest" });
-    }
+    scrollRowIntoView(row);
 }
 function onDoubleClick(mouseEvent) {
     deselectAll();
@@ -1138,8 +1160,7 @@ function moveSelectedSongs(toIndex) {
 function selectionLogicForKeyboard(keyboardEvent) {
     if (selectedRows.length == 0)
         return;
-    switch (keyboardEvent.code) {
-        case "Escape": return deselectAll();
+    switch (keyboardEvent.key) {
         case "ArrowUp": return arrowSelection(keyboardEvent, -1);
         case "ArrowDown": return arrowSelection(keyboardEvent, 1);
         case "Backspace":
@@ -1192,7 +1213,7 @@ function startPlayingFromKeyboard(keyboardEvent) {
         return;
     keyboardEvent.preventDefault();
     playRow(selectedRows[0]);
-    deselectAll();
+    // deselectAll();
 }
 function tryFindTableRowInParents(element) {
     return element.closest('tr');
