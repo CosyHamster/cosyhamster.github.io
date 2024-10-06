@@ -1297,6 +1297,8 @@ function spawnContextMenu(clientX, clientY, contextOptions, allowDefaultOptions)
             contextButton.style.borderBottomWidth = "1px";
         contextButton.addEventListener('click', (event) => { if (CONTEXT_MENU.hasAttribute('open'))
             contextOption.action(event); });
+        contextButton.addEventListener('keyup', (event) => { if (event.key == 'Enter' && CONTEXT_MENU.hasAttribute('open'))
+            contextOption.action(event); });
         if (contextOption.icon) {
             const contextIcon = document.createElement('img');
             contextIcon.setAttribute('class', 'contextIcon');

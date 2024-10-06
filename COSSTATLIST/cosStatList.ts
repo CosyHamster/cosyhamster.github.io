@@ -308,6 +308,7 @@ function initializeStatList(){
     statList.push(new ValuelessAbilityStat("Stamina Puddle", "Stamina Puddle"));
     statList.push(new ValuelessAbilityStat("Poison Area", "Poison Area"));
     statList.push(new ValuelessAbilityStat("Toxic Trap", "Toxic Trap"));
+    statList.push(new ValuelessAbilityStat("Thorn Trap", "Thorn Trap"));
     statList.push(new ValuelessAbilityStat("Sticky Trap", "Sticky Trap"));
     statList.push(new ValuelessAbilityStat("Speed Steal", "Speed Steal"));
     statList.push(new ValuelessAbilityStat("Speed Blitz", "Speed Blitz"));
@@ -320,6 +321,7 @@ function initializeStatList(){
     statList.push(new AbilityNumberStatValue("Burrower", "Burrower"));
     statList.push(new AbilityNumberStatValue("Radiation", "Radiation"));
     statList.push(new AbilityNumberStatValue("Healing Hunter", "Healing Hunter"));
+    statList.push(new AbilityNumberStatValue("Heal Aura", "Heal Aura"));
     statList.push(new AbilityNumberStatValue("First Strike", "First Strike"));
     //aliment attack
     statList.push(new AbilityNumberStatValue("Bleed Attack", "Bleed Attack"));
