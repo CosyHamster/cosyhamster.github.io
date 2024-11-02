@@ -715,13 +715,13 @@ function onFrame(_) {
 }
 (async () => {
     initializeCreatureStats().then(() => {
-        initializeStatList();
-        selectedStats.push(nameStat);
-        selectedStats.push(getStatValueWithKeyName("type"));
-        selectedStats.push(getStatValueWithKeyName("diet"));
-        selectedStats.push(getStatValueWithKeyName("tier"));
         updateCreatureStatsTable();
     });
+    initializeStatList();
+    selectedStats.push(nameStat);
+    selectedStats.push(getStatValueWithKeyName("type"));
+    selectedStats.push(getStatValueWithKeyName("diet"));
+    selectedStats.push(getStatValueWithKeyName("tier"));
     sortFunction = nameStat.sort;
     sortAscending = false;
     sortDirty = true;
