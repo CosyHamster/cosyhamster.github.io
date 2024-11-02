@@ -419,7 +419,7 @@ function getStatValueWithKeyName(keyName) {
     }
     return null;
 }
-function updateCreatureStatsTable() {
+async function updateCreatureStatsTable() {
     if (COSStatList.length == 0)
         return; //it's not initialized yet!
     console.time("updateTable");
@@ -457,9 +457,6 @@ function updateCreatureStatsTable() {
             newCell.setAttribute("scope", "col");
             newCell.setAttribute("data-keyname", statValue.keyName);
             newCell.setAttribute("class", "creatureStatHeaderCell creatureStatCell");
-            newCell.addEventListener("click", () => onHeaderCellClick(newCell));
-            newCell.addEventListener("keydown", (keyEvent) => { if (keyEvent.key == "Enter")
-                onHeaderCellClick(newCell); });
             newCell.textContent = statValue.displayName;
             tableHeaderRow.appendChild(newCell);
             addStatValueToCreatureRows(statValue);
@@ -476,6 +473,12 @@ function updateCreatureStatsTable() {
         for (const creature of COSStatList)
             rowsToAppend.push(creature.tableRow);
         statTableBody.replaceChildren(...rowsToAppend);
+        // statTableBody.replaceChildren();
+        // // STAT_LIST_TABLE.style.width = (selectedStats.length*25) + "ch"
+        // for(let i = 0; i < rowsToAppend.length; i++){
+        //     statTableBody.append(rowsToAppend[i])
+        //     await sleep(25);
+        // }
         sortDirty = false;
     }
     if (removedTableBody)
@@ -538,6 +541,7 @@ function createFilter() {
     button.value = "-1";
     button.style.width = "28ch";
     button.textContent = "SELECT STAT TYPE";
+    button.title = "Select a stat to filter!";
     button.addEventListener("click", () => {
         openChooseTypeMenu(button);
     });
@@ -549,18 +553,21 @@ function createFilter() {
     });
     const select = document.createElement("select");
     select.name = "equalityType";
+    select.title = "Choose what this stat should be!";
     select.append(createOption("equals", "EQUALS"), createOption("contains", "CONTAINS"), createOption("lessThan", "<"), createOption("lessThanEquals", "≤"), createOption("greaterThan", ">"), createOption("greaterThanEquals", "≥"));
     const textInput = document.createElement("input");
     textInput.type = "text";
     textInput.style.width = "20ch";
     const reverseLabel = document.createElement("label");
     reverseLabel.setAttribute("data-labelType", "reverse");
+    reverseLabel.title = "Show the creatures that don't match this filter!";
     reverseLabel.style.marginRight = "5px";
     const reverseCheckbox = document.createElement("input");
     reverseCheckbox.type = "checkbox";
     reverseCheckbox.name = "reverseCheckbox";
     const activeLabel = document.createElement("label");
     activeLabel.setAttribute("data-labelType", "active");
+    activeLabel.title = "Enable / Disable this filter!";
     activeLabel.style.marginRight = "5px";
     const activeCheckbox = document.createElement("input");
     activeCheckbox.type = "checkbox";
@@ -744,13 +751,25 @@ window.addEventListener("keydown", (keyEvent) => {
         closeFloatingWindow();
     }
 }, true);
+STAT_LIST_TABLE.addEventListener("click", (mouseEvent) => {
+    const target = mouseEvent.target;
+    let headerCell;
+    if (target instanceof HTMLElement && (headerCell = target.closest('th')) != null) {
+        onHeaderCellClick(headerCell);
+    }
+});
 STAT_LIST_TABLE.addEventListener("keydown", (keyEvent) => {
     if (!(keyEvent.target instanceof HTMLElement))
         return;
     const STAT_TABLE_BODY = STAT_LIST_TABLE.querySelector("tbody");
-    if (keyEvent.target.closest("thead") != null)
-        return;
-    if (keyEvent.target == STAT_LIST_TABLE) {
+    if (keyEvent.target.closest("thead") != null) {
+        const target = keyEvent.target;
+        let headerCell;
+        if (target instanceof HTMLElement && (headerCell = target.closest('th')) != null) {
+            onHeaderCellClick(headerCell);
+        }
+    }
+    else if (keyEvent.target == STAT_LIST_TABLE) {
         switch (keyEvent.key) {
             case "Enter":
             case "ArrowRight":

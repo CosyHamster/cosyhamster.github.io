@@ -29,17 +29,29 @@
             .focusable:focus{ outline: black solid 1px; }
             .focusable:focus-visible{ outline: black solid 1px; }
             
+            #statList{
+                border-width: 1px;
+                border-style: solid;
+                /* table-layout: fixed;
+                width: 100%; */
+            }
             .creatureTableRow{
                 text-align: center;
                 text-wrap: nowrap;
             }
             .creatureStatHeaderCell{
+                max-width: 25ch;
+                /* width: 25ch; */
                 text-wrap: nowrap;
+                overflow-x: auto;
+                scrollbar-width: thin;
                 user-select: none;
                 cursor: cell;
             }
             .creatureStatCell{
-                max-width: 50vw;
+                max-width: 25ch;
+                /* width: 25ch; */
+                text-wrap: nowrap;
                 overflow-x: auto;
                 scrollbar-width: thin;
             }
@@ -58,7 +70,7 @@
         </div>
 
         <button id="addStatTypesButton">Configure stat types</button>
-        <table id="statList" tabindex="0" style="border-width: 1px; border-style: solid;">
+        <table id="statList" tabindex="0">
             <thead>
                 <tr>
                 </tr>
@@ -69,7 +81,7 @@
 
         <div id="floatingWindow" style="position:relative;width: max-content;max-width:75vw;height: 50vh;background-color:white;display: none;overflow:scroll;border:gray solid 1px;">
             <img class="clickableButton" tabindex="0" style="z-index: 2; border-radius: 8px; float: right; width: 20px; height: 20px;" src="../Icons/CancelIcon.svg"/>
-            <input type="search" id="floatingWindowSearchBar">
+            <input type="search" id="floatingWindowSearchBar" placeholder="Search...">
             <table id="floatingWindowTable" style="width: calc(100% - 20px);">
                 <tbody></tbody>
             </table>
