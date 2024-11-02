@@ -775,11 +775,13 @@ function onFrame(_: DOMHighResTimeStamp){
     requestAnimationFrame(onFrame);
 })()
 
-STAT_LIST_TABLE.addEventListener("keydown", (keyEvent) => {
+window.addEventListener("keydown", (keyEvent) => {
     if(keyEvent.key == "Escape"){
         closeFloatingWindow()
     }
+}, true)
 
+STAT_LIST_TABLE.addEventListener("keydown", (keyEvent) => {
     if(!(keyEvent.target instanceof HTMLElement)) return;
     const STAT_TABLE_BODY = STAT_LIST_TABLE.querySelector("tbody");
     
