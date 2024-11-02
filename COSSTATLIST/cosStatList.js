@@ -351,7 +351,7 @@ function initializeStatList() {
 function initializeCreatureStats() {
     return new Promise((resolve) => {
         function onError(reason) {
-            setTimeout(initializeCreatureStats, 3000);
+            setTimeout(tryLoad, 3000);
             console.error(reason);
             console.log("Retrying in 3000ms");
         }
@@ -370,6 +370,7 @@ function initializeCreatureStats() {
                 }).catch(onError);
             }).catch(onError);
         }
+        tryLoad();
     });
 }
 function initializeCreatureObject(creature) {
@@ -739,6 +740,9 @@ function onFrame(_) {
     requestAnimationFrame(onFrame);
 })();
 STAT_LIST_TABLE.addEventListener("keydown", (keyEvent) => {
+    if (keyEvent.key == "Escape") {
+        closeFloatingWindow();
+    }
     if (!(keyEvent.target instanceof HTMLElement))
         return;
     const STAT_TABLE_BODY = STAT_LIST_TABLE.querySelector("tbody");
