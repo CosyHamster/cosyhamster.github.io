@@ -518,7 +518,7 @@ function registerClickEvent(element, func) {
 }
 function registerKeyDownEvent(element, func, keyName = "Enter") {
     element.addEventListener('keydown', (keyEvent) => { if (keyEvent.key == keyName)
-        func(); }, { passive: true });
+        func(keyEvent); }, { passive: true });
 }
 function registerChangeEvent(element, func) {
     if (typeof element === 'string')
@@ -1094,7 +1094,7 @@ function onDoubleClick(mouseEvent) {
     if (row)
         playRow(row);
 }
-/** @param removeIndex (-1) = won't remove any elems from array */
+/** @param removeIndex {number} (-1) = won't remove any elems from array */
 function deselectRow(removeIndex, removeFromArray = true) {
     const row = selectedRows[removeIndex];
     row.toggleAttribute("data-selected", false);

@@ -307,12 +307,14 @@ function initializeStatList(){
     statList.push(new ValuelessAbilityStat("Invisibility", "Invisibility"));
     statList.push(new ValuelessAbilityStat("Stamina Puddle", "Stamina Puddle"));
     statList.push(new ValuelessAbilityStat("Poison Area", "Poison Area"));
+    statList.push(new ValuelessAbilityStat("Channeling", "Channeling"));
     statList.push(new ValuelessAbilityStat("Toxic Trap", "Toxic Trap"));
     statList.push(new ValuelessAbilityStat("Thorn Trap", "Thorn Trap"));
     statList.push(new ValuelessAbilityStat("Sticky Trap", "Sticky Trap"));
     statList.push(new ValuelessAbilityStat("Speed Steal", "Speed Steal"));
     statList.push(new ValuelessAbilityStat("Speed Blitz", "Speed Blitz"));
     statList.push(new ValuelessAbilityStat("Escape Area", "Escape Area"));
+    statList.push(new ValuelessAbilityStat("Raider", "Raider"));
     statList.push(new ValuelessAbilityStat("Change Weather", "Change Weather"));
     statList.push(new ValuelessAbilityStat("Area Food Restore", "Area Food Restore"));
     statList.push(new ValuelessAbilityStat("Area Water Restore", "Area Water Restore"));
@@ -322,6 +324,7 @@ function initializeStatList(){
     statList.push(new AbilityNumberStatValue("Radiation", "Radiation"));
     statList.push(new AbilityNumberStatValue("Healing Hunter", "Healing Hunter"));
     statList.push(new AbilityNumberStatValue("Heal Aura", "Heal Aura"));
+    statList.push(new AbilityNumberStatValue("Cursed Sigil", "Cursed Sigil"));
     statList.push(new AbilityNumberStatValue("First Strike", "First Strike"));
     //aliment attack
     statList.push(new AbilityNumberStatValue("Bleed Attack", "Bleed Attack"));
@@ -360,25 +363,29 @@ function initializeStatList(){
     statList.push(new AbilityStringStatValue("Totem", "Totem"));
 }
 
-function initializeCreatureStats(){
-    function onError(reason: any){
-        setTimeout(initializeCreatureStats, 3000);
-        console.error(reason);
-        console.log("Retrying in 3000ms");
-    }
-
-    fetch("creatureStats.json", {priority: "high"}).then(response => {
-        if(!response.ok) throw new Error("Response is not ok");
-        response.json().then((uninitializedCreatureStats: {[key: string]: Creature}) => {
-            const creatureStats: Creature[] = [];
-            for (const [_, value] of Object.entries(uninitializedCreatureStats)) {
-                initializeCreatureObject(value);
-                creatureStats.push(value);
-            }
-            COSStatList = creatureStats;
-            updateCreatureStatsTable();
-        }).catch(onError);
-    }).catch(onError);
+function initializeCreatureStats(): Promise<void>{
+    return new Promise((resolve) => {
+        function onError(reason: any){
+            setTimeout(initializeCreatureStats, 3000);
+            console.error(reason);
+            console.log("Retrying in 3000ms");
+        }
+    
+        function tryLoad(){
+            fetch("creatureStats.json", {priority: "high"}).then(response => {
+                if(!response.ok) throw new Error("Response is not ok");
+                response.json().then((uninitializedCreatureStats: {[key: string]: Creature}) => {
+                    const creatureStats: Creature[] = [];
+                    for (const [_, value] of Object.entries(uninitializedCreatureStats)) {
+                        initializeCreatureObject(value);
+                        creatureStats.push(value);
+                    }
+                    COSStatList = creatureStats;
+                    resolve();
+                }).catch(onError);
+            }).catch(onError);
+        }
+    })
 }
 
 function initializeCreatureObject(creature: Creature){
@@ -738,12 +745,17 @@ function onFrame(_: DOMHighResTimeStamp){
 }
 
 (async () => { //START
-    initializeCreatureStats();
-    initializeStatList();
-    selectedStats.push(nameStat);
-    selectedStats.push(getStatValueWithKeyName("type"));
-    selectedStats.push(getStatValueWithKeyName("diet"));
-    selectedStats.push(getStatValueWithKeyName("tier"));
+    initializeCreatureStats().then(() => {
+        initializeStatList();
+        selectedStats.push(nameStat);
+        selectedStats.push(getStatValueWithKeyName("type"));
+        selectedStats.push(getStatValueWithKeyName("diet"));
+        selectedStats.push(getStatValueWithKeyName("tier"));
+
+        updateCreatureStatsTable();
+    });
+
+    
 
     sortFunction = nameStat.sort;
     sortAscending = false;

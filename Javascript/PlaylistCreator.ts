@@ -126,7 +126,7 @@ class SongLoader{
   }
 }
 
-class Song{
+class Song {
   file: File;
   nativeIndex: number;
   currentRow: HTMLTableRowElement;
@@ -477,7 +477,7 @@ var currentSongIndex: number | null = null;
   registerClickEvent('exitSettingsButton', () => SETTINGS_PAGE.close())();
   registerClickEvent('exitErrorPopup', () => ERROR_POPUP.close())();
   registerClickEvent('exitDeprecatedPopup', () => DEPRECATED_POPUP.close())();
-  registerKeyDownEvent(SEEK_BACK.nextElementSibling, () => PLAY_BUTTON.click());
+  registerKeyDownEvent(<HTMLElement>SEEK_BACK.nextElementSibling, () => PLAY_BUTTON.click());
   registerChangeEvent(PLAY_BUTTON, () => pauseOrUnpauseCurrentSong(!PLAY_BUTTON.checked));
   registerChangeEvent(COMPACT_MODE_TOGGLE, toggleCompactMode);
   registerChangeEvent(REORDER_FILES_CHECKBOX, () => {
@@ -569,19 +569,19 @@ function onCloseErrorPopup() {
   }
 }
 
-function registerClickEvent(element: EventTarget | string, func: EventListenerOrEventListenerObject): () => void {
+function registerClickEvent(element: EventTarget | string, func: (event: Event) => void): () => void {
   if (typeof element === 'string') element = document.getElementById(element);
   element.addEventListener('click', func, { passive: true })
-  return () => registerKeyDownEvent(element, func);
+  return () => registerKeyDownEvent(<HTMLElement>element, func);
 }
-function registerKeyDownEvent(element: EventTarget, func: EventListenerOrEventListenerObject, keyName = "Enter"){
-  element.addEventListener('keydown', (keyEvent: KeyboardEvent) => { if(keyEvent.key == keyName) func() }, { passive: true })
+function registerKeyDownEvent(element: HTMLElement, func: (event: Event) => void, keyName = "Enter"){
+  element.addEventListener('keydown', (keyEvent) => { if(keyEvent.key == keyName) func(keyEvent) }, { passive: true })
 }
-function registerChangeEvent(element: EventTarget | string, func: EventListenerOrEventListenerObject) {
+function registerChangeEvent(element: EventTarget | string, func: (event: Event) => void) {
   if (typeof element === 'string') element = document.getElementById(element);
   element.addEventListener('change', func, { passive: true })
 }
-function registerInputEvent(elem: HTMLInputElement, func: EventListenerOrEventListenerObject){
+function registerInputEvent(elem: HTMLInputElement, func: (event: Event) => void){
   elem.addEventListener('input', func, { passive: true });
 }
 
@@ -1177,7 +1177,7 @@ function onDoubleClick(mouseEvent: MouseEvent) {
   let row: HTMLTableRowElement | null = findValidTableRow(mouseEvent.target as Element);
   if(row) playRow(row);
 }
-/** @param removeIndex (-1) = won't remove any elems from array */
+/** @param removeIndex {number} (-1) = won't remove any elems from array */
 function deselectRow(removeIndex: number, removeFromArray: boolean = true) {
   const row: HTMLTableRowElement = selectedRows[removeIndex];
   row.toggleAttribute("data-selected", false)
@@ -1303,7 +1303,7 @@ function updateSongNumberings() {
 function rowValid(row: Element) { return row instanceof HTMLTableRowElement && row != PLAYLIST_VIEWER_TABLE.rows[0] && row.closest('table') == PLAYLIST_VIEWER_TABLE; }
 function findValidTableRow(topLevelElement: Element): HTMLTableRowElement | null{
   if(rowValid(topLevelElement)) return topLevelElement as HTMLTableRowElement;
-  else{
+  else {
     topLevelElement = tryFindTableRowInParents(topLevelElement);
     if (rowValid(topLevelElement)) return topLevelElement as HTMLTableRowElement;
     else return null;
