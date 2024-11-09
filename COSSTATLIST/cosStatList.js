@@ -1,5 +1,5 @@
 "use strict";
-var COSStatList = [];
+var creatureList = [];
 var statList = [];
 var selectedStats = [];
 var activeFilters = [];
@@ -300,11 +300,14 @@ function initializeStatList() {
     statList.push(new ValuelessAbilityStat("Sticky Trap", "Sticky Trap"));
     statList.push(new ValuelessAbilityStat("Speed Steal", "Speed Steal"));
     statList.push(new ValuelessAbilityStat("Speed Blitz", "Speed Blitz"));
+    statList.push(new ValuelessAbilityStat("Sonic Wings", "Sonic Wings"));
     statList.push(new ValuelessAbilityStat("Escape Area", "Escape Area"));
+    statList.push(new ValuelessAbilityStat("Rewind", "Rewind"));
     statList.push(new ValuelessAbilityStat("Raider", "Raider"));
     statList.push(new ValuelessAbilityStat("Change Weather", "Change Weather"));
     statList.push(new ValuelessAbilityStat("Area Food Restore", "Area Food Restore"));
     statList.push(new ValuelessAbilityStat("Area Water Restore", "Area Water Restore"));
+    statList.push(new ValuelessAbilityStat("Broodwatcher", "Broodwatcher"));
     statList.push(new AbilityNumberStatValue("Diver", "Diver"));
     statList.push(new AbilityNumberStatValue("Hunker", "Hunker"));
     statList.push(new AbilityNumberStatValue("Burrower", "Burrower"));
@@ -365,7 +368,7 @@ function initializeCreatureStats() {
                         initializeCreatureObject(value);
                         creatureStats.push(value);
                     }
-                    COSStatList = creatureStats;
+                    creatureList = creatureStats;
                     resolve();
                 }).catch(onError);
             }).catch(onError);
@@ -381,12 +384,12 @@ function initializeCreatureObject(creature) {
     creature.tableRow.title = creature.common;
 }
 function addStatValueToCreatureRows(statValue) {
-    for (let i = 0; i < COSStatList.length; i++) {
+    for (let i = 0; i < creatureList.length; i++) {
         const newCell = document.createElement("td");
         newCell.setAttribute("tabindex", "-1");
         newCell.setAttribute("class", "creatureStatCell focusable");
-        newCell.textContent = statValue.getDisplayValue(COSStatList[i]);
-        COSStatList[i].tableRow.appendChild(newCell);
+        newCell.textContent = statValue.getDisplayValue(creatureList[i]);
+        creatureList[i].tableRow.appendChild(newCell);
     }
 }
 // function removeStatValueFromCreatureRows(keyName: string){
@@ -401,8 +404,8 @@ function addStatValueToCreatureRows(statValue) {
 //     }
 // }
 function removeStatValueFromCreatureRows(index) {
-    for (let i = 0; i < COSStatList.length; i++) {
-        COSStatList[i].tableRow.children[index].remove();
+    for (let i = 0; i < creatureList.length; i++) {
+        creatureList[i].tableRow.children[index].remove();
     }
 }
 function getSelectedStatValueWithKeyName(keyName) {
@@ -420,7 +423,7 @@ function getStatValueWithKeyName(keyName) {
     return null;
 }
 async function updateCreatureStatsTable() {
-    if (COSStatList.length == 0)
+    if (creatureList.length == 0)
         return; //it's not initialized yet!
     console.time("updateTable");
     let removedTableBody = false;
@@ -463,14 +466,14 @@ async function updateCreatureStatsTable() {
         }
     }
     if (sortDirty) {
-        // ensureTableBodyRemoved();  //THIS USES MORE PERFORMANCE
+        // ensureTableBodyRemoved();  //THIS IS MORE EXPENSIVE BC ONLY DOM MODIFICATION PAST THIS POINT IS REPLACECHILDREN
         const wasAscending = sortAscending;
         sortAscending = false;
-        COSStatList.sort(nameStat.sort);
+        creatureList.sort(nameStat.sort);
         sortAscending = wasAscending;
-        COSStatList.sort(sortFunction);
+        creatureList.sort(sortFunction);
         const rowsToAppend = [];
-        for (const creature of COSStatList)
+        for (const creature of creatureList)
             rowsToAppend.push(creature.tableRow);
         statTableBody.replaceChildren(...rowsToAppend);
         // statTableBody.replaceChildren();
@@ -485,15 +488,16 @@ async function updateCreatureStatsTable() {
         STAT_LIST_TABLE.appendChild(statTableBody);
     console.timeEnd("updateTable");
 }
-function applyFilters() {
+function submitFilterChanges() {
+    var filterContainingDivs = FILTER_CONTAINING_DIV.children;
     activeFilters = [];
-    for (const div of FILTER_CONTAINING_DIV.children) {
+    for (const div of filterContainingDivs) {
         if (!(div instanceof HTMLDivElement) || div.id == "floatingWindow")
             continue;
         if (!div.querySelector("label[data-labelType='active']").querySelector("input[type='checkbox']").checked)
             continue;
         const statTypeIndex = Number(div.querySelector("button[name='statTypeSelect']").value);
-        if (isNaN(statTypeIndex) || statTypeIndex == -1)
+        if (Number.isNaN(statTypeIndex) || statTypeIndex == -1)
             continue;
         const filterType = getFilterTypeFromValue(div.querySelector("select").value);
         if (filterType == null)
@@ -505,7 +509,7 @@ function applyFilters() {
     updateCreatureStatsTable();
 }
 function filterCreatures() {
-    for (const creature of COSStatList) {
+    for (const creature of creatureList) {
         let matchesAllFilters = true;
         for (const filter of activeFilters) {
             if (!filter.test(creature)) {
@@ -520,6 +524,20 @@ function filterCreatures() {
         else {
             if (creature.tableRow.style.display != "none")
                 creature.tableRow.style.display = "none";
+        }
+    }
+}
+function updateRowColors() {
+    let brightGray = false;
+    const statTableBody = STAT_LIST_TABLE.querySelector("tbody");
+    var rows = statTableBody.rows;
+    for (const row of rows) {
+        if (row.style.display != "none") {
+            if (brightGray)
+                row.style.backgroundColor = "#ffffff";
+            else
+                row.style.backgroundColor = "#ebebeb";
+            brightGray = !brightGray;
         }
     }
 }
@@ -578,6 +596,7 @@ function createFilter() {
     div.append(button, select, textInput, reverseLabel, activeLabel, deleteFilterButton);
     return div;
 }
+//@ts-ignore
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 function onHeaderCellClick(headerCell) {
     const prevSortFunction = sortFunction;
@@ -738,7 +757,7 @@ function onFrame(_) {
         closeFloatingWindow(); });
     CONFIGURE_STAT_TYPES_BUTTON.addEventListener("click", openConfigureTypesMenu);
     document.getElementById("applyFilters").addEventListener("click", () => {
-        applyFilters();
+        submitFilterChanges();
     });
     document.getElementById("createFilter").addEventListener("click", () => {
         FILTER_CONTAINING_DIV.appendChild(createFilter());
@@ -763,23 +782,34 @@ STAT_LIST_TABLE.addEventListener("keydown", (keyEvent) => {
         return;
     const STAT_TABLE_BODY = STAT_LIST_TABLE.querySelector("tbody");
     if (keyEvent.target.closest("thead") != null) {
-        const target = keyEvent.target;
         let headerCell;
-        if (target instanceof HTMLElement && (headerCell = target.closest('th')) != null) {
+        if ((headerCell = keyEvent.target.closest('th')) && keyEvent.key == 'Enter') {
             onHeaderCellClick(headerCell);
         }
     }
-    else if (keyEvent.target == STAT_LIST_TABLE) {
+    else if (keyEvent.target === STAT_LIST_TABLE) {
+        function getFirstVisibleTableRow() {
+            var children = STAT_TABLE_BODY.rows;
+            for (const child of children) {
+                if (child.style.display != "none") {
+                    return child;
+                }
+            }
+            return null;
+        }
         switch (keyEvent.key) {
             case "Enter":
             case "ArrowRight":
             case "ArrowDown":
             case "ArrowLeft":
                 keyEvent.preventDefault();
-                STAT_TABLE_BODY.firstElementChild.firstElementChild.focus({ focusVisible: true });
+                const firstTableRow = getFirstVisibleTableRow();
+                if (firstTableRow)
+                    firstTableRow.firstElementChild.focus({ focusVisible: true });
         }
     }
     else if (keyEvent.target instanceof HTMLTableCellElement) {
+        const target = keyEvent.target;
         function nextSiblingTillVisibleIsFound(element) {
             while (true) {
                 element = element.nextElementSibling;
@@ -790,7 +820,7 @@ STAT_LIST_TABLE.addEventListener("keydown", (keyEvent) => {
                         return element;
                 }
                 else {
-                    return null; //theres no more elements!
+                    return null; //there's no more elements!
                 }
             }
         }
@@ -810,15 +840,15 @@ STAT_LIST_TABLE.addEventListener("keydown", (keyEvent) => {
         }
         function goToNeighboringCell(forward) {
             keyEvent.preventDefault();
-            const nextCell = ((forward) ? keyEvent.target.nextElementSibling : keyEvent.target.previousElementSibling);
+            const nextCell = ((forward) ? target.nextElementSibling : target.previousElementSibling);
             if (nextCell)
                 nextCell.focus({ focusVisible: true });
         }
         function goToNeighboringRow(forward) {
             keyEvent.preventDefault();
-            const parentRow = keyEvent.target.parentElement;
-            const nextRow = ((forward) ? nextSiblingTillVisibleIsFound(keyEvent.target.parentElement) : prevSiblingTillVisibleIsFound(keyEvent.target.parentElement));
-            const currentChildIndex = Array.prototype.indexOf.call(parentRow.children, keyEvent.target);
+            const parentRow = target.parentElement;
+            const nextRow = ((forward) ? nextSiblingTillVisibleIsFound(target.parentElement) : prevSiblingTillVisibleIsFound(target.parentElement));
+            const currentChildIndex = Array.prototype.indexOf.call(parentRow.children, target);
             if (nextRow != null) {
                 const cell = nextRow.children[currentChildIndex];
                 if (cell != null) {
@@ -841,10 +871,10 @@ STAT_LIST_TABLE.addEventListener("keydown", (keyEvent) => {
         else if (keyEvent.key == "Enter") {
             const selection = window.getSelection();
             const range = document.createRange();
-            range.selectNode(keyEvent.target);
+            range.selectNode(target);
             selection.removeAllRanges();
             selection.addRange(range);
-            navigator.clipboard.writeText(keyEvent.target.textContent);
+            navigator.clipboard.writeText(target.textContent);
         }
     }
 });

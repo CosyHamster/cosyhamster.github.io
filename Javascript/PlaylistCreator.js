@@ -15,7 +15,7 @@ else {
     //@ts-expect-error
     let userAgent = navigator.userAgent || navigator.vendor || window.opera;
     /* cspell: disable-next-line */
-    ON_MOBILE = (/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(userAgent) || /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(userAgent.substring(0, 4)));
+    ON_MOBILE = (/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series([46])0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(userAgent) || /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br([ev])w|bumb|bw-([nu])|c55\/|capi|ccwa|cdm-|cell|chtm|cldc|cmd-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc-s|devi|dica|dmob|do([cp])o|ds(12|-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly([-_])|g1 u|g560|gene|gf-5|g-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd-([mpt])|hei-|hi(pt|ta)|hp( i|ip)|hs-c|ht(c([- _agpst])|tp)|hu(aw|tc)|i-(20|go|ma)|i230|iac([ \-\/])|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja([tv])a|jbro|jemu|jigs|kddi|keji|kgt([ \/])|klon|kpt |kwc-|kyo([ck])|le(no|xi)|lg( g|\/([klu])|50|54|-[a-w])|libw|lynx|m1-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t([- ov])|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30([02])|n50([025])|n7(0([01])|10)|ne(([cm])-|on|tf|wf|wg|wt)|nok([6i])|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan([adt])|pdxg|pg(13|-([1-8]|c))|phil|pire|pl(ay|uc)|pn-2|po(ck|rt|se)|prox|psio|pt-g|qa-a|qc(07|12|21|32|60|-[2-7]|i-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h-|oo|p-)|sdk\/|se(c([-01])|47|mc|nd|ri)|sgh-|shar|sie([-m])|sk-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h-|v-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl-|tdg-|tel([im])|tim-|t-mo|to(pl|sh)|ts(70|m-|m3|m5)|tx-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c([- ])|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas-|your|zeto|zte-/i.test(userAgent.substring(0, 4)));
 }
 class SongLoader {
     constructor(song) {
@@ -158,20 +158,25 @@ class Song {
             this.howl = null;
         }
     }
+    /** @returns Whether the {@link Howl} exists for the audio, is fully loaded, but is not currently playing. */
     isPaused() {
         return this.isLoaded() && this.howl.playing() == false;
     }
+    /** @returns Whether the {@link Howl} for this audio exists and is fully loaded. */
     isLoaded() {
         return this.isInExistence() && this.howl.state() === "loaded";
     }
+    /** @returns Whether the {@link Howl} for this audio exists and is in the loading state. */
     isLoading() {
         return this.isInExistence() && this.howl.state() === "loading";
     }
-    isInExistence() {
-        return this.howl != null;
-    }
+    /** @returns Whether the associated {@link Howl} for this audio doesn't exist, or the {@link Howl}'s current audio data is not loaded, or currently loading. */
     isUnloaded() {
         return !this.isInExistence() || this.howl.state() === "unloaded";
+    }
+    /** @returns Whether the associated {@link Howl} is created for this Song. */
+    isInExistence() {
+        return this.howl != null;
     }
 }
 class RegistrableEvent {
@@ -188,7 +193,7 @@ class RegistrableEvent {
         this.registeredCallbacks = [];
     }
     callAllRegisteredFunctions(data) {
-        for (var i = 0; i < this.registeredCallbacks.length; i++)
+        for (let i = 0; i < this.registeredCallbacks.length; i++)
             this.registeredCallbacks[i](data);
     }
 }
@@ -310,7 +315,6 @@ class DataTransferItemGrabber {
                 await this.scanFilesInArray(someFiles);
                 someFiles = await this.getSomeFilesInDirectory(reader);
             }
-            ;
             return resolve(this.files);
         });
     }
@@ -352,15 +356,15 @@ var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(), K
     SELECTING: "lightblue",
     NONE: ""
 }, PAUSED = false, PLAYING = true, PLAYLIST_VIEWER_TABLE = document.getElementById("Playlist_Viewer"), PRELOAD_DIST_ELEMENT = document.getElementById('preloadDistance'), PRELOAD_TYPE_SELECTOR = document.getElementById("preloadType"), COMPACT_MODE_LINK_ELEMENT = null, //document.getElementById('compactModeStyleLink'),
-COMPACT_MODE_TOGGLE = document.getElementById('compactMode'), SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration'), SEEK_DURATION_DISPLAY = document.getElementById("seekDurationDisplay"), SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional'), SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable'), REORDER_FILES_CHECKBOX = document.getElementById('reorderFiles'), UPLOAD_BUTTON = document.getElementById('0input'), UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory'), PLAY_RATE_RANGE = document.getElementById('0playRateSlider'), SETTINGS_PAGE = document.getElementById('settingsPage'), ERROR_POPUP = document.getElementById('errorPopup'), DEPRECATED_POPUP = document.getElementById('deprecatedPopup'), ERROR_LIST = document.getElementById('errorList'), CONTEXT_MENU = document.getElementById('rightClickContextMenu'), PROGRESS_BAR = document.getElementById('progress-bar'), HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay'), VOLUME_CHANGER = document.getElementById('0playVolume'), PLAY_RATE = document.getElementById('0playRate'), PLAY_PAN = document.getElementById('0playPan'), SEEK_BACK = document.getElementById('seekBack'), SEEK_FORWARD = document.getElementById('seekForward'), REPEAT_BUTTON = document.getElementById('repeatButton'), REPEAT_BUTTON_IMAGE = document.getElementById("repeatButtonImg"), SHUFFLE_BUTTON = document.getElementById('shuffleButton'), MUTE_BUTTON = document.getElementById('0Mute'), PLAY_BUTTON = document.getElementById('playpause'), STATUS_TEXT = document.getElementById('0status'), CURRENT_FILE_NAME = document.getElementById('currentFileName'), DURATION_OF_SONG_DISPLAY = document.getElementById('secondDurationLabel'), DROPPING_FILE_OVERLAY = document.getElementById("dragOverDisplay");
+COMPACT_MODE_TOGGLE = document.getElementById('compactMode'), SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration'), SEEK_DURATION_DISPLAY = document.getElementById("seekDurationDisplay"), SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional'), SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable'), REORDER_FILES_CHECKBOX = document.getElementById('reorderFiles'), UPLOAD_BUTTON = document.getElementById('0input'), UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory'), PLAY_RATE_RANGE = document.getElementById('0playRateSlider'), SETTINGS_PAGE = document.getElementById('settingsPage'), ERROR_POPUP = document.getElementById('errorPopup'), DEPRECATED_POPUP = document.getElementById('deprecatedPopup'), ERROR_LIST = document.getElementById('errorList'), CONTEXT_MENU = document.getElementById('rightClickContextMenu'), PROGRESS_BAR = document.getElementById('progress-bar'), HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay'), VOLUME_CHANGER = document.getElementById('0playVolume'), PLAY_RATE = document.getElementById('0playRate'), PLAY_PAN = document.getElementById('0playPan'), SEEK_BACK = document.getElementById('seekBack'), 
+// SEEK_FORWARD = document.getElementById('seekForward') as HTMLTableCellElement,
+REPEAT_BUTTON = document.getElementById('repeatButton'), REPEAT_BUTTON_IMAGE = document.getElementById("repeatButtonImg"), SHUFFLE_BUTTON = document.getElementById('shuffleButton'), MUTE_BUTTON = document.getElementById('0Mute'), PLAY_BUTTON = document.getElementById('playpause'), STATUS_TEXT = document.getElementById('0status'), CURRENT_FILE_NAME = document.getElementById('currentFileName'), DURATION_OF_SONG_DISPLAY = document.getElementById('secondDurationLabel'), DROPPING_FILE_OVERLAY = document.getElementById("dragOverDisplay");
 var fileNameDisplays = [];
 var filePlayingCheckboxes = [];
 var fileSizeDisplays = [];
 var sounds = [];
 var selectedRows = [];
 var hoveredRowInDragAndDrop = null; //does not work with importing files, only when organizing added files
-/** An ID representing what current batch of sounds is being loaded. If the ID increments, then the old sounds being loaded are discarded. */
-var processingNumber = 0;
 var skipSongQueued = false;
 var currentSongIndex = null;
 /* start */ (() => {
@@ -406,8 +410,8 @@ var currentSongIndex = null;
     registerClickEvent(CURRENT_FILE_NAME, () => PLAYLIST_VIEWER_TABLE.rows[currentSongIndex + 1].scrollIntoView(false))();
     registerClickEvent('skipBack', () => jumpSong(-1))();
     registerClickEvent('skipForward', () => jumpSong())();
-    registerClickEvent(SEEK_BACK, () => seek(parseFloat(SEEK_BACK.getAttribute('seekDirection'))))();
-    registerClickEvent('seekForward', () => seek(parseFloat(SEEK_FORWARD.getAttribute('seekDirection'))))();
+    registerClickEvent(SEEK_BACK, () => seek(-1))();
+    registerClickEvent('seekForward', () => seek(1))();
     registerClickEvent('settingsButton', () => SETTINGS_PAGE.showModal())();
     registerClickEvent('exitSettingsButton', () => SETTINGS_PAGE.close())();
     registerClickEvent('exitErrorPopup', () => ERROR_POPUP.close())();
@@ -583,7 +587,6 @@ function onFrameStepped() {
     if (skipSongQueued) {
         skipSongQueued = false;
         filePlayingCheckboxes[(currentSongIndex + 1) % filePlayingCheckboxes.length].dispatchEvent(new MouseEvent('click'));
-        ;
     }
     PRELOAD_DIST_ELEMENT.max = String(Math.max(sounds.length - 1, 1));
     if (COMPACT_MODE_LINK_ELEMENT?.sheet) {
@@ -712,7 +715,7 @@ async function importFiles(element) {
         const lengthBeforeBegin = sounds.length;
         let offsetBecauseOfSkipped = 0;
         changeStatus(`Importing ${files.length} Files...`);
-        for (var i = 0; i < files.length; i++) {
+        for (let i = 0; i < files.length; i++) {
             const file = files[i];
             if (file == null)
                 continue;
@@ -769,7 +772,7 @@ function handleShuffleButton(enable) {
     if (enable) {
         shuffle();
         refreshSongNames();
-        for (var i = 0; i < sounds.length; i++) {
+        for (let i = 0; i < sounds.length; i++) {
             setFileSizeDisplay(i, sounds[i].file.size);
         }
         return;
@@ -777,7 +780,7 @@ function handleShuffleButton(enable) {
     let tempArray = sounds, foundCurrentPlayingSong = false;
     // sounds = [].fill(null, 0, tempArray.length);
     sounds = new Array(tempArray.length);
-    for (var i = 0; i < tempArray.length; i++) {
+    for (let i = 0; i < tempArray.length; i++) {
         let sound = tempArray[i];
         sounds[sound.nativeIndex] = sound;
         setFileSizeDisplay(sound.nativeIndex, sound.file.size);
@@ -789,7 +792,7 @@ function handleShuffleButton(enable) {
             foundCurrentPlayingSong = true;
         }
     }
-    for (var i = 0; i < tempArray.length; i++)
+    for (let i = 0; i < tempArray.length; i++)
         sounds[tempArray[i].nativeIndex] = tempArray[i];
     refreshSongNames();
     tempArray = null;
@@ -833,7 +836,7 @@ function quitPlayingMusic() {
     PLAY_BUTTON.checked = false;
     currentSongIndex = null;
     PROGRESS_BAR.value = 0;
-    for (var i = 0; i < sounds.length; i++)
+    for (let i = 0; i < sounds.length; i++)
         sounds[i].unload();
     Howler.stop();
     changeStatus(StatusTexts.STOPPED);
@@ -894,7 +897,7 @@ function jumpSong(amount) {
     currentSongIndex = (currentSongIndex + (sounds.length + amount)) % sounds.length;
     // currentSongIndex += amount
     // if (currentSongIndex > sounds.length - 1) currentSongIndex %= sounds.length;
-    // else if (currentSongIndex < 0) currentSongIndex = Math.max(currentSongIndex + sounds.length, 0) //idk a real solution to this
+    // else if (currentSongIndex < 0) currentSongIndex = Math.max(currentSongIndex + sounds.length, 0) //IDK a real solution to this
     const playButtonToActivate = filePlayingCheckboxes[currentSongIndex];
     playButtonToActivate.dispatchEvent(new MouseEvent('click'));
 }
@@ -918,7 +921,7 @@ function setFileSizeDisplay(index, bytes) {
     fileSizeDisplays[index].setAttribute('title', `${bytes} bytes`);
 }
 function refreshSongNames() {
-    for (var i = 0; i < sounds.length; i++) {
+    for (let i = 0; i < sounds.length; i++) {
         fileNameDisplays[i].textContent = sounds[i].file.name;
         fileNameDisplays[i].setAttribute('title', sounds[i].file.name);
     }
@@ -943,9 +946,9 @@ function precisionRound(number, precision) {
 function changeStatus(status) { STATUS_TEXT.textContent = status; }
 function onlyFiles(dataTransfer) { return dataTransfer.types.length == 1 && dataTransfer.types[0] === 'Files'; }
 function isValidExtension(extension) { return Howler.codecs(extension); }
-function isSongRepeating() { return REPEAT_BUTTON.checked; }
-function setAttributes(element, attrs) { for (var key in attrs)
+function setAttributes(element, attrs) { for (const key in attrs)
     element.setAttribute(key, attrs[key]); }
+// @ts-ignore
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 function getInMegabytes(bytes) { return (bytes / 1048576).toFixed(2); }
 function getFileExtension(fileName) { return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase(); }
@@ -1094,7 +1097,10 @@ function onDoubleClick(mouseEvent) {
     if (row)
         playRow(row);
 }
-/** @param removeIndex {number} (-1) = won't remove any elems from array */
+/**
+ * @param removeIndex {number} (-1) = won't remove any elems from array
+ * @param removeFromArray Whether to remove the index from the array.
+ */
 function deselectRow(removeIndex, removeFromArray = true) {
     const row = selectedRows[removeIndex];
     row.toggleAttribute("data-selected", false);
@@ -1327,5 +1333,4 @@ function spawnContextMenu(clientX, clientY, contextOptions, allowDefaultOptions)
         contextButtons[0].focus({ focusVisible: true });
 }
 function closeContextMenu() { CONTEXT_MENU.toggleAttribute('open', false); CONTEXT_MENU.style.height = '0'; }
-;
 //# sourceMappingURL=PlaylistCreator.js.map
