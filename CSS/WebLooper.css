@@ -1,5 +1,4 @@
 progress {
-    margin-top: 1em;
     width: 50vw;
     height: 1em;
     transition: 0.3s;
@@ -10,7 +9,7 @@ text[class='songName']{
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
-    font-family:Cambria;
+    font-family: Cambria, serif;
     max-width: 99%;
 }
 input[type=number]{ width: 130px; }

@@ -8,9 +8,8 @@
     stroke: red;
 }
 table{
-    border: 1px;
     border-spacing: 1px;
-    border-color: gray;
+    border: 1px gray;
 }
 .text{
     display: inline;
@@ -25,7 +24,7 @@ table{
     transition: 100ms all ease;
     cursor: pointer;
     border-style: double;
-    border-width: 0px 0 0px 8cqw; /* 0px 0 0px 60px */
+    border-width: 0 0 0 8cqw; /* 0px 0 0px 60px */
     margin: auto;
 }
 .playpause input[type=checkbox] {
@@ -37,7 +36,7 @@ table{
     border-width: 4.933333334cqw 0 4.93333334cqw 8cqw; /* 37px 0 37px 60px */
 }
 .smallplaypause div{
-    border-width: 0px 0 0px 2.5em;/* 0px 0 0px 60px */
+    border-width: 0 0 0 2.5em;/* 0px 0 0px 60px */
 }
 .smallplaypause input[type=checkbox]:not(:checked) + div {
     border-style: solid;
@@ -70,9 +69,7 @@ table{
     position: fixed;
     overflow: hidden;
     border-radius: 5px;
-    border: black;
-    border-width: 1px;
-    border-style: solid;
+    border: 1px solid black;
     @media not (prefers-reduced-motion) {
         transition: all 250ms;
         transition-property: opacity, height;
@@ -213,7 +210,7 @@ dialog::backdrop{
 .songName::-webkit-scrollbar{ display: none; }
 .songName{
     display: inline-block;
-    font-family:Cambria;
+    font-family: Cambria, serif;
     text-overflow: clip;
     overflow: scroll /*hidden*/;
     white-space: nowrap;

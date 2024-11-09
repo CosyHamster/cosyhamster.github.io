@@ -47,33 +47,40 @@ class OnRequestAnimationFrameEvent extends OnEventUpdated{
 /**
  * Splits inputted seconds into hours, minutes, & seconds. toString() prints the time in digital format.
 */
-class Time{
-  seconds = 0
-  minutes = 0
-  hours = 0
-  constructor(seconds){
-    this.seconds = this.numberToDigitalClockString(Math.floor(seconds%60))
-    this.minutes = Math.floor(seconds/60)
-    while(this.minutes >= 60){
-      this.minutes -= 60
-      this.hours += 1
+class Time {
+    seconds = 0
+    minutes = 0
+    hours = 0
+    /**
+     * @param {number} seconds
+     */
+    constructor(seconds) {
+        this.seconds = Time.numberToDigitalTimeString(Math.floor(seconds % 60))
+
+        this.minutes = Math.floor(seconds / 60)
+        this.hours = Math.floor(this.minutes / 60)
+        this.minutes = Time.numberToDigitalTimeString(this.minutes - this.hours * 60);
+        this.hours = Time.numberToDigitalTimeString(this.hours);
     }
-    this.minutes = this.numberToDigitalClockString(this.minutes)
-    this.hours = this.numberToDigitalClockString(this.hours)
-  }
 
-  toString(){
-    if(this.hours === '00') return `${this.minutes}:${this.seconds}`
-    return `${this.hours}:${this.minutes}:${this.seconds}`
-  }
+    toString() {
+        if (this.hours === '00') return `${this.minutes}:${this.seconds}`
 
-  numberToDigitalClockString(number){
-    if(number <= 9) return `0${number}`
-    return `${number}`
-  }
+        return `${this.hours}:${this.minutes}:${this.seconds}`
+    }
+
+    /**
+     * @param {number} number
+     */
+    static numberToDigitalTimeString(number) {
+        if (number <= 9) return `0${number}`
+
+        return `${number}`
+    }
 }
 
 //August 27, 2023, 12:33AM
+
 const PLAYLIST_VIEWER_TABLE = document.getElementById("theTable"),
 FADE_CONTROLLER_DIALOG = document.getElementById('FadeControlDialog'),
 FADE_CONTROLLER_TABLE = document.getElementById('fadeControllingTable'),
@@ -85,9 +92,9 @@ statusObjects = [],
 progressBarObjects = [],
 openDialogs = [],
 processQueue = [],
-fadeControllerQuantity = 0
+fadeControllerQuantity = 0;
 
-const start = (() => {
+(() => {
     if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("../ServiceWorker.js");
     }
@@ -130,12 +137,12 @@ function closeNewestDialog(){
 }
 
 function progressBarSeek(mouse, progressBar, hoverType){
-    if(mouse?.pointerType == "touch" && hoverType != ProgressBarSeekActions.SEEK) return
+    if(mouse?.pointerType === "touch" && hoverType !== ProgressBarSeekActions.SEEK) return
 
     const index = parseInt(progressBar.id),
     hoveredTimeDialog = document.getElementById(`${index}hoveredTimeDisplay`);
 
-    if(sounds[index] == null || sounds[index].state() != 'loaded' || hoverType === ProgressBarSeekActions.STOP_DISPLAYING) return hoveredTimeDialog.setAttribute('inUse', 0)
+    if(sounds[index] == null || sounds[index].state() !== 'loaded' || hoverType === ProgressBarSeekActions.STOP_DISPLAYING) return hoveredTimeDialog.setAttribute('inUse', 0)
     
     const offsetX = mouse.offsetX,
     progressBarWidth = progressBar.clientWidth,
@@ -340,7 +347,7 @@ function keepTrackofTimes(){
 
     for(let i = 0; i < sounds.length; i++){
         try{
-        const isLoading = sounds[i]?.state() != 'loaded' && sounds[i] != null;
+        const isLoading = sounds[i]?.state() !== 'loaded' && sounds[i] != null;
         if(sounds[i] == null || isLoading){
             cannotUpdateProgress(isLoading, i);   
             continue
@@ -354,7 +361,7 @@ function keepTrackofTimes(){
 
         let volumeChanger = document.getElementById(`${i}playVolume`);
         if(document.activeElement !== volumeChanger) volumeChanger.value = sounds[i].volume(sounds[i]);
-        if(getStatus(i) == 'Processing...'){
+        if(getStatus(i) === 'Processing...'){
             statusObjects[i].innerHTML = "Loaded!"
         }
         } catch (e) {changeStatus(e,i);}
@@ -448,7 +455,7 @@ function importFileDetectID(element){
     element.addEventListener('change', () => {
         const files = element.files
         if(!files.length) return;
-        if(isBatch && processQueue.length == 0){
+        if(isBatch && processQueue.length === 0){
             for(let i = 0; i < files.length; i++) processQueue.push({file: files[i], index: fadeControllerQuantity+i})
             return
         }
@@ -465,9 +472,9 @@ function seek(idHTML){ //controls audio seeking, called by HTML elements
         const currIndex = ( isPlayerSpecificSeeked ) ? index : i,
         songDuration = sounds[currIndex]?.duration(sounds[currIndex])
         
-        if(sounds[currIndex] == null || sounds[currIndex].state() != 'loaded') continue;
+        if(sounds[currIndex] == null || sounds[currIndex].state() !== 'loaded') continue;
 
-        let numToAdd = (10 * ratesInIndexOrder[currIndex].value) * ((onlyText == "seekBackward") ? -1 : 1)
+        let numToAdd = (10 * ratesInIndexOrder[currIndex].value) * ((onlyText === "seekBackward") ? -1 : 1)
 
         const currentTime = sounds[currIndex].seek(sounds[currIndex]);
         if(
@@ -484,13 +491,13 @@ function inputNumberChangeDetect(element){ //index is fetched from last digit of
         const index = parseInt(element.id),
         onlyText = element.id.replace(/[^a-z]/gi, '');
         
-        if(onlyText == "playVolume") return sounds[index]?.volume(element.value);
-        if(onlyText == "playPan") return sounds[index]?.stereo( toNum(element.value) );
-        if(onlyText != "playRate") return;
-        if(sounds[index] == null || sounds[index]?.state() != 'loaded') return updateSeekButtonTexts();
+        if(onlyText === "playVolume") return sounds[index]?.volume(element.value);
+        if(onlyText === "playPan") return sounds[index]?.stereo( toNum(element.value) );
+        if(onlyText !== "playRate") return;
+        if(sounds[index] == null || sounds[index]?.state() !== 'loaded') return updateSeekButtonTexts();
         
         if(element.value <= 0) sounds[index].pause();
-        else if(isSoundPaused(index) && statusObjects[index].innerHTML == "Playing"){ //the rate cant be set to 0. the progress tracker will glitch back to 0.
+        else if(isSoundPaused(index) && statusObjects[index].innerHTML === "Playing"){ //the rate cant be set to 0. the progress tracker will glitch back to 0.
             const currentTime = sounds[index].seek(sounds[index]);
             sounds[index].rate(element.value);
             sounds[index].play(); //this starts the song over
@@ -518,8 +525,8 @@ function handleCheckBoxClick(element){
     const onlyText = element.id.replace(/[^a-z]/gi, ''), //grab all text except numbers
     index = parseInt(element.id); //grab all numbers except text
     element.addEventListener('change', () => {
-        if(onlyText == "Mute") return sounds[index]?.mute(element.checked);
-        if(onlyText != "playAfter") return;
+        if(onlyText === "Mute") return sounds[index]?.mute(element.checked);
+        if(onlyText !== "playAfter") return;
         
         if(!element.checked){ sounds[0].off('end'); return sounds[0].loop(true); }
         
@@ -533,29 +540,29 @@ function handleCheckBoxClick(element){
         })
         sounds[1].stop()
     }, {passive: true})
-};
+}
 
 function playAllSounds(id){ //controls playing and pausing. doesn't toggle "Play All" button text; handled by seperate function called by HTML element.
     for(let i = 0; i < sounds.length; i++){
-        if(sounds[i] == null || sounds[i].state() != 'loaded') continue;
+        if(sounds[i] == null || sounds[i].state() !== 'loaded') continue;
 
-        if(document.getElementById(id).innerText == "Stop All"){ sounds[i].stop(); continue; }
+        if(document.getElementById(id).innerText === "Stop All"){ sounds[i].stop(); continue; }
 
-        if(ratesInIndexOrder[i].value != 0) sounds[i].play();
+        if(ratesInIndexOrder[i].value !== 0) sounds[i].play();
         statusObjects[i].innerHTML = "Playing";
         if(document.getElementById("1playAfter0").checked) break;
     }
-    if(document.getElementById(id).innerText == "Stop All") for(var i = 0; i < statusObjects.length; i++) statusObjects[i].innerHTML = "Stopped";
+    if(document.getElementById(id).innerText === "Stop All") for(var i = 0; i < statusObjects.length; i++) statusObjects[i].innerHTML = "Stopped";
 }
 
 function togglePlayButtonText(id){
     let text = document.getElementById(id).firstChild;
-    if(text.data == 'Play All') text.data = "Stop All"
-    else if (text.data == 'Stop All') text.data = "Play All"
+    if(text.data === 'Play All') text.data = "Stop All"
+    else if (text.data === 'Stop All') text.data = "Play All"
 }
 
 function fadeAudio(soundIndex){
-    if(sounds[soundIndex] == null || sounds[soundIndex]?.state() != 'loaded') return;
+    if(sounds[soundIndex] == null || sounds[soundIndex]?.state() !== 'loaded') return;
     let maxVolume = document.getElementById(`AudioMaxVolume${soundIndex}`).value,
     minVolume = document.getElementById(`AudioMinVolume${soundIndex}`).value,
     transitionSeconds = document.getElementById(`AudioTransition${soundIndex}`).value,

@@ -1,4 +1,4 @@
-var COSStatList: Creature[] = [];
+var creatureList: Creature[] = [];
 var statList: StatValue[] = [];
 var selectedStats: StatValue[] = [];
 var activeFilters: Filter[] = [];
@@ -60,7 +60,7 @@ abstract class StatValue{
     abstract getValue(creature: Creature): unknown;
     abstract sort(creature1: Creature, creature2: Creature): number;
     abstract filter(creature: Creature, filterType: FilterType, testVal: string): boolean;
-    constructor(displayName: string, keyName: string){
+    protected constructor(displayName: string, keyName: string){
         this.displayName = displayName;
         this.keyName = keyName;
     }
@@ -313,11 +313,14 @@ function initializeStatList(){
     statList.push(new ValuelessAbilityStat("Sticky Trap", "Sticky Trap"));
     statList.push(new ValuelessAbilityStat("Speed Steal", "Speed Steal"));
     statList.push(new ValuelessAbilityStat("Speed Blitz", "Speed Blitz"));
+    statList.push(new ValuelessAbilityStat("Sonic Wings", "Sonic Wings"));
     statList.push(new ValuelessAbilityStat("Escape Area", "Escape Area"));
+    statList.push(new ValuelessAbilityStat("Rewind", "Rewind"));
     statList.push(new ValuelessAbilityStat("Raider", "Raider"));
     statList.push(new ValuelessAbilityStat("Change Weather", "Change Weather"));
     statList.push(new ValuelessAbilityStat("Area Food Restore", "Area Food Restore"));
     statList.push(new ValuelessAbilityStat("Area Water Restore", "Area Water Restore"));
+    statList.push(new ValuelessAbilityStat("Broodwatcher", "Broodwatcher"));
     statList.push(new AbilityNumberStatValue("Diver", "Diver"));
     statList.push(new AbilityNumberStatValue("Hunker", "Hunker"));
     statList.push(new AbilityNumberStatValue("Burrower", "Burrower"));
@@ -380,7 +383,7 @@ function initializeCreatureStats(): Promise<void>{
                         initializeCreatureObject(value);
                         creatureStats.push(value);
                     }
-                    COSStatList = creatureStats;
+                    creatureList = creatureStats;
                     resolve();
                 }).catch(onError);
             }).catch(onError);
@@ -398,12 +401,12 @@ function initializeCreatureObject(creature: Creature){
 }
 
 function addStatValueToCreatureRows(statValue: StatValue){
-    for(let i = 0; i < COSStatList.length; i++){
+    for(let i = 0; i < creatureList.length; i++){
         const newCell = document.createElement("td");
         newCell.setAttribute("tabindex", "-1");
         newCell.setAttribute("class", "creatureStatCell focusable");
-        newCell.textContent = statValue.getDisplayValue(COSStatList[i]);
-        COSStatList[i].tableRow.appendChild(newCell);
+        newCell.textContent = statValue.getDisplayValue(creatureList[i]);
+        creatureList[i].tableRow.appendChild(newCell);
     }
 }
 // function removeStatValueFromCreatureRows(keyName: string){
@@ -419,8 +422,8 @@ function addStatValueToCreatureRows(statValue: StatValue){
 // }
 
 function removeStatValueFromCreatureRows(index: number){
-    for(let i = 0; i < COSStatList.length; i++){
-        COSStatList[i].tableRow.children[index].remove()
+    for(let i = 0; i < creatureList.length; i++){
+        creatureList[i].tableRow.children[index].remove()
     }
 }
 
@@ -438,9 +441,9 @@ function getStatValueWithKeyName(keyName: string): StatValue | null{
 }
 
 async function updateCreatureStatsTable(){
-    if(COSStatList.length == 0) return; //it's not initialized yet!
-
+    if(creatureList.length == 0) return; //it's not initialized yet!
     console.time("updateTable");
+
     let removedTableBody = false;
     const statTableBody = STAT_LIST_TABLE.querySelector("tbody");
     function ensureTableBodyRemoved(){
@@ -484,15 +487,15 @@ async function updateCreatureStatsTable(){
     }
 
     if(sortDirty){
-        // ensureTableBodyRemoved();  //THIS USES MORE PERFORMANCE
+        // ensureTableBodyRemoved();  //THIS IS MORE EXPENSIVE BC ONLY DOM MODIFICATION PAST THIS POINT IS REPLACECHILDREN
         const wasAscending = sortAscending;
         sortAscending = false;
-        COSStatList.sort(nameStat.sort);
+        creatureList.sort(nameStat.sort);
         sortAscending = wasAscending;
-        COSStatList.sort(sortFunction);
+        creatureList.sort(sortFunction);
         
         const rowsToAppend: HTMLTableRowElement[] = [];
-        for(const creature of COSStatList) rowsToAppend.push(creature.tableRow);
+        for(const creature of creatureList) rowsToAppend.push(creature.tableRow);
         statTableBody.replaceChildren(...rowsToAppend);
         // statTableBody.replaceChildren();
         // // STAT_LIST_TABLE.style.width = (selectedStats.length*25) + "ch"
@@ -502,18 +505,21 @@ async function updateCreatureStatsTable(){
         // }
         sortDirty = false;
     }
+
     if(removedTableBody) STAT_LIST_TABLE.appendChild(statTableBody);
     console.timeEnd("updateTable");
 }
 
-function applyFilters(){
+function submitFilterChanges(){
+    var filterContainingDivs = FILTER_CONTAINING_DIV.children;
     activeFilters = [];
-    for(const div of FILTER_CONTAINING_DIV.children){
+
+    for(const div of filterContainingDivs){
         if(!(div instanceof HTMLDivElement) || div.id == "floatingWindow") continue;
         if(!(div.querySelector("label[data-labelType='active']").querySelector("input[type='checkbox']") as HTMLInputElement).checked) continue;
 
         const statTypeIndex = Number((div.querySelector("button[name='statTypeSelect']") as HTMLButtonElement).value);
-        if(isNaN(statTypeIndex) || statTypeIndex == -1) continue;
+        if(Number.isNaN(statTypeIndex) || statTypeIndex == -1) continue;
 
         const filterType = getFilterTypeFromValue(div.querySelector("select").value);
         if(filterType == null) continue;
@@ -526,7 +532,7 @@ function applyFilters(){
 }
 
 function filterCreatures(){
-    for(const creature of COSStatList){
+    for(const creature of creatureList){
         let matchesAllFilters = true;
         for(const filter of activeFilters){
             if(!filter.test(creature)){
@@ -542,6 +548,20 @@ function filterCreatures(){
         }
     }
 }
+
+function updateRowColors(){
+    let brightGray = false;
+    const statTableBody = STAT_LIST_TABLE.querySelector("tbody");
+    var rows = statTableBody.rows;
+    for(const row of rows){
+        if(row.style.display != "none"){
+            if(brightGray) row.style.backgroundColor = "#ffffff";
+            else row.style.backgroundColor = "#ebebeb";
+            brightGray = !brightGray;
+        }
+    }
+}
+
 
 function getFilterTypeFromValue(value: string){
     switch(value){
@@ -602,6 +622,7 @@ function createFilter(): HTMLDivElement{
     return div;
 }
 
+//@ts-ignore
 function sleep(ms: number): Promise<void> { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 function onHeaderCellClick(headerCell: HTMLTableCellElement){
@@ -773,7 +794,7 @@ function onFrame(_: DOMHighResTimeStamp){
     exitFloatingWindowButton.addEventListener("keydown", (keyEvent) => { if(keyEvent.key == "Enter") closeFloatingWindow() });
     CONFIGURE_STAT_TYPES_BUTTON.addEventListener("click", openConfigureTypesMenu)
     document.getElementById("applyFilters").addEventListener("click", () => {
-        applyFilters();
+        submitFilterChanges();
     })
     document.getElementById("createFilter").addEventListener("click", () => {
         FILTER_CONTAINING_DIV.appendChild(createFilter())
@@ -799,25 +820,35 @@ STAT_LIST_TABLE.addEventListener("click", (mouseEvent) => {
 
 STAT_LIST_TABLE.addEventListener("keydown", (keyEvent) => {
     if(!(keyEvent.target instanceof HTMLElement)) return;
-    const STAT_TABLE_BODY = STAT_LIST_TABLE.querySelector("tbody");
+    const STAT_TABLE_BODY: HTMLTableSectionElement = STAT_LIST_TABLE.querySelector("tbody");
     
     if(keyEvent.target.closest("thead") != null){
-        const target = keyEvent.target;
         let headerCell: HTMLTableCellElement;
-        if(target instanceof HTMLElement && (headerCell = target.closest('th')) != null){
-            onHeaderCellClick(headerCell)
+        if((headerCell = keyEvent.target.closest('th')) && keyEvent.key == 'Enter'){
+            onHeaderCellClick(headerCell);
         }
-    } else if(keyEvent.target == STAT_LIST_TABLE){
+    } else if(keyEvent.target === STAT_LIST_TABLE){
+        function getFirstVisibleTableRow(){
+            var children = STAT_TABLE_BODY.rows;
+            for(const child of children){
+                if(child.style.display != "none"){
+                    return child;
+                }
+            }
+            return null;
+        }
+
         switch(keyEvent.key){
             case "Enter":
             case "ArrowRight":
             case "ArrowDown":
             case "ArrowLeft":
                 keyEvent.preventDefault();
-                (STAT_TABLE_BODY.firstElementChild.firstElementChild as HTMLTableCellElement).focus({focusVisible: true});
-
+                const firstTableRow = getFirstVisibleTableRow();
+                if(firstTableRow) (firstTableRow.firstElementChild as HTMLTableCellElement).focus({focusVisible: true})
         }
     } else if(keyEvent.target instanceof HTMLTableCellElement){
+        const target: HTMLTableCellElement = keyEvent.target;
         function nextSiblingTillVisibleIsFound(element: HTMLElement){
             while(true){
                 element = element.nextElementSibling as HTMLElement;
@@ -825,10 +856,11 @@ STAT_LIST_TABLE.addEventListener("keydown", (keyEvent) => {
                     if(element.style.display == "none") continue;
                     else return element;
                 } else {
-                    return null; //theres no more elements!
+                    return null; //there's no more elements!
                 }
             }
         }
+
         function prevSiblingTillVisibleIsFound(element: HTMLElement){
             while(true){
                 element = element.previousElementSibling as HTMLElement;
@@ -840,16 +872,19 @@ STAT_LIST_TABLE.addEventListener("keydown", (keyEvent) => {
                 }
             }
         }
+
         function goToNeighboringCell(forward: boolean){
             keyEvent.preventDefault();
-            const nextCell = ((forward) ? keyEvent.target.nextElementSibling : keyEvent.target.previousElementSibling) as HTMLTableCellElement;
+
+            const nextCell = ((forward) ? target.nextElementSibling : target.previousElementSibling) as HTMLTableCellElement;
             if(nextCell) nextCell.focus({focusVisible: true});
         }
+
         function goToNeighboringRow(forward: boolean){
             keyEvent.preventDefault();
-            const parentRow = keyEvent.target.parentElement as HTMLTableRowElement;
-            const nextRow = ((forward) ? nextSiblingTillVisibleIsFound(keyEvent.target.parentElement) : prevSiblingTillVisibleIsFound(keyEvent.target.parentElement)) as HTMLTableRowElement;
-            const currentChildIndex = Array.prototype.indexOf.call(parentRow.children, keyEvent.target);
+            const parentRow = target.parentElement as HTMLTableRowElement;
+            const nextRow = ((forward) ? nextSiblingTillVisibleIsFound(target.parentElement) : prevSiblingTillVisibleIsFound(target.parentElement)) as HTMLTableRowElement;
+            const currentChildIndex = Array.prototype.indexOf.call(parentRow.children, target);
             if(nextRow != null){
                 const cell = nextRow.children[currentChildIndex] as HTMLTableCellElement;
                 if(cell != null){
@@ -857,6 +892,7 @@ STAT_LIST_TABLE.addEventListener("keydown", (keyEvent) => {
                 }
             }
         }
+
         if(keyEvent.key == "ArrowRight"){
             goToNeighboringCell(true);
         } else if(keyEvent.key == "ArrowLeft"){
@@ -868,10 +904,10 @@ STAT_LIST_TABLE.addEventListener("keydown", (keyEvent) => {
         } else if(keyEvent.key == "Enter"){
             const selection = window.getSelection();
             const range = document.createRange();
-            range.selectNode(keyEvent.target);
+            range.selectNode(target);
             selection.removeAllRanges();
             selection.addRange(range);
-            navigator.clipboard.writeText(keyEvent.target.textContent);
+            navigator.clipboard.writeText(target.textContent);
         }
     }
 })
