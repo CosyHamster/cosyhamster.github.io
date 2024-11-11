@@ -506,6 +506,7 @@ async function updateCreatureStatsTable(){
         sortDirty = false;
     }
 
+    updateRowColors(statTableBody);
     if(removedTableBody) STAT_LIST_TABLE.appendChild(statTableBody);
     console.timeEnd("updateTable");
 }
@@ -549,9 +550,9 @@ function filterCreatures(){
     }
 }
 
-function updateRowColors(){
+function updateRowColors(statTableBody: HTMLTableSectionElement){
     let brightGray = false;
-    const statTableBody = STAT_LIST_TABLE.querySelector("tbody");
+    // const statTableBody = STAT_LIST_TABLE.querySelector("tbody");
     var rows = statTableBody.rows;
     for(const row of rows){
         if(row.style.display != "none"){
