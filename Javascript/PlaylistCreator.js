@@ -427,12 +427,12 @@ var currentSongIndex = null;
         }
     });
     registerKeyDownEvent(MUTE_BUTTON.parentElement, () => MUTE_BUTTON.click());
-    registerChangeEvent(MUTE_BUTTON, () => { if (sounds[currentSongIndex].isInExistence())
+    registerChangeEvent(MUTE_BUTTON, () => { if (currentHowlExists())
         sounds[currentSongIndex].howl.mute(MUTE_BUTTON.checked); });
     registerKeyDownEvent(REPEAT_BUTTON.labels[0], () => REPEAT_BUTTON.click());
     registerChangeEvent(REPEAT_BUTTON, () => {
         const checked = REPEAT_BUTTON.checked;
-        if (currentSongIndex !== null && sounds[currentSongIndex].isInExistence())
+        if (currentHowlExists())
             sounds[currentSongIndex].howl.loop(checked);
         if (checked)
             REPEAT_BUTTON_IMAGE.src = "../Icons/Repeat1Icon.svg";
@@ -447,10 +447,10 @@ var currentSongIndex = null;
     registerChangeEvent(UPLOAD_DIRECTORY_BUTTON, () => importFiles(UPLOAD_DIRECTORY_BUTTON.files));
     registerInputEvent(PLAY_RATE_RANGE, () => { onPlayRateUpdate(parseFloat(PLAY_RATE_RANGE.value)); });
     registerInputEvent(PRELOAD_DIST_ELEMENT, () => { PRELOAD_DIST_ELEMENT.labels[0].textContent = `Value: ${PRELOAD_DIST_ELEMENT.value}`; });
-    registerInputEvent(PLAY_PAN, () => { if (sounds[currentSongIndex].howl)
-        PLAY_PAN.labels[0].textContent = `${Math.floor(Number(PLAY_PAN.value) * 100)}%`; sounds[currentSongIndex].howl.stereo(Number(PLAY_PAN.value)); });
-    registerInputEvent(VOLUME_CHANGER, () => { if (sounds[currentSongIndex].howl)
-        VOLUME_CHANGER.labels[0].textContent = `${Math.floor(Number(VOLUME_CHANGER.value) * 100)}%`; sounds[currentSongIndex].howl.volume(Number(VOLUME_CHANGER.value)); });
+    registerInputEvent(PLAY_PAN, () => { if (currentHowlExists())
+        sounds[currentSongIndex].howl.stereo(Number(PLAY_PAN.value)); PLAY_PAN.labels[0].textContent = `${Math.floor(Number(PLAY_PAN.value) * 100)}%`; });
+    registerInputEvent(VOLUME_CHANGER, () => { if (currentHowlExists())
+        sounds[currentSongIndex].howl.volume(Number(VOLUME_CHANGER.value)); VOLUME_CHANGER.labels[0].textContent = `${Math.floor(Number(VOLUME_CHANGER.value) * 100)}%`; });
     PLAYLIST_VIEWER_TABLE.addEventListener("keyup", (keyEvent) => {
         if (keyEvent.key == "Tab") {
             if (selectedRows.length == 0 && PLAYLIST_VIEWER_TABLE.rows[1])
@@ -540,6 +540,7 @@ function registerInputEvent(elem, func) {
 function createNewSong(fileName, index) {
     const row = document.createElement('tr'); //PLAYLIST_VIEWER_TABLE.insertRow(PLAYLIST_VIEWER_TABLE.rows.length)
     const cell1 = row.insertCell(0);
+    cell1.className = "songBorder";
     initializeRowEvents(row);
     const fileSize = document.createElement('div');
     fileSize.setAttribute('class', 'songName test');
@@ -744,7 +745,7 @@ function onPlayRateUpdate(newRate) {
     let stringRate = String(newRate);
     PLAY_RATE_RANGE.value = stringRate;
     PLAY_RATE.value = stringRate;
-    if (!sounds[currentSongIndex].isInExistence())
+    if (!currentHowlExists())
         return;
     if (newRate <= 0) {
         sounds[currentSongIndex].howl.pause(); //the rate cant be set to 0. the progress tracker will glitch back to 0.
@@ -943,6 +944,7 @@ function precisionRound(number, precision) {
     const factor = Math.pow(10, precision);
     return Math.round(number * factor) / factor;
 }
+function currentHowlExists() { return currentSongIndex !== null && sounds[currentSongIndex].isInExistence(); }
 function changeStatus(status) { STATUS_TEXT.textContent = status; }
 function onlyFiles(dataTransfer) { return dataTransfer.types.length == 1 && dataTransfer.types[0] === 'Files'; }
 function isValidExtension(extension) { return Howler.codecs(extension); }
