@@ -268,6 +268,34 @@ function initializeStatList(){
     statList.push(new KeyedNumberStatValue("Turn Radius", "turn"));
     statList.push(new KeyedNumberStatValue("Weight (lbs)", "weight"));
 
+    // for(const creature of creatureList){
+    //     for(let abilityString of creature.passive.split(',')){
+    //         abilityString = abilityString.trim();
+    //
+    //         const valueBegin = abilityString.indexOf('(');
+    //         if(valueBegin == -1){
+    //             const abilityKeyName = abilityString.toLowerCase();
+    //             if(!getStatValueWithKeyName(abilityKeyName)) {
+    //                 statList.push(new ValuelessAbilityStat(abilityString, abilityKeyName));
+    //             }
+    //         } else {
+    //             const abilityName = abilityString.substring(0, valueBegin).trim();
+    //             const abilityKeyName = abilityName.toLowerCase();
+    //             if(getStatValueWithKeyName(abilityKeyName)) continue;
+    //
+    //             const valueEnd = abilityString.indexOf(')');
+    //             const abilityValue = abilityString.substring(valueBegin+1, valueEnd);
+    //             const numericAbilityValue = Number(abilityValue);
+    //
+    //             if(!Number.isNaN(numericAbilityValue)){
+    //                 statList.push(new AbilityNumberStatValue(abilityName, abilityName.toLowerCase()))
+    //             } else {
+    //                 statList.push(new AbilityStringStatValue(abilityName, abilityName.toLowerCase()))
+    //             }
+    //         }
+    //     }
+    // }
+
     statList.push(new ValuelessAbilityStat("Grab", "Grab"));
     statList.push(new AbilityNumberStatValue("Latch", "Latch"));
     statList.push(new ValuelessAbilityStat("Guilt", "Guilt"));
@@ -361,7 +389,7 @@ function initializeStatList(){
     statList.push(new AbilityNumberStatValue("Defensive Corrosion", "Defensive Corrosion"));
     statList.push(new AbilityNumberStatValue("Defensive Injury", "Defensive Injury"));
     statList.push(new AbilityNumberStatValue("Defensive Wing Shredder", "Defensive Wing Shredder"));
-    
+
     statList.push(new AbilityStringStatValue("Charge", "Charge"));
     statList.push(new AbilityStringStatValue("Totem", "Totem"));
 }
@@ -396,7 +424,7 @@ function initializeCreatureObject(creature: Creature){
     creature.passive = creature.passive.toLowerCase();
     creature.activated = creature.activated.toLowerCase();
     creature.tableRow = document.createElement("tr");
-    creature.tableRow.setAttribute("class", "hoverable creatureTableRow");
+    creature.tableRow.setAttribute("class", "creatureTableRow");
     creature.tableRow.title = creature.common;
 }
 
@@ -443,6 +471,8 @@ function getStatValueWithKeyName(keyName: string): StatValue | null{
 async function updateCreatureStatsTable(){
     if(creatureList.length == 0) return; //it's not initialized yet!
     console.time("updateTable");
+
+    STAT_LIST_TABLE.toggleAttribute('disabled', true);
 
     let removedTableBody = false;
     const statTableBody = STAT_LIST_TABLE.querySelector("tbody");
@@ -698,7 +728,7 @@ function openConfigureTypesMenu(){
     const selectAllCheckbox = document.createElement("input");
     selectAllCheckbox.type = "checkbox";
     selectAllCheckbox.checked = selectedStats.length == statList.length;
-    selectAllCheckbox.addEventListener("change", () => {
+    selectAllCheckbox.addEventListener("change", async () => {
         if(selectAllCheckbox.checked){
             for(const stat of statList){
                 if(!selectedStats.includes(stat)) selectedStats.push(stat);
@@ -706,11 +736,22 @@ function openConfigureTypesMenu(){
         } else {
             selectedStats = [];
         }
-        for(const row of FLOATING_WINDOW_TABLE.querySelector("tbody").children){
-            row.querySelector("input").checked = selectAllCheckbox.checked;
-        }
 
-        updateCreatureStatsTable();
+        var statTypeSelectionRows = FLOATING_WINDOW_TABLE.querySelector("tbody").children;
+        for(const row of statTypeSelectionRows){
+            var checkbox = row.querySelector("input");
+            checkbox.checked = selectAllCheckbox.checked;
+            checkbox.disabled = true;
+        }
+        // await sleep(0);
+        await updateCreatureStatsTable();
+
+        requestAnimationFrame(() => {
+            for(const row of statTypeSelectionRows){
+                row.querySelector("input").disabled = false;
+            }
+        })
+
     });
     const label = document.createElement("label");
     label.setAttribute("style", "display: block; width: 100%;");
@@ -771,6 +812,7 @@ function closeFloatingWindow(){
 }
 
 function onFrame(_: DOMHighResTimeStamp){
+    STAT_LIST_TABLE.toggleAttribute('disabled', false);
     FLOATING_WINDOW.querySelector("img").style.top = `${FLOATING_WINDOW.scrollTop}px`;
     requestAnimationFrame(onFrame);
 }
@@ -785,7 +827,7 @@ function onFrame(_: DOMHighResTimeStamp){
     selectedStats.push(getStatValueWithKeyName("type"));
     selectedStats.push(getStatValueWithKeyName("diet"));
     selectedStats.push(getStatValueWithKeyName("tier"));
-    
+
     sortFunction = nameStat.sort;
     sortAscending = false;
     sortDirty = true;
@@ -812,6 +854,8 @@ window.addEventListener("keydown", (keyEvent) => {
 }, true)
 
 STAT_LIST_TABLE.addEventListener("click", (mouseEvent) => {
+    if(STAT_LIST_TABLE.hasAttribute("disabled")) return;
+
     const target = mouseEvent.target;
     let headerCell: HTMLTableCellElement;
     if(target instanceof HTMLElement && (headerCell = target.closest('th')) != null){
@@ -820,6 +864,7 @@ STAT_LIST_TABLE.addEventListener("click", (mouseEvent) => {
 })
 
 STAT_LIST_TABLE.addEventListener("keydown", (keyEvent) => {
+    if(STAT_LIST_TABLE.hasAttribute("disabled")) return;
     if(!(keyEvent.target instanceof HTMLElement)) return;
     const STAT_TABLE_BODY: HTMLTableSectionElement = STAT_LIST_TABLE.querySelector("tbody");
     
