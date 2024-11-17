@@ -347,7 +347,7 @@ function initializeStatList() {
     statList.push(new AbilityStringStatValue("Charge", "Charge"));
     statList.push(new AbilityStringStatValue("Totem", "Totem"));
 }
-function initializeCreatureStats() {
+function initializeCreatureList() {
     return new Promise((resolve) => {
         function onError(reason) {
             setTimeout(tryLoad, 3000);
@@ -750,7 +750,7 @@ function onFrame(_) {
 //@ts-ignore
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 (async () => {
-    initializeCreatureStats().then(() => {
+    initializeCreatureList().then(() => {
         updateCreatureStatsTable();
     });
     initializeStatList();
@@ -882,7 +882,7 @@ STAT_LIST_TABLE.addEventListener("keydown", (keyEvent) => {
         else if (keyEvent.key == "ArrowUp") {
             goToNeighboringRow(false);
         }
-        else if (keyEvent.key == "Enter") {
+        else if (keyEvent.key == "Enter" || (keyEvent.ctrlKey && keyEvent.key == 'c')) {
             const selection = window.getSelection();
             const range = document.createRange();
             range.selectNode(target);

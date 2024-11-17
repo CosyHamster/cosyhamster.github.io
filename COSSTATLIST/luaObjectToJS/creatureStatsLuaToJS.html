@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>LuaObjectToJS</title>
+    </head>
+    <body>
+        <label>
+            Lua Object:
+            <input type="text" id="luaObject" placeholder="Lua Object" style="width: 100%">
+        </label>
+        <button id="submit">COPY AS JSON</button>
+        <script defer>
+            /**
+             * @param jsObjString {string}
+             * @returns {string}
+            */
+            function objectParse(jsObjString) {
+                return eval(`(${jsObjString})`);
+            }
+
+            /** @type HTMLInputElement */
+            var textBox = document.getElementById("luaObject");
+            document.getElementById('submit').addEventListener("click", function() {
+                const s = textBox.value;
+                const charArray = [];
+                for(let i = 0; i < s.length; i++) {
+                    const char = s[i];
+
+                    if(char === '='){
+                        charArray.push(":");
+                    } else if(char === '-' && s[i+1] === '-'){
+                        charArray.push("//");
+                        ++i;
+                    } else if(char === '[' || char === ']'){
+
+                    } else {
+                        charArray.push(char);
+                    }
+                }
+
+                navigator.clipboard.writeText(JSON.stringify(objectParse(charArray.join(''))));
+            })
+        </script>
+    </body>
+</html>

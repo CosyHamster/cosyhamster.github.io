@@ -220,6 +220,7 @@ function initializeStatList(){
     nameStat = new KeyedStringStatValue("Name", "common")
     nameStat.canBeDisabled = false;
     statList.push(nameStat);
+
     statList.push(new KeyedStringStatValue("Class", "class"));
     statList.push(new KeyedStringStatValue("Type", "type"));
     statList.push(new KeyedStringStatValue("Diet", "diet"));
@@ -389,7 +390,7 @@ function initializeStatList(){
     statList.push(new AbilityStringStatValue("Totem", "Totem"));
 }
 
-function initializeCreatureStats(): Promise<void>{
+function initializeCreatureList(): Promise<void>{
     return new Promise((resolve) => {
         function onError(reason: any){
             setTimeout(tryLoad, 3000);
@@ -816,7 +817,7 @@ function onFrame(_: DOMHighResTimeStamp){
 function sleep(ms: number): Promise<void> { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 (async () => { //START
-    initializeCreatureStats().then(() => {
+    initializeCreatureList().then(() => {
         updateCreatureStatsTable();
     });
 
@@ -945,7 +946,7 @@ STAT_LIST_TABLE.addEventListener("keydown", (keyEvent) => {
             goToNeighboringRow(true);
         } else if(keyEvent.key == "ArrowUp"){
             goToNeighboringRow(false);
-        } else if(keyEvent.key == "Enter"){
+        } else if(keyEvent.key == "Enter" || (keyEvent.ctrlKey && keyEvent.key == 'c')){
             const selection = window.getSelection();
             const range = document.createRange();
             range.selectNode(target);
