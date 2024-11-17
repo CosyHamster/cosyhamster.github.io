@@ -4,7 +4,7 @@ var statList = [];
 var selectedStats = [];
 var activeFilters = [];
 var nameStat;
-var sortFunction;
+var currentSortFunction;
 var sortAscending = false;
 var sortDirty = false;
 var STAT_LIST_TABLE = document.getElementById("statList");
@@ -72,7 +72,7 @@ class ValuelessAbilityStat extends StatValue {
         }).bind(this);
     }
 }
-class KeyedNumberStatValue extends StatValue {
+class NumberStatValue extends StatValue {
     constructor(displayName, keyName) {
         super(displayName, keyName);
         this.getDisplayValue = (creature) => {
@@ -82,9 +82,6 @@ class KeyedNumberStatValue extends StatValue {
             else
                 return String(value);
         };
-        this.getValue = ((creature) => {
-            return parseFloat(creature[this.keyName]);
-        }).bind(this);
         this.sort = ((creature1, creature2) => {
             let creature1Value = this.getValue(creature1);
             let creature2Value = this.getValue(creature2);
@@ -107,16 +104,17 @@ class KeyedNumberStatValue extends StatValue {
         }).bind(this);
     }
 }
-class AbilityNumberStatValue extends StatValue {
+class KeyedNumberStatValue extends NumberStatValue {
+    constructor(displayName, keyName) {
+        super(displayName, keyName);
+        this.getValue = ((creature) => {
+            return parseFloat(creature[this.keyName]);
+        }).bind(this);
+    }
+}
+class AbilityNumberStatValue extends NumberStatValue {
     constructor(displayName, keyName) {
         super(displayName, keyName.toLowerCase());
-        this.getDisplayValue = (creature) => {
-            const value = this.getValue(creature);
-            if (isNaN(value))
-                return "N/A";
-            else
-                return String(value);
-        };
         this.getValue = ((creature) => {
             let searchString = creature.passive;
             let indexOf = searchString.indexOf(this.keyName);
@@ -130,34 +128,11 @@ class AbilityNumberStatValue extends StatValue {
             let abilityValue = searchString.substring(searchString.indexOf("(", abilityNameEndIndex) + 1, searchString.indexOf(")", abilityNameEndIndex));
             return parseFloat(abilityValue);
         }).bind(this);
-        this.sort = ((creature1, creature2) => {
-            let creature1Value = this.getValue(creature1);
-            let creature2Value = this.getValue(creature2);
-            if (isNaN(creature1Value))
-                return Number.MAX_SAFE_INTEGER;
-            if (isNaN(creature2Value))
-                return Number.MIN_SAFE_INTEGER;
-            return (sortAscending) ? creature1Value - creature2Value : creature2Value - creature1Value;
-        }).bind(this);
-        this.filter = ((creature, filterType, testVal) => {
-            switch (filterType) {
-                case FilterType.EQUALS: return this.getDisplayValue(creature).toLowerCase() == testVal.toLowerCase();
-                case FilterType.CONTAINS: return this.getDisplayValue(creature).toLowerCase().includes(testVal.toLowerCase());
-                case FilterType.LESS_THAN: return this.getValue(creature) < parseFloat(testVal);
-                case FilterType.LESS_THAN_EQUALS: return this.getValue(creature) <= parseFloat(testVal);
-                case FilterType.GREATER_THAN: return this.getValue(creature) > parseFloat(testVal);
-                case FilterType.GREATER_THAN_EQUALS: return this.getValue(creature) >= parseFloat(testVal);
-                default: return false;
-            }
-        }).bind(this);
     }
 }
-class KeyedStringStatValue extends StatValue {
+class StringStatValue extends StatValue {
     constructor(displayName, keyName) {
         super(displayName, keyName);
-        this.getValue = ((creature) => {
-            return creature[this.keyName];
-        }).bind(this);
         this.sort = ((creature1, creature2) => {
             const creature1Val = this.getValue(creature1);
             const creature2Val = this.getValue(creature2);
@@ -176,7 +151,15 @@ class KeyedStringStatValue extends StatValue {
         }).bind(this);
     }
 }
-class AbilityStringStatValue extends StatValue {
+class KeyedStringStatValue extends StringStatValue {
+    constructor(displayName, keyName) {
+        super(displayName, keyName);
+        this.getValue = ((creature) => {
+            return creature[this.keyName];
+        }).bind(this);
+    }
+}
+class AbilityStringStatValue extends StringStatValue {
     constructor(displayName, keyName) {
         super(displayName, keyName.toLowerCase());
         this.getValue = ((creature) => {
@@ -189,24 +172,9 @@ class AbilityStringStatValue extends StatValue {
             if (indexOf == -1)
                 return "N/A";
             let abilityNameEndIndex = indexOf + this.keyName.length;
+            // noinspection UnnecessaryLocalVariableJS
             let abilityValue = searchString.substring(searchString.indexOf("(", abilityNameEndIndex) + 1, searchString.indexOf(")", abilityNameEndIndex));
             return abilityValue;
-        }).bind(this);
-        this.sort = ((creature1, creature2) => {
-            const creature1Val = this.getValue(creature1);
-            const creature2Val = this.getValue(creature2);
-            if (creature1Val == "N/A")
-                return Number.MAX_SAFE_INTEGER;
-            if (creature2Val == "N/A")
-                return Number.MIN_SAFE_INTEGER;
-            return creature1Val.localeCompare(creature2Val) * ((sortAscending) ? -1 : 1);
-        }).bind(this);
-        this.filter = ((creature, filterType, testVal) => {
-            switch (filterType) {
-                case FilterType.EQUALS: return this.getValue(creature).toLowerCase() == testVal.toLowerCase();
-                case FilterType.CONTAINS: return this.getValue(creature).toLowerCase().includes(testVal.toLowerCase());
-                default: return false;
-            }
         }).bind(this);
     }
 }
@@ -245,7 +213,7 @@ function initializeStatList() {
     statList.push(new KeyedNumberStatValue("Jump Power", "jumpPower"));
     statList.push(new KeyedNumberStatValue("Jump Stamina Cost", "jumpStamina"));
     statList.push(new KeyedNumberStatValue("Moisture Duration (seconds)", "moistureTime"));
-    statList.push(new KeyedNumberStatValue("Night Vision", "nightVision"));
+    statList.push(new KeyedNumberStatValue("Night Vision", "nightvision"));
     statList.push(new KeyedNumberStatValue("Oxygen Duration (seconds)", "oxygenTime"));
     statList.push(new KeyedNumberStatValue("Sprint Speed", "sprintSpeed"));
     statList.push(new KeyedNumberStatValue("Walk and Swim Speed", "walkAndSwimSpeed"));
@@ -339,10 +307,11 @@ function initializeStatList() {
     statList.push(new AbilityNumberStatValue("Hunker", "Hunker"));
     statList.push(new AbilityNumberStatValue("Burrower", "Burrower"));
     statList.push(new AbilityNumberStatValue("Radiation", "Radiation"));
-    statList.push(new AbilityNumberStatValue("Healing Hunter", "Healing Hunter"));
     statList.push(new AbilityNumberStatValue("Heal Aura", "Heal Aura"));
+    statList.push(new AbilityNumberStatValue("Healing Hunter", "Healing Hunter"));
     statList.push(new AbilityNumberStatValue("Cursed Sigil", "Cursed Sigil"));
     statList.push(new AbilityNumberStatValue("First Strike", "First Strike"));
+    statList.push(new AbilityNumberStatValue("Soft Landing", "Soft Landing"));
     //aliment attack
     statList.push(new AbilityNumberStatValue("Bleed Attack", "Bleed Attack"));
     statList.push(new AbilityNumberStatValue("Poison Attack", "Poison Attack"));
@@ -412,11 +381,13 @@ function initializeCreatureObject(creature) {
 }
 function addStatValueToCreatureRows(statValue) {
     for (let i = 0; i < creatureList.length; i++) {
+        const creature = creatureList[i];
         const newCell = document.createElement("td");
         newCell.setAttribute("tabindex", "-1");
         newCell.setAttribute("class", "creatureStatCell focusable");
-        newCell.textContent = statValue.getDisplayValue(creatureList[i]);
-        creatureList[i].tableRow.appendChild(newCell);
+        newCell.title = `${creature.common} - ${statValue.displayName}`;
+        newCell.textContent = statValue.getDisplayValue(creature);
+        creature.tableRow.appendChild(newCell);
     }
 }
 // function removeStatValueFromCreatureRows(keyName: string){
@@ -499,7 +470,7 @@ async function updateCreatureStatsTable() {
         sortAscending = false;
         creatureList.sort(nameStat.sort);
         sortAscending = wasAscending;
-        creatureList.sort(sortFunction);
+        creatureList.sort(currentSortFunction);
         const rowsToAppend = [];
         for (const creature of creatureList)
             rowsToAppend.push(creature.tableRow);
@@ -517,45 +488,6 @@ async function updateCreatureStatsTable() {
         STAT_LIST_TABLE.appendChild(statTableBody);
     console.timeEnd("updateTable");
 }
-function submitFilterChanges() {
-    var filterContainingDivs = FILTER_CONTAINING_DIV.children;
-    activeFilters = [];
-    for (const div of filterContainingDivs) {
-        if (!(div instanceof HTMLDivElement) || div.id == "floatingWindow")
-            continue;
-        if (!div.querySelector("label[data-labelType='active']").querySelector("input[type='checkbox']").checked)
-            continue;
-        const statTypeIndex = Number(div.querySelector("button[name='statTypeSelect']").value);
-        if (Number.isNaN(statTypeIndex) || statTypeIndex == -1)
-            continue;
-        const filterType = getFilterTypeFromValue(div.querySelector("select").value);
-        if (filterType == null)
-            continue;
-        const inputtedText = div.querySelector("input[type='text']").value;
-        const reverseFilter = div.querySelector("label[data-labelType='reverse']").querySelector("input[type='checkbox']").checked;
-        activeFilters.push(new Filter(statList[statTypeIndex], filterType, inputtedText, reverseFilter));
-    }
-    updateCreatureStatsTable();
-}
-function filterCreatures() {
-    for (const creature of creatureList) {
-        let matchesAllFilters = true;
-        for (const filter of activeFilters) {
-            if (!filter.test(creature)) {
-                matchesAllFilters = false;
-                break;
-            }
-        }
-        if (matchesAllFilters) {
-            if (creature.tableRow.style.display != "table-row")
-                creature.tableRow.style.display = "table-row";
-        }
-        else {
-            if (creature.tableRow.style.display != "none")
-                creature.tableRow.style.display = "none";
-        }
-    }
-}
 function updateRowColors(statTableBody) {
     let brightGray = false;
     // const statTableBody = STAT_LIST_TABLE.querySelector("tbody");
@@ -568,17 +500,6 @@ function updateRowColors(statTableBody) {
                 row.style.backgroundColor = "#ebebeb";
             brightGray = !brightGray;
         }
-    }
-}
-function getFilterTypeFromValue(value) {
-    switch (value) {
-        case "equals": return FilterType.EQUALS;
-        case "contains": return FilterType.CONTAINS;
-        case "lessThan": return FilterType.LESS_THAN;
-        case "lessThanEquals": return FilterType.LESS_THAN_EQUALS;
-        case "greaterThan": return FilterType.GREATER_THAN;
-        case "greaterThanEquals": return FilterType.GREATER_THAN_EQUALS;
-        default: return null;
     }
 }
 function createFilter() {
@@ -625,12 +546,66 @@ function createFilter() {
     div.append(button, select, textInput, reverseLabel, activeLabel, deleteFilterButton);
     return div;
 }
-//@ts-ignore
-function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+function updateFilterChanges() {
+    var filterContainingDivs = FILTER_CONTAINING_DIV.children;
+    activeFilters = [];
+    for (const div of filterContainingDivs) {
+        if (!(div instanceof HTMLDivElement) || div.id == "floatingWindow")
+            continue;
+        if (!div.querySelector("label[data-labelType='active']").querySelector("input[type='checkbox']").checked)
+            continue;
+        const statTypeIndex = Number(div.querySelector("button[name='statTypeSelect']").value);
+        if (Number.isNaN(statTypeIndex) || statTypeIndex == -1)
+            continue;
+        const filterType = getFilterTypeFromValue(div.querySelector("select").value);
+        if (filterType == null)
+            continue;
+        const inputtedText = div.querySelector("input[type='text']").value;
+        const reverseFilter = div.querySelector("label[data-labelType='reverse']").querySelector("input[type='checkbox']").checked;
+        activeFilters.push(new Filter(statList[statTypeIndex], filterType, inputtedText, reverseFilter));
+    }
+    updateCreatureStatsTable();
+}
+function filterCreatures() {
+    for (const creature of creatureList) {
+        let matchesAllFilters = true;
+        for (const filter of activeFilters) {
+            if (!filter.test(creature)) {
+                matchesAllFilters = false;
+                break;
+            }
+        }
+        if (matchesAllFilters) {
+            if (creature.tableRow.style.display != "table-row")
+                creature.tableRow.style.display = "table-row";
+        }
+        else {
+            if (creature.tableRow.style.display != "none")
+                creature.tableRow.style.display = "none";
+        }
+    }
+}
+function getFilterTypeFromValue(value) {
+    switch (value) {
+        case "equals": return FilterType.EQUALS;
+        case "contains": return FilterType.CONTAINS;
+        case "lessThan": return FilterType.LESS_THAN;
+        case "lessThanEquals": return FilterType.LESS_THAN_EQUALS;
+        case "greaterThan": return FilterType.GREATER_THAN;
+        case "greaterThanEquals": return FilterType.GREATER_THAN_EQUALS;
+        default: return null;
+    }
+}
+function createOption(value, text) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = text;
+    return option;
+}
 function onHeaderCellClick(headerCell) {
-    const prevSortFunction = sortFunction;
-    sortFunction = selectedStats[headerCell.cellIndex].sort;
-    if (prevSortFunction == sortFunction) {
+    const prevSortFunction = currentSortFunction;
+    currentSortFunction = selectedStats[headerCell.cellIndex].sort;
+    if (prevSortFunction == currentSortFunction) {
         sortAscending = !sortAscending;
     }
     else {
@@ -679,12 +654,6 @@ function chooseTypeSearchBarUpdate() {
             tableRow.style.display = "none";
         }
     }
-}
-function createOption(value, text) {
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = text;
-    return option;
 }
 function openConfigureTypesMenu() {
     CONFIGURE_STAT_TYPES_BUTTON.after(FLOATING_WINDOW);
@@ -778,6 +747,8 @@ function onFrame(_) {
     FLOATING_WINDOW.querySelector("img").style.top = `${FLOATING_WINDOW.scrollTop}px`;
     requestAnimationFrame(onFrame);
 }
+//@ts-ignore
+function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 (async () => {
     initializeCreatureStats().then(() => {
         updateCreatureStatsTable();
@@ -787,7 +758,7 @@ function onFrame(_) {
     selectedStats.push(getStatValueWithKeyName("type"));
     selectedStats.push(getStatValueWithKeyName("diet"));
     selectedStats.push(getStatValueWithKeyName("tier"));
-    sortFunction = nameStat.sort;
+    currentSortFunction = nameStat.sort;
     sortAscending = false;
     sortDirty = true;
     const exitFloatingWindowButton = FLOATING_WINDOW.querySelector("img");
@@ -796,7 +767,7 @@ function onFrame(_) {
         closeFloatingWindow(); });
     CONFIGURE_STAT_TYPES_BUTTON.addEventListener("click", openConfigureTypesMenu);
     document.getElementById("applyFilters").addEventListener("click", () => {
-        submitFilterChanges();
+        updateFilterChanges();
     });
     document.getElementById("createFilter").addEventListener("click", () => {
         FILTER_CONTAINING_DIV.appendChild(createFilter());
@@ -877,7 +848,7 @@ STAT_LIST_TABLE.addEventListener("keydown", (keyEvent) => {
                         return element;
                 }
                 else {
-                    return null; //theres no more elements!
+                    return null; //there's no more elements!
                 }
             }
         }
