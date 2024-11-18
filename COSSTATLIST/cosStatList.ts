@@ -724,7 +724,12 @@ function openConfigureTypesMenu(){
     const selectAllCheckbox = document.createElement("input");
     selectAllCheckbox.type = "checkbox";
     selectAllCheckbox.checked = selectedStats.length == statList.length;
-    selectAllCheckbox.addEventListener("change", async () => {
+    selectAllCheckbox.addEventListener("change", () => {
+        if(STAT_LIST_TABLE.hasAttribute("disabled")) {
+            selectAllCheckbox.checked = !selectAllCheckbox.checked;
+            return;
+        }
+
         if(selectAllCheckbox.checked){
             for(const stat of statList){
                 if(!selectedStats.includes(stat)) selectedStats.push(stat);
@@ -733,25 +738,17 @@ function openConfigureTypesMenu(){
             selectedStats = [];
         }
 
-        var statTypeSelectionRows = FLOATING_WINDOW_TABLE.querySelector("tbody").children;
-        for(const row of statTypeSelectionRows){
+        for(const row of FLOATING_WINDOW_TABLE.querySelector("tbody").children){
             var checkbox = row.querySelector("input");
             checkbox.checked = selectAllCheckbox.checked;
-            checkbox.disabled = true;
         }
-        // await sleep(0);
-        await updateCreatureStatsTable();
 
-        requestAnimationFrame(() => {
-            for(const row of statTypeSelectionRows){
-                row.querySelector("input").disabled = false;
-            }
-        })
-
+        updateCreatureStatsTable();
     });
+
     const label = document.createElement("label");
     label.setAttribute("style", "display: block; width: 100%;");
-    label.append(selectAllCheckbox, "Select All");
+    label.append(selectAllCheckbox, "Show All");
     cell.appendChild(label);
     selectAllRow.appendChild(cell);
     rows.push(selectAllRow);
@@ -765,6 +762,11 @@ function openConfigureTypesMenu(){
         // checkbox.disabled = !statValue.canBeDisabled;
         checkbox.checked = getSelectedStatValueWithKeyName(statValue.keyName) != null;
         checkbox.addEventListener("change", () => {
+            if(STAT_LIST_TABLE.hasAttribute("disabled")) {
+                checkbox.checked = !checkbox.checked;
+                return;
+            }
+
             const indexOfStatValue = selectedStats.indexOf(statValue);
             if(indexOfStatValue != -1){
                 selectedStats.splice(indexOfStatValue, 1);
