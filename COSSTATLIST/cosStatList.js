@@ -212,9 +212,9 @@ function initializeStatList() {
     statList.push(new KeyedNumberStatValue("Minimum Age to use Spacebar", "jumpAge"));
     statList.push(new KeyedNumberStatValue("Jump Power", "jumpPower"));
     statList.push(new KeyedNumberStatValue("Jump Stamina Cost", "jumpStamina"));
-    statList.push(new KeyedNumberStatValue("Moisture Duration (seconds)", "moistureTime"));
+    statList.push(new KeyedNumberStatValue("Moisture Duration (secs)", "moistureTime"));
     statList.push(new KeyedNumberStatValue("Night Vision", "nightvision"));
-    statList.push(new KeyedNumberStatValue("Oxygen Duration (seconds)", "oxygenTime"));
+    statList.push(new KeyedNumberStatValue("Oxygen Duration (secs)", "oxygenTime"));
     statList.push(new KeyedNumberStatValue("Sprint Speed", "sprintSpeed"));
     statList.push(new KeyedNumberStatValue("Walk and Swim Speed", "walkAndSwimSpeed"));
     statList.push(new KeyedNumberStatValue("Stamina Regen", "staminaRegen"));
@@ -365,6 +365,7 @@ function initializeCreatureList() {
                         creatureStats.push(value);
                     }
                     creatureList = creatureStats;
+                    document.getElementById("loadingText").remove();
                     resolve();
                 }).catch(onError);
             }).catch(onError);
@@ -524,7 +525,9 @@ function createFilter() {
     select.title = "Choose what this stat should be!";
     select.append(createOption("equals", "EQUALS"), createOption("contains", "CONTAINS"), createOption("lessThan", "<"), createOption("lessThanEquals", "≤"), createOption("greaterThan", ">"), createOption("greaterThanEquals", "≥"));
     const textInput = document.createElement("input");
+    textInput.autocomplete = "off";
     textInput.type = "text";
+    textInput.name = "statFilterInput";
     textInput.style.width = "20ch";
     const reverseLabel = document.createElement("label");
     reverseLabel.setAttribute("data-labelType", "reverse");
@@ -750,6 +753,7 @@ function onFrame(_) {
 //@ts-ignore
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 (async () => {
+    document.getElementById("loadingText").innerText = "LOADING TABLE...";
     initializeCreatureList().then(() => {
         updateCreatureStatsTable();
     });

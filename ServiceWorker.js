@@ -1,5 +1,4 @@
 "use strict";
-const OFFLINE_VERSION = 2;
 const CACHE_NAME = 'CosyHamsterMusicPlayerOfflineCache';
 var cacheStorage;
 self.addEventListener("install", (event) => {

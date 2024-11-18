@@ -64,7 +64,7 @@
         <div style="border: 1px solid black; margin-bottom: 15px;">
             <p style="font-weight: bold; margin: 0;">Filters</p>
             <div id="filterConfigurations">
-                
+
             </div>
             <div>
                 <button id="applyFilters">Submit Filter Changes</button>
@@ -82,9 +82,12 @@
             </tbody>
         </table>
 
+        <p style="font-family: cursive, serif;" id="loadingText">LOADING SCRIPTS...</p>
+        <noscript style="font-family: cursive, serif;">YOU MUST ENABLE JAVASCRIPT FOR THIS WEBSITE TO WORK!!!!!</noscript>
+
         <div id="floatingWindow" style="position:relative;width: max-content;max-width:75vw;height: 50vh;background-color:white;display: none;overflow:scroll;border:gray solid 1px;">
-            <img class="clickableButton" tabindex="0" style="z-index: 2; border-radius: 8px; float: right; width: 20px; height: 20px;" src="../Icons/CancelIcon.svg" alt="Exit"/>
-            <input aria-description="Search Stat Types" type="search" id="floatingWindowSearchBar" placeholder="Search...">
+            <img class="clickableButton" decoding="async" loading="lazy" tabindex="0" style="z-index: 2; border-radius: 8px; float: right; width: 20px; height: 20px;" src="../Icons/CancelIcon.svg" alt="Exit"/>
+            <input autocomplete="off" name="Search Stats" aria-description="Search Stat Types" type="search" id="floatingWindowSearchBar" placeholder="Search...">
             <table id="floatingWindowTable" style="width: calc(100% - 20px);">
                 <tbody></tbody>
             </table>
