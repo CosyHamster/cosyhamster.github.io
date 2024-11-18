@@ -30,10 +30,10 @@ self.addEventListener("install", (event) => {
         "./Icons/HeadphonesIcon.svg",
         "./Icons/CancelIcon.svg"
     ];
-    event.waitUntil(new Promise(async (accept, reject) => {
+    event.waitUntil(new Promise(async (resolve, reject) => {
         if (!cacheStorage)
             cacheStorage = await caches.open(CACHE_NAME);
-        cacheStorage.addAll(contentToCache).then(() => accept()).catch(() => reject("Failed to add all resources to cache on install"));
+        cacheStorage.addAll(contentToCache).then(() => resolve()).catch(() => reject("Failed to add all resources to cache on install"));
     }));
 });
 self.addEventListener('activate', (e) => {
@@ -46,48 +46,58 @@ self.addEventListener("fetch", (e) => {
     e.respondWith(new Promise(async (resolve, reject) => {
         if (!cacheStorage)
             cacheStorage = await caches.open(CACHE_NAME);
-        useCache(e.request).then(response => {
-            if (response instanceof Response) {
+        let requestResolved = false;
+        useFetchRequestAndCache(e.request).then(response => {
+            if (!requestResolved)
                 resolve(response);
-                useFetchRequestAndCache(e.request).catch(() => { });
-            }
-            else
-                useFetchRequestAndCache(e.request).then(response => {
-                    resolve(response);
-                }).catch(() => { });
-        }, rejectReason => {
-            useFetchRequestAndCache(e.request).then(response => {
-                resolve(response);
-            }).catch(error => {
-                reject(error);
-            });
+            requestResolved = true;
+        }, error => {
+            resolveUsingCache();
         });
-        async function useFetchRequestAndCache(request) {
-            return new Promise((resolve, reject) => {
-                fetch(request).then(response => {
-                    if (response.ok) {
-                        console.log(`[Service Worker] Caching resource: ${request.url}`);
-                        cacheStorage.put(request, response.clone());
-                    }
+        setTimeout(() => {
+            if (!requestResolved) {
+                resolveUsingCache();
+            }
+        }, 10000);
+        function resolveUsingCache() {
+            useCache(e.request).then(response => {
+                if (response instanceof Response) {
                     resolve(response);
-                }).catch((error) => {
-                    reject(error);
-                });
-            });
-        }
-        async function useCache(request) {
-            return new Promise((resolve, reject) => {
-                getCachedResponse(request).then(response => {
-                    console.log(`[Service Worker] Returning cached resource: ${request.url}`);
-                    resolve(response);
-                }).catch((errorReason) => {
-                    console.log(`[Service Worker] Uncached resource: ${request.url}`);
-                    reject(errorReason);
-                });
+                    requestResolved = true;
+                }
+                else {
+                    reject("Failed to fetch and no value in cache.");
+                }
+            }, rejectReason => {
+                reject("Failed to fetch and no value in cache.");
             });
         }
     }));
 });
+async function useFetchRequestAndCache(request) {
+    return new Promise((resolve, reject) => {
+        fetch(request).then(response => {
+            if (response.ok) {
+                console.log(`[Service Worker] Caching resource: ${request.url}`);
+                cacheStorage.put(request, response.clone());
+            }
+            resolve(response);
+        }).catch((error) => {
+            reject(error);
+        });
+    });
+}
+async function useCache(request) {
+    return new Promise((resolve, reject) => {
+        getCachedResponse(request).then(response => {
+            console.log(`[Service Worker] Returning cached resource: ${request.url}`);
+            resolve(response);
+        }).catch((errorReason) => {
+            console.log(`[Service Worker] Uncached resource: ${request.url}`);
+            reject(errorReason);
+        });
+    });
+}
 async function getCachedResponse(request) {
     return new Promise((accept, reject) => {
         cacheStorage.match(request).then((response) => {
