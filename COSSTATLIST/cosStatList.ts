@@ -1,8 +1,8 @@
 var creatureList: Creature[] = [];
+var nameStat: StatValue;
 var statList: StatValue[] = [];
 var selectedStats: StatValue[] = [];
 var activeFilters: Filter[] = [];
-var nameStat: StatValue;
 var currentSortFunction: (creature1: Creature, creature2: Creature) => number;
 var sortAscending = false;
 var sortDirty = false;

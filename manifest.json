@@ -3,5 +3,11 @@
     "name": "Web Player",
     "start_url": "/index.html",
     "display": "standalone",
-    "orientation": "landscape"
+    "orientation": "landscape",
+    "icons": [
+        {
+            "src": "./Icons/big-sheep-face.png",
+            "sizes": "600x600"
+        }
+    ]
   }
