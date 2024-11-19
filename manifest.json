@@ -1,13 +1,30 @@
 {
     "short_name": "Web Player",
     "name": "Web Player",
+    "background_color": "#888",
     "start_url": "/index.html",
     "display": "standalone",
     "orientation": "landscape",
     "icons": [
         {
             "src": "./Icons/big-sheep-face.png",
-            "sizes": "600x600"
+            "sizes": "600x600",
+            "purpose": "any"
         }
+    ],
+    "screenshots": [
+        {
+            "src": "Icons/desktopSS.png",
+            "sizes": "1920x1080",
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "Front page"
+        }, {
+            "src": "Icons/mobileSS.png",
+            "sizes": "1080x1920",
+            "type": "image/png",
+            "label": "Front page"
+        }
+
     ]
   }
