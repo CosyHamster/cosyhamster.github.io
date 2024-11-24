@@ -241,7 +241,7 @@ table{
     border-spacing: 1px;
     border: 1px gray;
 }
-.tableBorder:not(:focus-within, :focus){
+.tableBorder:not(:focus-visible){
     outline: 1px solid rgb(74, 74, 74);
     border-collapse: collapse;
     border-radius: 0;

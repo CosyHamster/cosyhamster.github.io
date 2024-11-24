@@ -2,6 +2,7 @@
     "short_name": "Web Player",
     "name": "Web Player",
     "background_color": "#888",
+    "theme_color": "#888",
     "start_url": "/index.html",
     "display": "standalone",
     "orientation": "landscape",

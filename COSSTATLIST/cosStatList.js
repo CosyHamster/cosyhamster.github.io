@@ -1,9 +1,9 @@
 "use strict";
 var creatureList = [];
+var nameStat;
 var statList = [];
 var selectedStats = [];
 var activeFilters = [];
-var nameStat;
 var currentSortFunction;
 var sortAscending = false;
 var sortDirty = false;
