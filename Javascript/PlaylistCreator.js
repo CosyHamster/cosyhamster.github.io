@@ -1319,7 +1319,7 @@ function spawnContextMenu(clientX, clientY, contextOptions, allowDefaultOptions)
         contextButtons.push(contextButton);
     }
     CONTEXT_MENU.append(...contextButtons);
-    CONTEXT_MENU.style.height = `${contextButtons.length * 29}px`;
+    CONTEXT_MENU.style.height = 'max-content'; //`${contextButtons.length * 29}px`;
     let leftOffset = clientX + 2, downOffset = clientY + 2;
     const viewportWidth = document.documentElement.clientWidth, viewportHeight = document.documentElement.clientHeight, contextMenuRect = CONTEXT_MENU.getBoundingClientRect();
     if (leftOffset + contextMenuRect.width > viewportWidth) {

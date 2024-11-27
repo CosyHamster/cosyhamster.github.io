@@ -1396,7 +1396,7 @@ function spawnContextMenu(clientX: number, clientY: number, contextOptions: Cont
   }
 
   CONTEXT_MENU.append(...contextButtons);
-  CONTEXT_MENU.style.height = `${contextButtons.length * 29}px`;
+  CONTEXT_MENU.style.height = 'max-content';//`${contextButtons.length * 29}px`;
 
   let leftOffset = clientX + 2,
     downOffset = clientY + 2;

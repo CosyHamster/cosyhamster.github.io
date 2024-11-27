@@ -111,29 +111,34 @@
 }
 
 .playBackIcon{ pointer-events: none; }
+
 dialog{
+    interpolate-size: allow-keywords;
+    background-color: white;
+    left: calc(100% - 5px);
+    flex-direction: column;
     display: inline-flex;
     position: fixed;
-    top: -100vh;
     width: 0;
     height: 0;
-    left: 100%;
     opacity: 0;
-    flex-direction: column;
-    background-color: white;
-    @media not (prefers-reduced-motion) {
+    @media screen and (prefers-reduced-motion: no-preference) {
+        animation: moveUp 250ms ease normal;
+        animation-fill-mode: forwards;
         transition: 250ms;
     }
 }
 dialog[open] {
-    top: 0;
     left: 0;
-    
+    opacity: 1;
     height: max-content;
     width: 75%;
-    opacity: 1;
     @media (max-width: 140ch){
         width: 100%;
+    }
+    @media screen and (prefers-reduced-motion: no-preference) {
+        animation: moveDown 250ms ease normal;
+        animation-fill-mode: forwards;
     }
 }
 dialog::backdrop{
@@ -141,6 +146,22 @@ dialog::backdrop{
     transition-duration: 250ms;
     animation: darkenColor 250ms ease normal;
     animation-fill-mode: forwards;
+}
+@keyframes moveUp{
+    from {
+        top: 50vh;
+    }
+    to {
+        top: -30px;
+    }
+}
+@keyframes moveDown{
+    from {
+        top: -100vh;
+    }
+    to {
+        top: 0;
+    }
 }
 @keyframes darkenColor{
     from {
@@ -150,6 +171,7 @@ dialog::backdrop{
       background-color: rgba(0, 0, 0, 0.75);
     }
 }
+
 .clickableButton{
     position: relative;
     z-index: 0;
