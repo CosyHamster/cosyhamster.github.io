@@ -10,6 +10,7 @@
         {
             "src": "./Icons/big-sheep-face.png",
             "sizes": "600x600",
+            "type": "image/png",
             "purpose": "any"
         }
     ],
@@ -26,6 +27,35 @@
             "type": "image/png",
             "label": "Front page"
         }
-
+    ],
+    "shortcuts": [
+        {
+            "name": "Web Looper",
+            "short_name": "Looper",
+            "description": "Launch the Web Looper",
+            "url": "/HTML/WebLooper.html",
+            "icons": [
+                {
+                    "src": "./Icons/big-sheep-face.png",
+                    "sizes": "600x600",
+                    "type": "image/png",
+                    "purpose": "any"
+                }
+            ]
+        },
+        {
+            "name": "Playlist Creator",
+            "short_name": "Playlist",
+            "description": "Launch the Playlist Creator",
+            "url": "/HTML/PlaylistCreator.html",
+            "icons": [
+                {
+                    "src": "./Icons/big-sheep-face.png",
+                    "sizes": "600x600",
+                    "type": "image/png",
+                    "purpose": "any"
+                }
+            ]
+        }
     ]
   }
