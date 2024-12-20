@@ -696,10 +696,10 @@ function updateCurrentTimeDisplay(currentTime: number, songDurationInSeconds: nu
   const progressBarDomRect: DOMRect = PROGRESS_BAR.getBoundingClientRect();
   if (progressBarDomRect.top + 50 < 0) return; //return if you scrolled away from the progress bar (+50 to include the hoveredTimeDisplay)
 
+  const beginningOfProgressBar = (progressBarDomRect.left - HOVERED_TIME_DISPLAY.getBoundingClientRect().width / 2)+scrollX;
   const currentTimeString = new Time(currentTime).toString();
   if (HOVERED_TIME_DISPLAY.children[0].textContent != currentTimeString) HOVERED_TIME_DISPLAY.children[0].textContent = currentTimeString;
 
-  const beginningOfProgressBar = (progressBarDomRect.left - HOVERED_TIME_DISPLAY.getBoundingClientRect().width / 2)+scrollX;
   const pixelsAcrossProgressBar = (progressBarDomRect.width * currentTime / songDurationInSeconds) - 1;
   HOVERED_TIME_DISPLAY.style.top = `${progressBarDomRect.top + scrollY}px`;
   HOVERED_TIME_DISPLAY.style.left = `${beginningOfProgressBar+pixelsAcrossProgressBar}px`;
