@@ -1325,9 +1325,8 @@ function isTyping(keyboardEvent: KeyboardEvent): boolean { return keyboardEvent.
 
 /*                       CONTEXT MENU                      */
 
-function initContextMenu() {
+function initContextMenu(): void {
   document.addEventListener('contextmenu', (pointerEvent) => {
-    pointerEvent.preventDefault()
     selectingSongRow: { //if clicking a row
       let row: Element = pointerEvent.target as Element;
       if (!rowValid(row)) {
@@ -1344,18 +1343,24 @@ function initContextMenu() {
       if (selectedRows.length == 1) contextOptions.push({ text: (currentSongIndex != selectedRows[0].rowIndex - 1) ? "Play" : "Stop", action: () => playRow(selectedRows[0]) });
       contextOptions.push({ text: "Delete", action: deleteSelectedSongs });
 
+      pointerEvent.preventDefault()
       return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, contextOptions, true);
     }
 
     switch ((pointerEvent.target as Element).getAttribute('data-onRightClick')) {
       case "uploadFileMenu": {
+        pointerEvent.preventDefault()
         return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, [
           { text: "Upload Files", icon: "../Icons/UploadIcon.svg", action: () => UPLOAD_BUTTON.dispatchEvent(new MouseEvent('click')) },
           { text: "Upload Folder", icon: "../Icons/UploadIcon.svg", action: () => UPLOAD_DIRECTORY_BUTTON.dispatchEvent(new MouseEvent('click')) }
-        ], false);
+        ], true);
+      }
+      case "quickSettings": {
+        pointerEvent.preventDefault()
+        return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, [], true)
       }
       default: {
-        return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, [], true);
+        // return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, [], true);
       }
     }
   })
