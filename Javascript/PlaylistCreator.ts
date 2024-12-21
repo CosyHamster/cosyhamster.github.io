@@ -11,8 +11,9 @@ var curWin: Window = window;
 var curDoc: Document = document;
 const SITE_DEPRECATED = document.URL.toLowerCase().includes('codehs') || document.URL.includes("127.0.0.1");
 var ON_MOBILE: boolean;
+
 //@ts-expect-error
-if(navigator.userAgentData) ON_MOBILE = navigator.userAgentData.mobile;
+if(navigator.userAgentData) { ON_MOBILE = navigator.userAgentData.mobile; }
 else {
   //@ts-expect-error
   let userAgent: string = navigator.userAgent||navigator.vendor||window.opera;
