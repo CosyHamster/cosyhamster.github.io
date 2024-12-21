@@ -436,11 +436,6 @@ var currentSongIndex = null;
         sounds = [];
     }, { passive: true });
     initContextMenu();
-    registerClickEvent(curDoc, (mouseEvent) => {
-        closeContextMenu();
-        if (mouseEvent.target == curDoc.querySelector("html") || mouseEvent.target == curDoc.body)
-            deselectAll();
-    });
     registerClickEvent(CURRENT_FILE_NAME, () => PLAYLIST_VIEWER_TABLE.rows[currentSongIndex + 1].scrollIntoView(false))();
     registerClickEvent('skipBack', () => jumpSong(-1))();
     registerClickEvent('skipForward', () => jumpSong())();
@@ -1351,6 +1346,11 @@ function initContextMenu() {
             }
         }
     });
+    registerClickEvent(curDoc, (mouseEvent) => {
+        closeContextMenu();
+        if (mouseEvent.target == curDoc.querySelector("html") || mouseEvent.target == curDoc.body)
+            deselectAll();
+    });
 }
 function spawnContextMenu(clientX, clientY, contextOptions, allowDefaultOptions) {
     let childElement;
@@ -1402,5 +1402,5 @@ function spawnContextMenu(clientX, clientY, contextOptions, allowDefaultOptions)
     if (contextButtons[0])
         contextButtons[0].focus({ focusVisible: true });
 }
-function closeContextMenu() { CONTEXT_MENU.toggleAttribute('open', false); }
+function closeContextMenu() { CONTEXT_MENU.toggleAttribute('open', false); CONTEXT_MENU.style.height = '0'; }
 //# sourceMappingURL=PlaylistCreator.js.map
