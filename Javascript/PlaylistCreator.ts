@@ -825,7 +825,7 @@ async function importFiles(element: DataTransfer | ArrayLike<File>) {
     let fileReceiver = new DataTransferItemGrabber(dataTransferItemList);
     addFiles(await fileReceiver.retrieveContents());
   }
-  
+
   function addFiles(files: ArrayLike<File> /*FileList or File[]*/) {
     const lengthBeforeBegin = sounds.length;
     let offsetBecauseOfSkipped = 0
@@ -1355,7 +1355,7 @@ function updateSongNumberings() {
     songNumber.textContent = `${row.rowIndex}. `;
   }
 }
-function rowValid(row: Element) { return row instanceof curWin.HTMLTableRowElement && row != PLAYLIST_VIEWER_TABLE.rows[0] && row.closest('table') == PLAYLIST_VIEWER_TABLE; }
+function rowValid(row: Element) { return row.constructor.name == "HTMLTableRowElement" && row != PLAYLIST_VIEWER_TABLE.rows[0] && row.closest('table') == PLAYLIST_VIEWER_TABLE; }
 function findValidTableRow(topLevelElement: Element): HTMLTableRowElement | null{
   if(rowValid(topLevelElement)) return topLevelElement as HTMLTableRowElement;
   else {

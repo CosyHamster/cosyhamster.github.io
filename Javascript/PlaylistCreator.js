@@ -1275,7 +1275,7 @@ function updateSongNumberings() {
         songNumber.textContent = `${row.rowIndex}. `;
     }
 }
-function rowValid(row) { return row instanceof curWin.HTMLTableRowElement && row != PLAYLIST_VIEWER_TABLE.rows[0] && row.closest('table') == PLAYLIST_VIEWER_TABLE; }
+function rowValid(row) { return row.constructor.name == "HTMLTableRowElement" && row != PLAYLIST_VIEWER_TABLE.rows[0] && row.closest('table') == PLAYLIST_VIEWER_TABLE; }
 function findValidTableRow(topLevelElement) {
     if (rowValid(topLevelElement))
         return topLevelElement;
