@@ -390,7 +390,7 @@ var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(), K
     PLAYING: "rgb(172, 172, 172)",
     SELECTING: "lightblue",
     NONE: ""
-}, PAUSED = false, PLAYING = true, PLAYLIST_VIEWER_TABLE = document.getElementById("Playlist_Viewer"), PRELOAD_DIST_ELEMENT = document.getElementById('preloadDistance'), PRELOAD_TYPE_SELECTOR = document.getElementById("preloadType"), COMPACT_MODE_LINK_ELEMENT = null, //document.getElementById('compactModeStyleLink'),
+}, PAUSED = false, PLAYING = true, MAIN_TABLE = document.body.querySelector(".mainTable"), PLAYLIST_VIEWER_TABLE = document.getElementById("Playlist_Viewer"), PRELOAD_DIST_ELEMENT = document.getElementById('preloadDistance'), PRELOAD_TYPE_SELECTOR = document.getElementById("preloadType"), COMPACT_MODE_LINK_ELEMENT = null, //document.getElementById('compactModeStyleLink'),
 COMPACT_MODE_TOGGLE = document.getElementById('compactMode'), SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration'), SEEK_DURATION_DISPLAY = document.getElementById("seekDurationDisplay"), SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional'), SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable'), REORDER_FILES_CHECKBOX = document.getElementById('reorderFiles'), ENTER_PIP_BUTTON = document.getElementById('enterPIP'), UPLOAD_BUTTON = document.getElementById('0input'), UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory'), PLAY_RATE_RANGE = document.getElementById('0playRateSlider'), SETTINGS_POPUP = document.getElementById('settingsPage'), ERROR_POPUP = document.getElementById('errorPopup'), DEPRECATED_POPUP = document.getElementById('deprecatedPopup'), DIALOGS = [SETTINGS_POPUP, ERROR_POPUP, DEPRECATED_POPUP], ERROR_LIST = document.getElementById('errorList'), CONTEXT_MENU = document.getElementById('rightClickContextMenu'), PROGRESS_BAR = document.getElementById('progress-bar'), HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay'), VOLUME_CHANGER = document.getElementById('0playVolume'), PLAY_RATE = document.getElementById('0playRate'), PLAY_PAN = document.getElementById('0playPan'), SEEK_BACK = document.getElementById('seekBack'), 
 // SEEK_FORWARD = document.getElementById('seekForward') as HTMLTableCellElement,
 REPEAT_BUTTON = document.getElementById('repeatButton'), REPEAT_BUTTON_IMAGE = document.getElementById("repeatButtonImg"), SHUFFLE_BUTTON = document.getElementById('shuffleButton'), MUTE_BUTTON = document.getElementById('0Mute'), PLAY_BUTTON = document.getElementById('playpause'), STATUS_TEXT = document.getElementById('0status'), CURRENT_FILE_NAME = document.getElementById('currentFileName'), DURATION_OF_SONG_DISPLAY = document.getElementById('secondDurationLabel'), DROPPING_FILE_OVERLAY = document.getElementById("dragOverDisplay");
@@ -769,8 +769,9 @@ async function importFiles(element) {
             const tableRow = createNewSong(file.name, nativeIndex);
             const song = new Song(file, nativeIndex, tableRow);
             songTableRows.push(tableRow); //index (2nd parameter) is used to number the checkboxes
-            updateSongFileSizeDisplay(song);
             sounds.push(song);
+            updateSongFileSizeDisplay(song);
+            updateTranslationOfMainTable();
         }
         const QUANTUM = 32768;
         const playlistTableBody = PLAYLIST_VIEWER_TABLE.tBodies[0];
@@ -1180,6 +1181,7 @@ function deleteSelectedSongs() {
     }
     deselectAll();
     updateSongNumberings();
+    updateTranslationOfMainTable();
     refreshPreloadedSongs();
 }
 function moveSelectedSongs(toIndex) {
@@ -1259,6 +1261,9 @@ function startPlayingFromKeyboard(keyboardEvent) {
 }
 function tryFindTableRowInParents(element) {
     return element.closest('tr');
+}
+function updateTranslationOfMainTable() {
+    MAIN_TABLE.style.setProperty("--moveDown", `calc(30vh - ${sounds.length * ((COMPACT_MODE_TOGGLE.checked ? 22 : 52))}px)`);
 }
 function updateSongNumberings() {
     for (const song of sounds) {

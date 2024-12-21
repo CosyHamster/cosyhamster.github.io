@@ -266,6 +266,15 @@ dt::after {
   content: ": ";
 }
 
+.mainTable {
+    --moveDown: 30vh;
+    position: absolute;
+    border: 1px solid black;
+    width: calc(100% - 20px);
+    top: max(var(--moveDown), 5ch);
+    transform: translate(0%, 0%);
+    z-index: -2;
+}
 table{
     border-spacing: 1px;
     border: 1px gray;

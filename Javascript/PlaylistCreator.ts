@@ -338,7 +338,7 @@ class DataTransferItemGrabber { //this exists because javascript has bugs (it ke
         });
         waitForPromisesToResolve();
       });
-    
+
       this.phase = PhaseType.FINISHED;
       this.updateLoadingStatus();
       return resolve(this.files);
@@ -431,6 +431,7 @@ var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(),
   },
   PAUSED = false,
   PLAYING = true,
+  MAIN_TABLE = document.body.querySelector(".mainTable") as HTMLTableElement,
   PLAYLIST_VIEWER_TABLE = document.getElementById("Playlist_Viewer") as HTMLTableElement,
   PRELOAD_DIST_ELEMENT = document.getElementById('preloadDistance') as HTMLInputElement,
   PRELOAD_TYPE_SELECTOR = document.getElementById("preloadType") as HTMLSelectElement,
@@ -849,8 +850,9 @@ async function importFiles(element: DataTransfer | ArrayLike<File>) {
       const song = new Song(file, nativeIndex, tableRow);
 
       songTableRows.push(tableRow); //index (2nd parameter) is used to number the checkboxes
-      updateSongFileSizeDisplay(song);
       sounds.push(song);
+      updateSongFileSizeDisplay(song);
+      updateTranslationOfMainTable();
     }
 
     const QUANTUM = 32768;
@@ -1274,6 +1276,7 @@ function deleteSelectedSongs() {
   }
   deselectAll();
   updateSongNumberings();
+  updateTranslationOfMainTable();
   refreshPreloadedSongs();
 }
 function moveSelectedSongs(toIndex: number) {
@@ -1346,6 +1349,9 @@ function startPlayingFromKeyboard(keyboardEvent: KeyboardEvent) {
 function tryFindTableRowInParents(element: Element): HTMLTableRowElement | null {
   return element.closest('tr');
 }
+function updateTranslationOfMainTable(){//COMPACT_MODE_TOGGLE.checked
+  MAIN_TABLE.style.setProperty("--moveDown", `calc(30vh - ${sounds.length*((COMPACT_MODE_TOGGLE.checked ? 22 : 52))}px)`);
+}
 function updateSongNumberings() {
   for(const song of sounds){
     var row = song.currentRow;
@@ -1390,6 +1396,8 @@ function findValidTableRow(topLevelElement: Element): HTMLTableRowElement | null
 }
 function sortSelectedRows() { selectedRows.sort((a, b) => a.rowIndex - b.rowIndex) }
 function isTyping(keyboardEvent: KeyboardEvent): boolean { return keyboardEvent.target instanceof curWin.HTMLInputElement; }
+
+
 
 async function togglePictureInPicture() {
   ENTER_PIP_BUTTON.disabled = true;
