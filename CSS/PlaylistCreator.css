@@ -187,11 +187,13 @@ dialog::backdrop{
     background-color: rgb(255, 255, 255);
     box-shadow: 0 5px 5px 0 rgba(0,0,0,0.24), 0 17px 50px 0 rgba(0,0,0,0.19);
 }
-#enterPIP{
+#enterPIP:after{
+    content: "Enter PIP (WIP)";
     @media all and (display-mode: picture-in-picture){
-        display: none;
+        content: "Exit PIP";
     }
 }
+
 .pullsOpen div{
     transform: translate(0, 50%);
     position: absolute;

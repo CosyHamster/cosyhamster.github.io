@@ -67,12 +67,16 @@ class SongLoader{
 
       const onProgress = (progressEvent: ProgressEvent<FileReader>) => {
         if (sounds[currentSongIndex].file == this.song.file) PROGRESS_BAR.value = (100 * progressEvent.loaded) / progressEvent.total;
-        fileSizeDisplays[this.song.currentRow.rowIndex-1].textContent = `${getInMegabytes(progressEvent.loaded)} MB / ${getInMegabytes(this.song.file.size)} MB`;
-        fileSizeDisplays[this.song.currentRow.rowIndex-1].setAttribute('title', `${progressEvent.loaded} bytes / ${this.song.file.size} bytes`);
+        const fileBytes = this.song.file.size;
+        setSongFileSizeDisplay(
+            this.song,
+            `${getInMegabytes(progressEvent.loaded)} MB / ${getInMegabytes(fileBytes)} MB`,
+            `${progressEvent.loaded} bytes / ${fileBytes} bytes`
+        );
       }
       const onLoaded = () => {
         resolve(this.createHowl());
-        setFileSizeDisplay(this.song.currentRow.rowIndex-1, this.song.file.size);
+        updateSongFileSizeDisplay(this.song);
         this.triggerAbort();
       }
       const errorFunc = (progressEvent: ProgressEvent<FileReader>) => {
@@ -105,7 +109,7 @@ class SongLoader{
     if(this.finishedLoadingAbortController){
       this.finishedLoadingAbortController.abort();
     }
-    setFileSizeDisplay(this.song.currentRow.rowIndex-1, this.song.file.size);
+    updateSongFileSizeDisplay(this.song);
   }
   createHowl(): Howl {
     console.time("createHowl")
@@ -437,7 +441,7 @@ var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(),
   SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional') as HTMLInputElement,
   SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable') as HTMLInputElement,
   REORDER_FILES_CHECKBOX = document.getElementById('reorderFiles') as HTMLInputElement,
-  ENTER_PIP_BUTTON = document.getElementById('enterPIP') as HTMLInputElement,
+  ENTER_PIP_BUTTON = document.getElementById('enterPIP') as HTMLButtonElement,
   UPLOAD_BUTTON = document.getElementById('0input') as HTMLInputElement,
   UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory') as HTMLInputElement,
   PLAY_RATE_RANGE = document.getElementById('0playRateSlider') as HTMLInputElement,
@@ -560,7 +564,7 @@ var currentSongIndex: number | null = null;
   PROGRESS_BAR.addEventListener('pointermove', (pointer) => progressBarSeek(pointer, ProgressBarSeekAction.DISPLAY_TIME), { passive: true })
   PROGRESS_BAR.addEventListener('pointerleave', (pointer) => progressBarSeek(pointer, ProgressBarSeekAction.STOP_DISPLAYING), { passive: true })
   if ('documentPictureInPicture' in window) {
-    registerClickEvent(ENTER_PIP_BUTTON, enterPictureInPicture);
+    registerClickEvent(ENTER_PIP_BUTTON, togglePictureInPicture);
   } else {
     ENTER_PIP_BUTTON.remove();
   }
@@ -594,14 +598,14 @@ function makeDocumentDroppable() {
 }
 
 function registerDialogInertEvents(){
-  modifyDialogProtoype();
+  modifyDialogPrototype();
   DIALOGS.forEach(dialog => {
     dialog.addEventListener("close", () => {
       dialog.toggleAttribute("inert", true);
     });
   })
 }
-function modifyDialogProtoype(){
+function modifyDialogPrototype(){
   const showModalFunction = curWin.HTMLDialogElement.prototype.showModal;
   curWin.HTMLDialogElement.prototype.showModal = function() {
     this.removeAttribute("inert");
@@ -644,9 +648,8 @@ function createNewSong(fileName: string, index: number): HTMLTableRowElement { /
   initializeRowEvents(row);
 
   const fileSize = curDoc.createElement('div');
-  fileSize.setAttribute('class', 'songName test');
+  fileSize.setAttribute('class', 'songName fileSizeLabel');
   fileSize.setAttribute('style', 'position: absolute; transform: translate(-100%, 0); left: calc(100% - 3px);');
-  fileSize.setAttribute('id', `${index}playButtonLabel`)
 
   const songName = curDoc.createElement('div')
   songName.setAttribute('class', 'songName text')
@@ -741,12 +744,13 @@ function updateCurrentTimeDisplay(currentTime: number, songDurationInSeconds: nu
   const progressBarDomRect: DOMRect = PROGRESS_BAR.getBoundingClientRect();
   if (progressBarDomRect.top + 50 < 0) return; //return if you scrolled away from the progress bar (+50 to include the hoveredTimeDisplay)
 
-  const beginningOfProgressBar = (progressBarDomRect.left - HOVERED_TIME_DISPLAY.getBoundingClientRect().width / 2)+scrollX;
+  var hoveredTimeDisplayWidth = HOVERED_TIME_DISPLAY.getBoundingClientRect();
+  const beginningOfProgressBar = (progressBarDomRect.left - hoveredTimeDisplayWidth.width / 2)+curWin.scrollX;
   const currentTimeString = new Time(currentTime).toString();
   if (HOVERED_TIME_DISPLAY.children[0].textContent != currentTimeString) HOVERED_TIME_DISPLAY.children[0].textContent = currentTimeString;
 
   const pixelsAcrossProgressBar = (progressBarDomRect.width * currentTime / songDurationInSeconds) - 1;
-  HOVERED_TIME_DISPLAY.style.top = `${progressBarDomRect.top + scrollY}px`;
+  HOVERED_TIME_DISPLAY.style.top = `${progressBarDomRect.top + curWin.scrollY}px`;
   HOVERED_TIME_DISPLAY.style.left = `${beginningOfProgressBar+pixelsAcrossProgressBar}px`;
 }
 
@@ -845,7 +849,7 @@ async function importFiles(element: DataTransfer | ArrayLike<File>) {
       const song = new Song(file, nativeIndex, tableRow);
 
       songTableRows.push(tableRow); //index (2nd parameter) is used to number the checkboxes
-      setFileSizeDisplay(nativeIndex, file.size);
+      updateSongFileSizeDisplay(song);
       sounds.push(song);
     }
 
@@ -894,19 +898,20 @@ function handleShuffleButton(enable: boolean) {
     shuffle();
     refreshSongNames();
     for (let i = 0; i < sounds.length; i++) {
-      setFileSizeDisplay(i, sounds[i].file.size);
+      updateSongFileSizeDisplays();
     }
     return;
   }
 
   let tempArray = sounds,
-    foundCurrentPlayingSong = false;
-  // sounds = [].fill(null, 0, tempArray.length);
+  foundCurrentPlayingSong = false;
   sounds = new Array(tempArray.length);
+
   for (let i = 0; i < tempArray.length; i++) {
     let sound = tempArray[i];
     sounds[sound.nativeIndex] = sound;
-    setFileSizeDisplay(sound.nativeIndex, sound.file.size);
+    sound.currentRow = PLAYLIST_VIEWER_TABLE.rows[sound.nativeIndex+1];
+    updateSongFileSizeDisplay(sound);
 
     if (!foundCurrentPlayingSong && currentSongIndex !== null && i == currentSongIndex) {
       currentSongIndex = sound.nativeIndex;
@@ -1052,11 +1057,6 @@ function pauseOrUnpauseCurrentSong(pause: boolean){ //controls playAll button, c
   changeStatus(StatusTexts.PLAYING);
 }
 
-function setFileSizeDisplay(index: number, bytes: number) {
-  const megabytes: string = (bytes / 1_048_576).toFixed(2);
-  fileSizeDisplays[index].textContent = `${megabytes} MB`;
-  fileSizeDisplays[index].setAttribute('title', `${bytes} bytes`);
-}
 function refreshSongNames() {
   for (let i = 0; i < sounds.length; i++) {
     fileNameDisplays[i].textContent = sounds[i].file.name;
@@ -1347,15 +1347,39 @@ function tryFindTableRowInParents(element: Element): HTMLTableRowElement | null 
   return element.closest('tr');
 }
 function updateSongNumberings() {
-  let songNumbers = curDoc.getElementsByClassName('songNumber');
-  for (let i = 0; i < songNumbers.length; i++) {
-    let songNumber = songNumbers[i];
-    let row = tryFindTableRowInParents(songNumber);
-    if (row == null) continue;
-    songNumber.textContent = `${row.rowIndex}. `;
+  for(const song of sounds){
+    var row = song.currentRow;
+    row.querySelector(".songNumber").textContent = `${row.rowIndex}. `
+  }
+  // let songNumbers = curDoc.getElementsByClassName('songNumber');
+  // for (let i = 0; i < songNumbers.length; i++) {
+  //   let songNumber = songNumbers[i];
+  //   let row = tryFindTableRowInParents(songNumber);
+  //   if (row == null) continue;
+  //   songNumber.textContent = `${row.rowIndex}. `;
+  // }
+}
+function setSongFileSizeDisplay(song: Song, textContent: string, hoverText: string) {
+  const row = song.currentRow;
+  const fileSizeDisplay = row.querySelector(".fileSizeLabel");
+  fileSizeDisplay.textContent = textContent;
+  fileSizeDisplay.setAttribute('title', hoverText);
+}
+function updateSongFileSizeDisplay(song: Song) {
+  const row = song.currentRow;
+  const fileSizeDisplay = row.querySelector(".fileSizeLabel");
+  const bytes = song.file.size;
+  const megabytes: string = getInMegabytes(bytes);
+  fileSizeDisplay.textContent = `${megabytes} MB`
+  fileSizeDisplay.setAttribute('title', `${bytes} bytes`);
+}
+function updateSongFileSizeDisplays() {
+  for(const song of sounds){
+    updateSongFileSizeDisplay(song);
   }
 }
-function rowValid(row: Element) { return row.constructor.name == "HTMLTableRowElement" && row != PLAYLIST_VIEWER_TABLE.rows[0] && row.closest('table') == PLAYLIST_VIEWER_TABLE; }
+
+function rowValid(row: Element) { return row?.constructor?.name == "HTMLTableRowElement" && row != PLAYLIST_VIEWER_TABLE.rows[0] && row.closest('table') == PLAYLIST_VIEWER_TABLE; }
 function findValidTableRow(topLevelElement: Element): HTMLTableRowElement | null{
   if(rowValid(topLevelElement)) return topLevelElement as HTMLTableRowElement;
   else {
@@ -1367,26 +1391,36 @@ function findValidTableRow(topLevelElement: Element): HTMLTableRowElement | null
 function sortSelectedRows() { selectedRows.sort((a, b) => a.rowIndex - b.rowIndex) }
 function isTyping(keyboardEvent: KeyboardEvent): boolean { return keyboardEvent.target instanceof curWin.HTMLInputElement; }
 
+async function togglePictureInPicture() {
+  ENTER_PIP_BUTTON.disabled = true;
+
+  if(storedWindow == null) await enterPictureInPicture();
+  else exitPictureInPicture();
+
+  ENTER_PIP_BUTTON.disabled = false;
+}
+
 async function enterPictureInPicture() {
-  if(storedWindow != null) return;
   // @ts-expect-error
-  storedWindow = await documentPictureInPicture.requestWindow();
-
-  storedWindow.addEventListener('pagehide', (_event: PageTransitionEvent) => {
-    moveElementsToDocument(storedWindow.document, document);
-    storedWindow = null;
-    curWin = window;
-    curDoc = document;
-  })
-
+  storedWindow = await documentPictureInPicture.requestWindow({width: 450, height: 450, disallowReturnToOpener: false, preferInitialWindowPlacement: false});
   curWin = storedWindow;
   curDoc = storedWindow.document;
   moveElementsToDocument(document, storedWindow.document);
+  storedWindow.addEventListener('pagehide', exitPictureInPicture, true);
 
   KEY_DOWN_EVENT.createNewListener();
   makeDocumentDroppable();
-  modifyDialogProtoype();
+  modifyDialogPrototype();
   initContextMenu();
+}
+
+function exitPictureInPicture() {
+  moveElementsToDocument(storedWindow.document, document);
+  storedWindow.removeEventListener('pagehide', exitPictureInPicture, true);
+  storedWindow.close();
+  storedWindow = null;
+  curWin = window;
+  curDoc = document;
 }
 
 function moveElementsToDocument(oldDoc: Document, newDoc: Document) {
