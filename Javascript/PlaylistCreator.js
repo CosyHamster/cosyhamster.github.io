@@ -6,6 +6,9 @@ import("./howler.js").catch((error) => {
     howlerScript.src = "../Javascript/howler.js";
     document.head.appendChild(howlerScript);
 });
+var storedWindow;
+var curWin = window;
+var curDoc = document;
 const SITE_DEPRECATED = document.URL.toLowerCase().includes('codehs') || document.URL.includes("127.0.0.1");
 var ON_MOBILE;
 //@ts-expect-error
@@ -53,6 +56,7 @@ class SongLoader {
             };
             const onLoaded = () => {
                 resolve(this.createHowl());
+                setFileSizeDisplay(this.song.currentRow.rowIndex - 1, this.song.file.size);
                 this.triggerAbort();
             };
             const errorFunc = (progressEvent) => {
@@ -96,12 +100,14 @@ class SongLoader {
         setFileSizeDisplay(this.song.currentRow.rowIndex - 1, this.song.file.size);
     }
     createHowl() {
+        console.time("createHowl");
         const sound = new Howl({
             src: [this.fileReader.result],
             preload: PRELOAD_TYPE_SELECTOR.value === "process",
             autoplay: false,
             loop: false,
         });
+        console.timeEnd("createHowl");
         reapplySoundAttributes(sound);
         sound.on('end', () => {
             if (REPEAT_BUTTON.checked) {
@@ -113,7 +119,6 @@ class SongLoader {
             }
             jumpSong();
         }); //jump to next song when they end (or do custom stuff if needed)
-        setFileSizeDisplay(this.song.currentRow.rowIndex - 1, this.song.file.size);
         return sound;
     }
 }
@@ -124,6 +129,30 @@ class Song {
         this.file = file;
         this.nativeIndex = nativeIndex;
         this.currentRow = currentRow;
+    }
+    toString() {
+        return this.file.name + ": " + this.getState();
+    }
+    getState() {
+        if (!this.isInExistence()) {
+            if (this.songLoader == null) {
+                return "NO DATA";
+            }
+            else {
+                return "DOWNLOADING FILE";
+            }
+        }
+        else {
+            if (this.isLoaded()) {
+                return "HOWL LOADED";
+            }
+            else if (this.isLoading()) {
+                return "HOWL LOADING";
+            }
+            else {
+                return "HOWL UNLOADED";
+            }
+        }
     }
     async loadSong() {
         return new Promise(resolve => {
@@ -200,10 +229,13 @@ class RegistrableEvent {
 class KeyDownEventRegistrar extends RegistrableEvent {
     constructor() {
         super();
-        window.addEventListener('keydown', keyEvent => this.callAllRegisteredFunctions(keyEvent), { passive: false });
+        this.createNewListener();
     }
     register(func) {
         this.registeredCallbacks.push(func);
+    }
+    createNewListener() {
+        curWin.addEventListener('keydown', keyEvent => this.callAllRegisteredFunctions(keyEvent), { passive: false });
     }
 }
 class RequestAnimationFrameEventRegistrar extends RegistrableEvent {
@@ -217,6 +249,8 @@ class RequestAnimationFrameEventRegistrar extends RegistrableEvent {
     }
     register(func) {
         this.registeredCallbacks.push(func);
+    }
+    createNewListener() {
     }
 }
 // @ts-expect-error
@@ -356,7 +390,7 @@ var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(), K
     SELECTING: "lightblue",
     NONE: ""
 }, PAUSED = false, PLAYING = true, PLAYLIST_VIEWER_TABLE = document.getElementById("Playlist_Viewer"), PRELOAD_DIST_ELEMENT = document.getElementById('preloadDistance'), PRELOAD_TYPE_SELECTOR = document.getElementById("preloadType"), COMPACT_MODE_LINK_ELEMENT = null, //document.getElementById('compactModeStyleLink'),
-COMPACT_MODE_TOGGLE = document.getElementById('compactMode'), SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration'), SEEK_DURATION_DISPLAY = document.getElementById("seekDurationDisplay"), SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional'), SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable'), REORDER_FILES_CHECKBOX = document.getElementById('reorderFiles'), UPLOAD_BUTTON = document.getElementById('0input'), UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory'), PLAY_RATE_RANGE = document.getElementById('0playRateSlider'), SETTINGS_PAGE = document.getElementById('settingsPage'), ERROR_POPUP = document.getElementById('errorPopup'), DEPRECATED_POPUP = document.getElementById('deprecatedPopup'), ERROR_LIST = document.getElementById('errorList'), CONTEXT_MENU = document.getElementById('rightClickContextMenu'), PROGRESS_BAR = document.getElementById('progress-bar'), HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay'), VOLUME_CHANGER = document.getElementById('0playVolume'), PLAY_RATE = document.getElementById('0playRate'), PLAY_PAN = document.getElementById('0playPan'), SEEK_BACK = document.getElementById('seekBack'), 
+COMPACT_MODE_TOGGLE = document.getElementById('compactMode'), SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration'), SEEK_DURATION_DISPLAY = document.getElementById("seekDurationDisplay"), SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional'), SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable'), REORDER_FILES_CHECKBOX = document.getElementById('reorderFiles'), ENTER_PIP_BUTTON = document.getElementById('enterPIP'), UPLOAD_BUTTON = document.getElementById('0input'), UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory'), PLAY_RATE_RANGE = document.getElementById('0playRateSlider'), SETTINGS_POPUP = document.getElementById('settingsPage'), ERROR_POPUP = document.getElementById('errorPopup'), DEPRECATED_POPUP = document.getElementById('deprecatedPopup'), DIALOGS = [SETTINGS_POPUP, ERROR_POPUP, DEPRECATED_POPUP], ERROR_LIST = document.getElementById('errorList'), CONTEXT_MENU = document.getElementById('rightClickContextMenu'), PROGRESS_BAR = document.getElementById('progress-bar'), HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay'), VOLUME_CHANGER = document.getElementById('0playVolume'), PLAY_RATE = document.getElementById('0playRate'), PLAY_PAN = document.getElementById('0playPan'), SEEK_BACK = document.getElementById('seekBack'), 
 // SEEK_FORWARD = document.getElementById('seekForward') as HTMLTableCellElement,
 REPEAT_BUTTON = document.getElementById('repeatButton'), REPEAT_BUTTON_IMAGE = document.getElementById("repeatButtonImg"), SHUFFLE_BUTTON = document.getElementById('shuffleButton'), MUTE_BUTTON = document.getElementById('0Mute'), PLAY_BUTTON = document.getElementById('playpause'), STATUS_TEXT = document.getElementById('0status'), CURRENT_FILE_NAME = document.getElementById('currentFileName'), DURATION_OF_SONG_DISPLAY = document.getElementById('secondDurationLabel'), DROPPING_FILE_OVERLAY = document.getElementById("dragOverDisplay");
 var fileNameDisplays = [];
@@ -380,7 +414,7 @@ var currentSongIndex = null;
         deselectAll(); });
     REQUEST_ANIMATION_FRAME_EVENT.register(onFrameStepped);
     makeDocumentDroppable();
-    // document.addEventListener('touchend', (touchEvent: TouchEvent) => {
+    // curDoc.addEventListener('touchend', (touchEvent: TouchEvent) => {
     //   if(touchEvent.touches == 1) {
     //     touchEvent.preventDefault();
     //     const rect = touchEvent.target.getBoundingClientRect();
@@ -397,14 +431,14 @@ var currentSongIndex = null;
     //     // openRowContextMenu(releasedTouch.clientX, releasedTouch.clientY, releasedTouch.target);
     //   }
     // });
-    document.addEventListener("beforeunload", function () {
+    curDoc.addEventListener("beforeunload", function () {
         quitPlayingMusic();
         sounds = [];
     }, { passive: true });
     initContextMenu();
-    registerClickEvent(document, (mouseEvent) => {
+    registerClickEvent(curDoc, (mouseEvent) => {
         closeContextMenu();
-        if (mouseEvent.target == document.querySelector("html") || mouseEvent.target == document.body)
+        if (mouseEvent.target == curDoc.querySelector("html") || mouseEvent.target == curDoc.body)
             deselectAll();
     });
     registerClickEvent(CURRENT_FILE_NAME, () => PLAYLIST_VIEWER_TABLE.rows[currentSongIndex + 1].scrollIntoView(false))();
@@ -412,8 +446,8 @@ var currentSongIndex = null;
     registerClickEvent('skipForward', () => jumpSong())();
     registerClickEvent(SEEK_BACK, () => seek(-1))();
     registerClickEvent('seekForward', () => seek(1))();
-    registerClickEvent('settingsButton', () => SETTINGS_PAGE.showModal())();
-    registerClickEvent('exitSettingsButton', () => SETTINGS_PAGE.close())();
+    registerClickEvent('settingsButton', () => SETTINGS_POPUP.showModal())();
+    registerClickEvent('exitSettingsButton', () => SETTINGS_POPUP.close())();
     registerClickEvent('exitErrorPopup', () => ERROR_POPUP.close())();
     registerClickEvent('exitDeprecatedPopup', () => DEPRECATED_POPUP.close())();
     registerKeyDownEvent(SEEK_BACK.nextElementSibling, () => PLAY_BUTTON.click());
@@ -467,6 +501,12 @@ var currentSongIndex = null;
         progressBarSeek(pointer, 0 /* ProgressBarSeekAction.SEEK_TO */); }, { passive: true });
     PROGRESS_BAR.addEventListener('pointermove', (pointer) => progressBarSeek(pointer, 1 /* ProgressBarSeekAction.DISPLAY_TIME */), { passive: true });
     PROGRESS_BAR.addEventListener('pointerleave', (pointer) => progressBarSeek(pointer, 2 /* ProgressBarSeekAction.STOP_DISPLAYING */), { passive: true });
+    if ('documentPictureInPicture' in window) {
+        registerClickEvent(ENTER_PIP_BUTTON, enterPictureInPicture);
+    }
+    else {
+        ENTER_PIP_BUTTON.remove();
+    }
     if (SITE_DEPRECATED)
         DEPRECATED_POPUP.showModal();
     REORDER_FILES_CHECKBOX.dispatchEvent(new MouseEvent('click')); //.checked = !ON_MOBILE;
@@ -475,18 +515,18 @@ var currentSongIndex = null;
     //END
 })();
 function makeDocumentDroppable() {
-    window.addEventListener("dragover", (event) => {
+    curWin.addEventListener("dragover", (event) => {
         if (!onlyFiles(event.dataTransfer))
             return;
         event.preventDefault();
         DROPPING_FILE_OVERLAY.toggleAttribute("draggingOver", true);
         stopHighlightingRow();
     });
-    window.addEventListener("dragleave", () => {
+    curWin.addEventListener("dragleave", () => {
         DROPPING_FILE_OVERLAY.toggleAttribute("draggingOver", false);
         stopHighlightingRow();
     }, { passive: true });
-    window.addEventListener("drop", (event) => {
+    curWin.addEventListener("drop", (event) => {
         const dataTransfer = event.dataTransfer;
         if (!onlyFiles(dataTransfer))
             return;
@@ -502,11 +542,11 @@ function registerDialogInertEvents() {
         this.removeAttribute("inert");
         return showModalFunction.call(this);
     };
-    for (const dialog of [SETTINGS_PAGE, DEPRECATED_POPUP, ERROR_POPUP]) {
+    DIALOGS.forEach(dialog => {
         dialog.addEventListener("close", () => {
             dialog.toggleAttribute("inert", true);
         });
-    }
+    });
 }
 function onCloseErrorPopup() {
     let childElement;
@@ -516,7 +556,7 @@ function onCloseErrorPopup() {
 }
 function registerClickEvent(element, func) {
     if (typeof element === 'string')
-        element = document.getElementById(element);
+        element = curDoc.getElementById(element);
     element.addEventListener('click', func, { passive: true });
     return () => registerKeyDownEvent(element, func);
 }
@@ -526,7 +566,7 @@ function registerKeyDownEvent(element, func, keyName = "Enter") {
 }
 function registerChangeEvent(element, func) {
     if (typeof element === 'string')
-        element = document.getElementById(element);
+        element = curDoc.getElementById(element);
     element.addEventListener('change', func, { passive: true });
 }
 function registerInputEvent(elem, func) {
@@ -538,36 +578,36 @@ function registerInputEvent(elem, func) {
  * @param index The song's index.
  */
 function createNewSong(fileName, index) {
-    const row = document.createElement('tr'); //PLAYLIST_VIEWER_TABLE.insertRow(PLAYLIST_VIEWER_TABLE.rows.length)
+    const row = curDoc.createElement('tr'); //PLAYLIST_VIEWER_TABLE.insertRow(PLAYLIST_VIEWER_TABLE.rows.length)
     const cell1 = row.insertCell(0);
     cell1.className = "songBorder";
     initializeRowEvents(row);
-    const fileSize = document.createElement('div');
+    const fileSize = curDoc.createElement('div');
     fileSize.setAttribute('class', 'songName test');
     fileSize.setAttribute('style', 'position: absolute; transform: translate(-100%, 0); left: calc(100% - 3px);');
     fileSize.setAttribute('id', `${index}playButtonLabel`);
-    const songName = document.createElement('div');
+    const songName = curDoc.createElement('div');
     songName.setAttribute('class', 'songName text');
     songName.setAttribute('title', `${fileName}`);
     songName.textContent = fileName;
-    const songNumber = document.createElement('div');
+    const songNumber = curDoc.createElement('div');
     songNumber.textContent = `${sounds.length + 1}. `;
     setAttributes(songNumber, {
         style: 'float: left; display: inline-block;',
         class: 'songNumber text',
         index: String(index)
     });
-    const playButton = document.createElement('label');
+    const playButton = curDoc.createElement('label');
     playButton.setAttribute('class', 'smallplaypause playpause');
     playButton.setAttribute('for', `${index}playButton`);
-    const checkbox = document.createElement('input');
+    const checkbox = curDoc.createElement('input');
     registerChangeEvent(checkbox, () => onClickSpecificPlaySong(checkbox));
     setAttributes(checkbox, {
         type: 'checkbox',
         id: `${index}playButton`,
         class: 'smallplaypause playpause'
     });
-    playButton.append(checkbox, document.createElement('div'));
+    playButton.append(checkbox, curDoc.createElement('div'));
     cell1.append(fileSize, songNumber, playButton, songName);
     fileSizeDisplays.push(fileSize);
     fileNameDisplays.push(songName);
@@ -576,12 +616,12 @@ function createNewSong(fileName, index) {
 }
 async function toggleCompactMode() {
     if (COMPACT_MODE_LINK_ELEMENT === null) {
-        COMPACT_MODE_LINK_ELEMENT = document.createElement('link');
+        COMPACT_MODE_LINK_ELEMENT = curDoc.createElement('link');
         setAttributes(COMPACT_MODE_LINK_ELEMENT, {
             rel: "stylesheet",
             href: "../CSS/CompactMode.css",
         });
-        document.head.appendChild(COMPACT_MODE_LINK_ELEMENT);
+        curDoc.head.appendChild(COMPACT_MODE_LINK_ELEMENT);
     }
 }
 function onFrameStepped() {
@@ -677,9 +717,9 @@ function displayError(errorType, errorText, errorMessage, errorCategory) {
             break;
         }
     }
-    const songTitle = document.createElement('dt');
+    const songTitle = curDoc.createElement('dt');
     songTitle.textContent = errorCategory;
-    const songError = document.createElement('dd');
+    const songError = curDoc.createElement('dd');
     songError.textContent = errorType.concat(": ", errorText);
     songError.title = errorMessage;
     if (insertAfter) {
@@ -931,11 +971,11 @@ function setCurrentFileName(name) {
     if (CURRENT_FILE_NAME.textContent != name) {
         CURRENT_FILE_NAME.textContent = name; //name is compressed by CSS formatting if too large
         CURRENT_FILE_NAME.setAttribute('title', name);
-        document.title = name;
+        curDoc.title = name;
     }
 }
 function updateSeekButtonTexts() {
-    document.querySelectorAll('button').forEach(element => {
+    curDoc.querySelectorAll('button').forEach(element => {
         const secondsSkipAmount = precisionRound(10 * Number(PLAY_RATE.value), 3);
         element.textContent = `${element.textContent[0]}${secondsSkipAmount} Seconds`;
     });
@@ -1227,7 +1267,7 @@ function tryFindTableRowInParents(element) {
     return element.closest('tr');
 }
 function updateSongNumberings() {
-    let songNumbers = document.getElementsByClassName('songNumber');
+    let songNumbers = curDoc.getElementsByClassName('songNumber');
     for (let i = 0; i < songNumbers.length; i++) {
         let songNumber = songNumbers[i];
         let row = tryFindTableRowInParents(songNumber);
@@ -1250,9 +1290,32 @@ function findValidTableRow(topLevelElement) {
 }
 function sortSelectedRows() { selectedRows.sort((a, b) => a.rowIndex - b.rowIndex); }
 function isTyping(keyboardEvent) { return keyboardEvent.target instanceof HTMLInputElement; }
+async function enterPictureInPicture() {
+    if (storedWindow != null)
+        return;
+    // @ts-expect-error
+    storedWindow = await documentPictureInPicture.requestWindow();
+    storedWindow.addEventListener('pagehide', (_event) => {
+        moveElementsToDocument(storedWindow.document, document);
+        storedWindow = null;
+        curWin = window;
+        curDoc = document;
+    });
+    curWin = storedWindow;
+    curDoc = storedWindow.document;
+    moveElementsToDocument(document, storedWindow.document);
+    KEY_DOWN_EVENT.createNewListener();
+    makeDocumentDroppable();
+    initContextMenu();
+}
+function moveElementsToDocument(oldDoc, newDoc) {
+    newDoc.head.append(...oldDoc.head.children);
+    newDoc.body.append(...oldDoc.body.children);
+    DIALOGS.forEach(dialog => dialog.close()); //Dialogs lose their state when transferring and become glitched
+}
 /*                       CONTEXT MENU                      */
 function initContextMenu() {
-    document.addEventListener('contextmenu', (pointerEvent) => {
+    curDoc.addEventListener('contextmenu', (pointerEvent) => {
         selectingSongRow: { //if clicking a row
             let row = pointerEvent.target;
             if (!rowValid(row)) {
@@ -1303,7 +1366,7 @@ function spawnContextMenu(clientX, clientY, contextOptions, allowDefaultOptions)
     const contextButtons = [];
     for (let i = 0; i < contextOptions.length; i++) {
         const contextOption = contextOptions[i];
-        const contextButton = document.createElement('div');
+        const contextButton = curDoc.createElement('div');
         contextButton.setAttribute('class', 'contextOption');
         contextButton.tabIndex = 1;
         if (i < contextOptions.length - 1)
@@ -1313,7 +1376,7 @@ function spawnContextMenu(clientX, clientY, contextOptions, allowDefaultOptions)
         contextButton.addEventListener('keyup', (event) => { if (event.key == 'Enter' && CONTEXT_MENU.hasAttribute('open'))
             contextOption.action(event); });
         if (contextOption.icon) {
-            const contextIcon = document.createElement('img');
+            const contextIcon = curDoc.createElement('img');
             contextIcon.setAttribute('class', 'contextIcon');
             contextIcon.src = contextOption.icon;
             contextButton.append(contextIcon, contextOption.text);
@@ -1326,7 +1389,7 @@ function spawnContextMenu(clientX, clientY, contextOptions, allowDefaultOptions)
     CONTEXT_MENU.append(...contextButtons);
     CONTEXT_MENU.style.height = 'max-content'; //`${contextButtons.length * 29}px`;
     let leftOffset = clientX + 2, downOffset = clientY + 2;
-    const viewportWidth = document.documentElement.clientWidth, viewportHeight = document.documentElement.clientHeight, contextMenuRect = CONTEXT_MENU.getBoundingClientRect();
+    const viewportWidth = curDoc.documentElement.clientWidth, viewportHeight = curDoc.documentElement.clientHeight, contextMenuRect = CONTEXT_MENU.getBoundingClientRect();
     if (leftOffset + contextMenuRect.width > viewportWidth) {
         leftOffset = viewportWidth - contextMenuRect.width;
     }
@@ -1339,5 +1402,5 @@ function spawnContextMenu(clientX, clientY, contextOptions, allowDefaultOptions)
     if (contextButtons[0])
         contextButtons[0].focus({ focusVisible: true });
 }
-function closeContextMenu() { CONTEXT_MENU.toggleAttribute('open', false); CONTEXT_MENU.style.height = '0'; }
+function closeContextMenu() { CONTEXT_MENU.toggleAttribute('open', false); }
 //# sourceMappingURL=PlaylistCreator.js.map
