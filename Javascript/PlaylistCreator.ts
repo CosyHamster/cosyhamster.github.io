@@ -593,16 +593,19 @@ function makeDocumentDroppable() {
 }
 
 function registerDialogInertEvents(){
-  const showModalFunction = HTMLDialogElement.prototype.showModal;
-  HTMLDialogElement.prototype.showModal = function() {
-    this.removeAttribute("inert");
-    return showModalFunction.call(this);
-  }
+  modifyDialogProtoype();
   DIALOGS.forEach(dialog => {
     dialog.addEventListener("close", () => {
       dialog.toggleAttribute("inert", true);
     });
   })
+}
+function modifyDialogProtoype(){
+  const showModalFunction = curWin.HTMLDialogElement.prototype.showModal;
+  curWin.HTMLDialogElement.prototype.showModal = function() {
+    this.removeAttribute("inert");
+    return showModalFunction.call(this);
+  }
 }
 
 function onCloseErrorPopup() {
@@ -811,9 +814,9 @@ function seek(seekDirection: number) { //controls audio seeking, seekDuration: u
 
 async function importFiles(element: DataTransfer | ArrayLike<File>) {
   const songTableRows: HTMLTableRowElement[] = [];
-  if (element instanceof FileList) {
+  if (element instanceof curWin.FileList) {
     addFiles(element);
-  } else if (element instanceof DataTransfer) {
+  } else if (element instanceof curWin.DataTransfer) {
     let dataTransferItemList: DataTransferItemList = element?.items;
     if (!dataTransferItemList || dataTransferItemList.length == 0) return;
 
@@ -1351,7 +1354,7 @@ function updateSongNumberings() {
     songNumber.textContent = `${row.rowIndex}. `;
   }
 }
-function rowValid(row: Element) { return row instanceof HTMLTableRowElement && row != PLAYLIST_VIEWER_TABLE.rows[0] && row.closest('table') == PLAYLIST_VIEWER_TABLE; }
+function rowValid(row: Element) { return row instanceof curWin.HTMLTableRowElement && row != PLAYLIST_VIEWER_TABLE.rows[0] && row.closest('table') == PLAYLIST_VIEWER_TABLE; }
 function findValidTableRow(topLevelElement: Element): HTMLTableRowElement | null{
   if(rowValid(topLevelElement)) return topLevelElement as HTMLTableRowElement;
   else {
@@ -1361,7 +1364,7 @@ function findValidTableRow(topLevelElement: Element): HTMLTableRowElement | null
   }
 }
 function sortSelectedRows() { selectedRows.sort((a, b) => a.rowIndex - b.rowIndex) }
-function isTyping(keyboardEvent: KeyboardEvent): boolean { return keyboardEvent.target instanceof HTMLInputElement; }
+function isTyping(keyboardEvent: KeyboardEvent): boolean { return keyboardEvent.target instanceof curWin.HTMLInputElement; }
 
 async function enterPictureInPicture() {
   if(storedWindow != null) return;
@@ -1381,6 +1384,7 @@ async function enterPictureInPicture() {
 
   KEY_DOWN_EVENT.createNewListener();
   makeDocumentDroppable();
+  modifyDialogProtoype();
   initContextMenu();
 }
 
@@ -1420,7 +1424,7 @@ function initContextMenu(): void {
         return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, [
           { text: "Upload Files", icon: "../Icons/UploadIcon.svg", action: () => UPLOAD_BUTTON.dispatchEvent(new MouseEvent('click')) },
           { text: "Upload Folder", icon: "../Icons/UploadIcon.svg", action: () => UPLOAD_DIRECTORY_BUTTON.dispatchEvent(new MouseEvent('click')) }
-        ], true);
+        ], false);
       }
       case "quickSettings": {
         pointerEvent.preventDefault()
