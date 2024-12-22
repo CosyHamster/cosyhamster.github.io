@@ -687,7 +687,7 @@ function createNewSong(fileName: string, index: number): HTMLTableRowElement { /
   return row;
 }
 
-async function toggleCompactMode() {
+function toggleCompactMode() {
   if (COMPACT_MODE_LINK_ELEMENT === null) {
     COMPACT_MODE_LINK_ELEMENT = curDoc.createElement('link');
     setAttributes(COMPACT_MODE_LINK_ELEMENT, {
@@ -696,6 +696,7 @@ async function toggleCompactMode() {
     });
     curDoc.head.appendChild(COMPACT_MODE_LINK_ELEMENT);
   }
+  updateTranslationOfMainTable();
 }
 
 function onFrameStepped() {
