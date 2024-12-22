@@ -36,7 +36,7 @@ const enum ProgressBarSeekAction {
 interface ContextMenuOption {
   text: string,
   icon?: string,
-  action: Function
+  action: () => void
 }
 
 class SongLoader{
@@ -442,7 +442,7 @@ var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(),
   SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional') as HTMLInputElement,
   SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable') as HTMLInputElement,
   REORDER_FILES_CHECKBOX = document.getElementById('reorderFiles') as HTMLInputElement,
-  ENTER_PIP_BUTTON = document.getElementById('enterPIP') as HTMLButtonElement,
+  TOGGLE_PIP_BUTTON = document.getElementById('enterPIP') as HTMLButtonElement,
   UPLOAD_BUTTON = document.getElementById('0input') as HTMLInputElement,
   UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory') as HTMLInputElement,
   PLAY_RATE_RANGE = document.getElementById('0playRateSlider') as HTMLInputElement,
@@ -565,9 +565,9 @@ var currentSongIndex: number | null = null;
   PROGRESS_BAR.addEventListener('pointermove', (pointer) => progressBarSeek(pointer, ProgressBarSeekAction.DISPLAY_TIME), { passive: true })
   PROGRESS_BAR.addEventListener('pointerleave', (pointer) => progressBarSeek(pointer, ProgressBarSeekAction.STOP_DISPLAYING), { passive: true })
   if ('documentPictureInPicture' in window) {
-    registerClickEvent(ENTER_PIP_BUTTON, togglePictureInPicture);
+    registerClickEvent(TOGGLE_PIP_BUTTON, togglePictureInPicture);
   } else {
-    ENTER_PIP_BUTTON.remove();
+    TOGGLE_PIP_BUTTON.remove();
   }
 
   if(SITE_DEPRECATED) DEPRECATED_POPUP.showModal();
@@ -1401,12 +1401,12 @@ function isTyping(keyboardEvent: KeyboardEvent): boolean { return keyboardEvent.
 
 
 async function togglePictureInPicture() {
-  ENTER_PIP_BUTTON.disabled = true;
+  TOGGLE_PIP_BUTTON.disabled = true;
 
   if(storedWindow == null) await enterPictureInPicture();
   else exitPictureInPicture();
 
-  ENTER_PIP_BUTTON.disabled = false;
+  TOGGLE_PIP_BUTTON.disabled = false;
 }
 
 async function enterPictureInPicture() {
@@ -1472,7 +1472,9 @@ function initContextMenu(): void {
       }
       case "quickSettings": {
         pointerEvent.preventDefault()
-        return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, [], true)
+        return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, [
+          { text: "Toggle PIP (WIP)", action: () => TOGGLE_PIP_BUTTON.dispatchEvent(new MouseEvent('click')) },
+        ], true);
       }
       default: {
         // return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, [], true);
