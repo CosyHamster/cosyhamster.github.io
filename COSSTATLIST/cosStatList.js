@@ -293,22 +293,26 @@ function initializeStatList() {
     statList.push(new ValuelessAbilityStat("Toxic Trap", "Toxic Trap"));
     statList.push(new ValuelessAbilityStat("Thorn Trap", "Thorn Trap"));
     statList.push(new ValuelessAbilityStat("Sticky Trap", "Sticky Trap"));
+    statList.push(new ValuelessAbilityStat("Frost Snare", "Frost Snare"));
     statList.push(new ValuelessAbilityStat("Speed Steal", "Speed Steal"));
     statList.push(new ValuelessAbilityStat("Speed Blitz", "Speed Blitz"));
     statList.push(new ValuelessAbilityStat("Sonic Wings", "Sonic Wings"));
     statList.push(new ValuelessAbilityStat("Escape Area", "Escape Area"));
+    statList.push(new ValuelessAbilityStat("Self Destruct", "Self-Destruct"));
     statList.push(new ValuelessAbilityStat("Rewind", "Rewind"));
     statList.push(new ValuelessAbilityStat("Raider", "Raider"));
     statList.push(new ValuelessAbilityStat("Change Weather", "Change Weather"));
     statList.push(new ValuelessAbilityStat("Area Food Restore", "Area Food Restore"));
     statList.push(new ValuelessAbilityStat("Area Water Restore", "Area Water Restore"));
     statList.push(new ValuelessAbilityStat("Broodwatcher", "Broodwatcher"));
+    statList.push(new AbilityNumberStatValue("Spite", "Spite"));
     statList.push(new AbilityNumberStatValue("Diver", "Diver"));
     statList.push(new AbilityNumberStatValue("Hunker", "Hunker"));
     statList.push(new AbilityNumberStatValue("Burrower", "Burrower"));
     statList.push(new AbilityNumberStatValue("Radiation", "Radiation"));
     statList.push(new AbilityNumberStatValue("Heal Aura", "Heal Aura"));
     statList.push(new AbilityNumberStatValue("Healing Hunter", "Healing Hunter"));
+    statList.push(new AbilityNumberStatValue("Healing Step", "Healing Step"));
     statList.push(new AbilityNumberStatValue("Cursed Sigil", "Cursed Sigil"));
     statList.push(new AbilityNumberStatValue("First Strike", "First Strike"));
     statList.push(new AbilityNumberStatValue("Soft Landing", "Soft Landing"));
@@ -346,6 +350,7 @@ function initializeStatList() {
     statList.push(new AbilityNumberStatValue("Defensive Wing Shredder", "Defensive Wing Shredder"));
     statList.push(new AbilityStringStatValue("Charge", "Charge"));
     statList.push(new AbilityStringStatValue("Totem", "Totem"));
+    statList.push(new AbilityStringStatValue("Yolk Bomb", "Yolk Bomb"));
 }
 function initializeCreatureList() {
     return new Promise((resolve) => {
