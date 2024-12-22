@@ -1264,7 +1264,7 @@ function tryFindTableRowInParents(element) {
     return element.closest('tr');
 }
 function updateTranslationOfMainTable() {
-    MAIN_TABLE.style.setProperty("--moveDown", `calc(30vh - ${sounds.length * ((COMPACT_MODE_TOGGLE.checked ? 22 : 52))}px)`);
+    MAIN_TABLE.style.setProperty("--moveDown", `calc(30vh - ${sounds.length * (( /*COMPACT_MODE_TOGGLE.checked ? 22 : */52))}px)`);
 }
 function updateSongNumberings() {
     for (const song of sounds) {

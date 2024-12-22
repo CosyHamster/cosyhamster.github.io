@@ -267,7 +267,6 @@ dt::after {
 }
 
 .mainTable {
-    --moveDown: 30vh;
     position: absolute;
     border: 1px solid black;
     width: calc(100% - 20px);

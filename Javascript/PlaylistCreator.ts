@@ -1351,7 +1351,7 @@ function tryFindTableRowInParents(element: Element): HTMLTableRowElement | null 
   return element.closest('tr');
 }
 function updateTranslationOfMainTable(){//COMPACT_MODE_TOGGLE.checked
-  MAIN_TABLE.style.setProperty("--moveDown", `calc(30vh - ${sounds.length*((COMPACT_MODE_TOGGLE.checked ? 22 : 52))}px)`);
+  MAIN_TABLE.style.setProperty("--moveDown", `calc(30vh - ${sounds.length*((/*COMPACT_MODE_TOGGLE.checked ? 22 : */52))}px)`);
 }
 function updateSongNumberings() {
   for(const song of sounds){
