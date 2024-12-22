@@ -5,7 +5,7 @@
     "theme_color": "#888",
     "start_url": "/index.html",
     "display": "standalone",
-    "orientation": "landscape",
+    "orientation": "any",
     "icons": [
         {
             "src": "./Icons/big-sheep-face.png",
