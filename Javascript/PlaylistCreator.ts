@@ -6,6 +6,17 @@ import("./howler.js").catch((error) => {
   document.head.appendChild(howlerScript);
 });
 
+var audio = new Audio();
+var aiffIsPlayable = !!(audio.canPlayType("audio/aiff") || audio.canPlayType("audio/x-aiff"));
+function codecsMixin(extension: string): boolean {
+  switch(extension){
+    case "aif": return aiffIsPlayable;
+    case "aiff": return aiffIsPlayable;
+    case "aff": return aiffIsPlayable;
+    default: return Howler.codecs(extension);
+  }
+}
+
 var storedWindow: Window;
 var curWin: Window = window;
 var curDoc: Document = document;
@@ -1087,7 +1098,7 @@ function precisionRound(number: number, precision: number) {
 function currentHowlExists(){ return currentSongIndex !== null && sounds[currentSongIndex].isInExistence() }
 function changeStatus(status: string) { STATUS_TEXT.textContent = status; }
 function onlyFiles(dataTransfer: DataTransfer) { return dataTransfer.types.length == 1 && dataTransfer.types[0] === 'Files' }
-function isValidExtension(extension: string) { return Howler.codecs(extension); }
+function isValidExtension(extension: string) { return codecsMixin(extension); }
 function setAttributes(element: HTMLElement, attrs: { [key: string]: string }) { for (const key in attrs) element.setAttribute(key, attrs[key]); }
 // @ts-ignore
 function sleep(ms: number): Promise<void> { return new Promise(resolve => setTimeout(resolve, ms)); }
