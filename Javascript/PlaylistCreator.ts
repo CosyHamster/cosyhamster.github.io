@@ -821,7 +821,7 @@ function seek(seekDirection: number) { //controls audio seeking, seekDuration: u
 
 async function importFiles(element: DataTransfer | ArrayLike<File>) {
   const songTableRows: HTMLTableRowElement[] = [];
-  if (element instanceof curWin.FileList) {
+  if (element.constructor.name == "FileList") {
     addFiles(element);
   } else if (element instanceof curWin.DataTransfer) {
     let dataTransferItemList: DataTransferItemList = element?.items;

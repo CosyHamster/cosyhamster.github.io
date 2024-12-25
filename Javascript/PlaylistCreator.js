@@ -741,7 +741,7 @@ function seek(seekDirection) {
 }
 async function importFiles(element) {
     const songTableRows = [];
-    if (element instanceof curWin.FileList) {
+    if (element.constructor.name == "FileList") {
         addFiles(element);
     }
     else if (element instanceof curWin.DataTransfer) {
