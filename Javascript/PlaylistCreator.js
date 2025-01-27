@@ -65,7 +65,7 @@ class SongLoader {
                 const fileBytes = this.song.file.size;
                 setSongFileSizeDisplay(this.song, `${getInMegabytes(progressEvent.loaded)} MB / ${getInMegabytes(fileBytes)} MB`, `${progressEvent.loaded} bytes / ${fileBytes} bytes`);
             };
-            const onLoaded = () => {
+            const onLoaded = async () => {
                 resolve(this.createHowl());
                 updateSongFileSizeDisplay(this.song);
                 this.triggerAbort();
@@ -110,7 +110,9 @@ class SongLoader {
         }
         updateSongFileSizeDisplay(this.song);
     }
-    createHowl() {
+    async createHowl() {
+        // LOADING_GRAY.toggleAttribute("enable", true);
+        // await sleep(0); //dom update before beginning the load
         console.time("createHowl");
         const sound = new Howl({
             src: [this.fileReader.result],
@@ -119,6 +121,7 @@ class SongLoader {
             loop: false,
         });
         console.timeEnd("createHowl");
+        // LOADING_GRAY.toggleAttribute("enable", false);
         reapplySoundAttributes(sound);
         sound.on('end', () => {
             if (REPEAT_BUTTON.checked) {
@@ -401,7 +404,9 @@ var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(), K
     SELECTING: "lightblue",
     NONE: ""
 }, PAUSED = false, PLAYING = true, MAIN_TABLE = document.body.querySelector(".mainTable"), PLAYLIST_VIEWER_TABLE = document.getElementById("Playlist_Viewer"), PRELOAD_DIST_ELEMENT = document.getElementById('preloadDistance'), PRELOAD_TYPE_SELECTOR = document.getElementById("preloadType"), COMPACT_MODE_LINK_ELEMENT = null, //document.getElementById('compactModeStyleLink'),
-COMPACT_MODE_TOGGLE = document.getElementById('compactMode'), SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration'), SEEK_DURATION_DISPLAY = document.getElementById("seekDurationDisplay"), SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional'), SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable'), REORDER_FILES_CHECKBOX = document.getElementById('reorderFiles'), TOGGLE_PIP_BUTTON = document.getElementById('enterPIP'), UPLOAD_BUTTON = document.getElementById('0input'), UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory'), PLAY_RATE_RANGE = document.getElementById('0playRateSlider'), SETTINGS_POPUP = document.getElementById('settingsPage'), ERROR_POPUP = document.getElementById('errorPopup'), DEPRECATED_POPUP = document.getElementById('deprecatedPopup'), DIALOGS = [SETTINGS_POPUP, ERROR_POPUP, DEPRECATED_POPUP], ERROR_LIST = document.getElementById('errorList'), CONTEXT_MENU = document.getElementById('rightClickContextMenu'), PROGRESS_BAR = document.getElementById('progress-bar'), HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay'), VOLUME_CHANGER = document.getElementById('0playVolume'), PLAY_RATE = document.getElementById('0playRate'), PLAY_PAN = document.getElementById('0playPan'), SEEK_BACK = document.getElementById('seekBack'), 
+COMPACT_MODE_TOGGLE = document.getElementById('compactMode'), SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration'), SEEK_DURATION_DISPLAY = document.getElementById("seekDurationDisplay"), SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional'), SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable'), REORDER_FILES_CHECKBOX = document.getElementById('reorderFiles'), TOGGLE_PIP_BUTTON = document.getElementById('enterPIP'), UPLOAD_BUTTON = document.getElementById('0input'), UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory'), PLAY_RATE_RANGE = document.getElementById('0playRateSlider'), SETTINGS_POPUP = document.getElementById('settingsPage'), ERROR_POPUP = document.getElementById('errorPopup'), DEPRECATED_POPUP = document.getElementById('deprecatedPopup'), DIALOGS = [SETTINGS_POPUP, ERROR_POPUP, DEPRECATED_POPUP], ERROR_LIST = document.getElementById('errorList'), CONTEXT_MENU = document.getElementById('rightClickContextMenu'), 
+// LOADING_GRAY = document.getElementById('loadingGray') as HTMLDivElement,
+PROGRESS_BAR = document.getElementById('progress-bar'), HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay'), VOLUME_CHANGER = document.getElementById('0playVolume'), PLAY_RATE = document.getElementById('0playRate'), PLAY_PAN = document.getElementById('0playPan'), SEEK_BACK = document.getElementById('seekBack'), 
 // SEEK_FORWARD = document.getElementById('seekForward') as HTMLTableCellElement,
 REPEAT_BUTTON = document.getElementById('repeatButton'), REPEAT_BUTTON_IMAGE = document.getElementById("repeatButtonImg"), SHUFFLE_BUTTON = document.getElementById('shuffleButton'), MUTE_BUTTON = document.getElementById('0Mute'), PLAY_BUTTON = document.getElementById('playpause'), STATUS_TEXT = document.getElementById('0status'), CURRENT_FILE_NAME = document.getElementById('currentFileName'), DURATION_OF_SONG_DISPLAY = document.getElementById('secondDurationLabel'), DROPPING_FILE_OVERLAY = document.getElementById("dragOverDisplay");
 var fileNameDisplays = [];

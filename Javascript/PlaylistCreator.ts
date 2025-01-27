@@ -85,7 +85,7 @@ class SongLoader{
             `${progressEvent.loaded} bytes / ${fileBytes} bytes`
         );
       }
-      const onLoaded = () => {
+      const onLoaded = async () => {
         resolve(this.createHowl());
         updateSongFileSizeDisplay(this.song);
         this.triggerAbort();
@@ -122,15 +122,18 @@ class SongLoader{
     }
     updateSongFileSizeDisplay(this.song);
   }
-  createHowl(): Howl {
-    console.time("createHowl")
+  async createHowl(): Promise<Howl> {
+    // LOADING_GRAY.toggleAttribute("enable", true);
+    // await sleep(0); //dom update before beginning the load
+    console.time("createHowl");
     const sound: Howl = new Howl({
       src: [this.fileReader.result as string],
       preload: PRELOAD_TYPE_SELECTOR.value === "process",
       autoplay: false,
       loop: false,
     });
-    console.timeEnd("createHowl")
+    console.timeEnd("createHowl");
+    // LOADING_GRAY.toggleAttribute("enable", false);
 
     reapplySoundAttributes(sound);
     sound.on('end', () => {
@@ -463,6 +466,7 @@ var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(),
   DIALOGS = [SETTINGS_POPUP, ERROR_POPUP, DEPRECATED_POPUP],
   ERROR_LIST = document.getElementById('errorList') as HTMLDListElement,
   CONTEXT_MENU = document.getElementById('rightClickContextMenu') as HTMLDivElement,
+  // LOADING_GRAY = document.getElementById('loadingGray') as HTMLDivElement,
   PROGRESS_BAR = document.getElementById('progress-bar') as HTMLProgressElement,
   HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay') as HTMLDivElement,
   VOLUME_CHANGER = document.getElementById('0playVolume') as HTMLInputElement,

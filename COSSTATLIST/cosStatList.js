@@ -7,6 +7,7 @@ var activeFilters = [];
 var currentSortFunction;
 var sortAscending = false;
 var sortDirty = false;
+var LOADING_GRAY = document.getElementById('loadingGray');
 var STAT_LIST_TABLE = document.getElementById("statList");
 var CONFIGURE_STAT_TYPES_BUTTON = document.getElementById("addStatTypesButton");
 var FILTER_CONTAINING_DIV = document.getElementById("filterConfigurations");
@@ -310,6 +311,7 @@ function initializeStatList() {
     statList.push(new AbilityNumberStatValue("Hunker", "Hunker"));
     statList.push(new AbilityNumberStatValue("Burrower", "Burrower"));
     statList.push(new AbilityNumberStatValue("Radiation", "Radiation"));
+    statList.push(new AbilityNumberStatValue("Frost Nova", "Frost Nova"));
     statList.push(new AbilityNumberStatValue("Heal Aura", "Heal Aura"));
     statList.push(new AbilityNumberStatValue("Healing Hunter", "Healing Hunter"));
     statList.push(new AbilityNumberStatValue("Healing Step", "Healing Step"));
@@ -431,6 +433,16 @@ async function updateCreatureStatsTable() {
         return; //it's not initialized yet!
     console.time("updateTable");
     STAT_LIST_TABLE.toggleAttribute('disabled', true);
+    LOADING_GRAY.toggleAttribute("enable", true);
+    // await sleep(0);
+    // await sleep(0);
+    await new Promise((resolve) => {
+        requestAnimationFrame(() => {
+            setTimeout(requestAnimationFrame, 0, () => {
+                setTimeout(requestAnimationFrame, 0, resolve);
+            });
+        });
+    });
     let removedTableBody = false;
     const statTableBody = STAT_LIST_TABLE.querySelector("tbody");
     function ensureTableBodyRemoved() {
@@ -493,6 +505,7 @@ async function updateCreatureStatsTable() {
     if (removedTableBody)
         STAT_LIST_TABLE.appendChild(statTableBody);
     console.timeEnd("updateTable");
+    LOADING_GRAY.toggleAttribute("enable", false);
 }
 function updateRowColors(statTableBody) {
     let brightGray = false;
