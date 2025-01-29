@@ -833,7 +833,6 @@ function closeFloatingWindow(){
 
 function onFrame(_: DOMHighResTimeStamp){
     STAT_LIST_TABLE.toggleAttribute('disabled', false);
-    FLOATING_WINDOW.querySelector("img").style.top = `${FLOATING_WINDOW.scrollTop}px`;
     requestAnimationFrame(onFrame);
 }
 
