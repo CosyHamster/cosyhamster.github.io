@@ -72,10 +72,14 @@ abstract class StatValue{
 }
 
 class ValuelessAbilityStat extends StatValue{
+    constructor(displayName: string, keyName: string){
+        super(displayName, keyName.toLowerCase());
+    }
+
     override getDisplayValue(creature: Creature): string {
         return this.getValue(creature) ? "Yes" : "No";
     }
-    override getValue = ((creature: Creature): boolean => {
+    override getValue(creature: Creature): boolean {
         let indexOf = creature.passive.indexOf(this.keyName);
         if(indexOf == -1) {
             indexOf = creature.activated.indexOf(this.keyName);
@@ -83,19 +87,16 @@ class ValuelessAbilityStat extends StatValue{
         } else {
             return true;
         }
-    }).bind(this)
-    override sort = ((creature1: Creature, _: Creature): number => {
+    }
+    override sort(creature1: Creature, _: Creature): number {
         return (this.getValue(creature1) ? -1 : 1) * (sortAscending ? -1 : 1);
-    }).bind(this);
-    override filter = ((creature: Creature, filterType: FilterType, testVal: string): boolean => {
+    }
+    override filter(creature: Creature, filterType: FilterType, testVal: string): boolean {
         switch(filterType){
             case FilterType.EQUALS: return this.getDisplayValue(creature).toLowerCase() == testVal.toLowerCase();
             case FilterType.CONTAINS: return this.getDisplayValue(creature).toLowerCase().includes(testVal.toLowerCase());
             default: return false;
         }
-    }).bind(this);
-    constructor(displayName: string, keyName: string){
-        super(displayName, keyName.toLowerCase());
     }
 }
 
@@ -107,19 +108,26 @@ abstract class NumberStatValue extends StatValue {
     }
 
     abstract override getValue(creature: Creature): number;
-    override getDisplayValue = (creature: Creature): string => {
+    override getDisplayValue(creature: Creature): string {
         const value = this.getValue(creature);
         if(isNaN(value)) return "N/A";
         else return String(value);
     }
-    override sort = ((creature1: Creature, creature2: Creature): number => {
+    override sort(creature1: Creature, creature2: Creature){
         let creature1Value = this.getValue(creature1);
         let creature2Value = this.getValue(creature2);
         if (isNaN(creature1Value)) return Number.MAX_SAFE_INTEGER;
         if (isNaN(creature2Value)) return Number.MIN_SAFE_INTEGER;
         return (sortAscending) ? creature1Value - creature2Value : creature2Value - creature1Value;
-    }).bind(this);
-    override filter = ((creature: Creature, filterType: FilterType, testVal: string): boolean => {
+    }
+    // override sort = ((creature1: Creature, creature2: Creature): number => {
+    //     let creature1Value = this.getValue(creature1);
+    //     let creature2Value = this.getValue(creature2);
+    //     if (isNaN(creature1Value)) return Number.MAX_SAFE_INTEGER;
+    //     if (isNaN(creature2Value)) return Number.MIN_SAFE_INTEGER;
+    //     return (sortAscending) ? creature1Value - creature2Value : creature2Value - creature1Value;
+    // }).bind(this);
+    override filter(creature: Creature, filterType: FilterType, testVal: string): boolean {
         switch(filterType){
             case FilterType.EQUALS: return this.getDisplayValue(creature).toLowerCase() == testVal.toLowerCase();
             case FilterType.CONTAINS: return this.getDisplayValue(creature).toLowerCase().includes(testVal.toLowerCase());
@@ -129,7 +137,7 @@ abstract class NumberStatValue extends StatValue {
             case FilterType.GREATER_THAN_EQUALS: return this.getValue(creature) >= parseFloat(testVal);
             default: return false;
         }
-    }).bind(this);
+    }
 }
 
 class KeyedNumberStatValue extends NumberStatValue {
@@ -137,9 +145,9 @@ class KeyedNumberStatValue extends NumberStatValue {
         super(displayName, keyName);
     }
 
-    override getValue = ((creature: Creature): number => {
+    override getValue(creature: Creature): number {
         return parseFloat(creature[this.keyName] as string);
-    }).bind(this);
+    }
 }
 
 class AbilityNumberStatValue extends NumberStatValue {
@@ -147,7 +155,7 @@ class AbilityNumberStatValue extends NumberStatValue {
         super(displayName, keyName.toLowerCase());
     }
 
-    override getValue = ((creature: Creature): number => {
+    override getValue(creature: Creature): number {
         let searchString = creature.passive;
         let indexOf = searchString.indexOf(this.keyName);
         if(indexOf == -1) {
@@ -158,7 +166,7 @@ class AbilityNumberStatValue extends NumberStatValue {
         let abilityNameEndIndex = indexOf+this.keyName.length;
         let abilityValue = searchString.substring(searchString.indexOf("(", abilityNameEndIndex)+1, searchString.indexOf(")", abilityNameEndIndex))
         return parseFloat(abilityValue);
-    }).bind(this);
+    }
 }
 
 
@@ -169,21 +177,21 @@ abstract class StringStatValue extends StatValue {
     }
 
     abstract override getValue(creature: Creature): string;
-    override sort = ((creature1: Creature, creature2: Creature): number => {
+    override sort(creature1: Creature, creature2: Creature): number {
         const creature1Val = this.getValue(creature1);
         const creature2Val = this.getValue(creature2);
         if (creature1Val == "N/A") return Number.MAX_SAFE_INTEGER;
         if (creature2Val == "N/A") return Number.MIN_SAFE_INTEGER;
         return creature1Val.localeCompare(creature2Val) * ((sortAscending) ? -1 : 1);
-    }).bind(this)
+    }
 
-    override filter = ((creature: Creature, filterType: FilterType, testVal: string): boolean => {
+    override filter(creature: Creature, filterType: FilterType, testVal: string): boolean {
         switch(filterType){
             case FilterType.EQUALS: return this.getValue(creature).toLowerCase() == testVal.toLowerCase();
             case FilterType.CONTAINS: return this.getValue(creature).toLowerCase().includes(testVal.toLowerCase());
             default: return false;
         }
-    }).bind(this);
+    }
 }
 
 class KeyedStringStatValue extends StringStatValue {
@@ -191,9 +199,9 @@ class KeyedStringStatValue extends StringStatValue {
         super(displayName, keyName);
     }
 
-    override getValue = ((creature: Creature): string => {
+    override getValue(creature: Creature): string {
         return creature[this.keyName] as string;
-    }).bind(this);
+    }
 }
 
 class AbilityStringStatValue extends StringStatValue {
@@ -201,7 +209,7 @@ class AbilityStringStatValue extends StringStatValue {
         super(displayName, keyName.toLowerCase());
     }
 
-    override getValue = ((creature: Creature): string => {
+    override getValue(creature: Creature): string {
         let searchString = creature.passive;
         let indexOf = searchString.indexOf(this.keyName);
         if(indexOf == -1) {
@@ -213,7 +221,7 @@ class AbilityStringStatValue extends StringStatValue {
         // noinspection UnnecessaryLocalVariableJS
         let abilityValue = searchString.substring(searchString.indexOf("(", abilityNameEndIndex)+1, searchString.indexOf(")", abilityNameEndIndex))
         return abilityValue;
-    }).bind(this);
+    }
 }
 
 
@@ -541,9 +549,9 @@ async function updateCreatureStatsTable(){
         // ensureTableBodyRemoved();  //THIS IS MORE EXPENSIVE BC ONLY DOM MODIFICATION PAST THIS POINT IS REPLACECHILDREN
         const wasAscending = sortAscending;
         sortAscending = false;
-        creatureList.sort(nameStat.sort);
+        creatureList.sort(nameStat.sort.bind(nameStat));
         sortAscending = wasAscending;
-        creatureList.sort(currentSortingStat.sort);
+        creatureList.sort(currentSortingStat.sort.bind(currentSortingStat));
         
         const rowsToAppend: HTMLTableRowElement[] = [];
         for(const creature of creatureList) rowsToAppend.push(creature.tableRow);

@@ -46,137 +46,144 @@ class StatValue {
     }
 }
 class ValuelessAbilityStat extends StatValue {
+    constructor(displayName, keyName) {
+        super(displayName, keyName.toLowerCase());
+    }
     getDisplayValue(creature) {
         return this.getValue(creature) ? "Yes" : "No";
     }
-    constructor(displayName, keyName) {
-        super(displayName, keyName.toLowerCase());
-        this.getValue = ((creature) => {
-            let indexOf = creature.passive.indexOf(this.keyName);
-            if (indexOf == -1) {
-                indexOf = creature.activated.indexOf(this.keyName);
-                return indexOf != -1;
-            }
-            else {
-                return true;
-            }
-        }).bind(this);
-        this.sort = ((creature1, _) => {
-            return (this.getValue(creature1) ? -1 : 1) * (sortAscending ? -1 : 1);
-        }).bind(this);
-        this.filter = ((creature, filterType, testVal) => {
-            switch (filterType) {
-                case FilterType.EQUALS: return this.getDisplayValue(creature).toLowerCase() == testVal.toLowerCase();
-                case FilterType.CONTAINS: return this.getDisplayValue(creature).toLowerCase().includes(testVal.toLowerCase());
-                default: return false;
-            }
-        }).bind(this);
+    getValue(creature) {
+        let indexOf = creature.passive.indexOf(this.keyName);
+        if (indexOf == -1) {
+            indexOf = creature.activated.indexOf(this.keyName);
+            return indexOf != -1;
+        }
+        else {
+            return true;
+        }
+    }
+    sort(creature1, _) {
+        return (this.getValue(creature1) ? -1 : 1) * (sortAscending ? -1 : 1);
+    }
+    filter(creature, filterType, testVal) {
+        switch (filterType) {
+            case FilterType.EQUALS: return this.getDisplayValue(creature).toLowerCase() == testVal.toLowerCase();
+            case FilterType.CONTAINS: return this.getDisplayValue(creature).toLowerCase().includes(testVal.toLowerCase());
+            default: return false;
+        }
     }
 }
 class NumberStatValue extends StatValue {
     constructor(displayName, keyName) {
         super(displayName, keyName);
-        this.getDisplayValue = (creature) => {
-            const value = this.getValue(creature);
-            if (isNaN(value))
-                return "N/A";
-            else
-                return String(value);
-        };
-        this.sort = ((creature1, creature2) => {
-            let creature1Value = this.getValue(creature1);
-            let creature2Value = this.getValue(creature2);
-            if (isNaN(creature1Value))
-                return Number.MAX_SAFE_INTEGER;
-            if (isNaN(creature2Value))
-                return Number.MIN_SAFE_INTEGER;
-            return (sortAscending) ? creature1Value - creature2Value : creature2Value - creature1Value;
-        }).bind(this);
-        this.filter = ((creature, filterType, testVal) => {
-            switch (filterType) {
-                case FilterType.EQUALS: return this.getDisplayValue(creature).toLowerCase() == testVal.toLowerCase();
-                case FilterType.CONTAINS: return this.getDisplayValue(creature).toLowerCase().includes(testVal.toLowerCase());
-                case FilterType.LESS_THAN: return this.getValue(creature) < parseFloat(testVal);
-                case FilterType.LESS_THAN_EQUALS: return this.getValue(creature) <= parseFloat(testVal);
-                case FilterType.GREATER_THAN: return this.getValue(creature) > parseFloat(testVal);
-                case FilterType.GREATER_THAN_EQUALS: return this.getValue(creature) >= parseFloat(testVal);
-                default: return false;
-            }
-        }).bind(this);
+    }
+    getDisplayValue(creature) {
+        const value = this.getValue(creature);
+        if (isNaN(value))
+            return "N/A";
+        else
+            return String(value);
+    }
+    sort(creature1, creature2) {
+        let creature1Value = this.getValue(creature1);
+        let creature2Value = this.getValue(creature2);
+        if (isNaN(creature1Value))
+            return Number.MAX_SAFE_INTEGER;
+        if (isNaN(creature2Value))
+            return Number.MIN_SAFE_INTEGER;
+        return (sortAscending) ? creature1Value - creature2Value : creature2Value - creature1Value;
+    }
+    // override sort = ((creature1: Creature, creature2: Creature): number => {
+    //     let creature1Value = this.getValue(creature1);
+    //     let creature2Value = this.getValue(creature2);
+    //     if (isNaN(creature1Value)) return Number.MAX_SAFE_INTEGER;
+    //     if (isNaN(creature2Value)) return Number.MIN_SAFE_INTEGER;
+    //     return (sortAscending) ? creature1Value - creature2Value : creature2Value - creature1Value;
+    // }).bind(this);
+    filter(creature, filterType, testVal) {
+        switch (filterType) {
+            case FilterType.EQUALS: return this.getDisplayValue(creature).toLowerCase() == testVal.toLowerCase();
+            case FilterType.CONTAINS: return this.getDisplayValue(creature).toLowerCase().includes(testVal.toLowerCase());
+            case FilterType.LESS_THAN: return this.getValue(creature) < parseFloat(testVal);
+            case FilterType.LESS_THAN_EQUALS: return this.getValue(creature) <= parseFloat(testVal);
+            case FilterType.GREATER_THAN: return this.getValue(creature) > parseFloat(testVal);
+            case FilterType.GREATER_THAN_EQUALS: return this.getValue(creature) >= parseFloat(testVal);
+            default: return false;
+        }
     }
 }
 class KeyedNumberStatValue extends NumberStatValue {
     constructor(displayName, keyName) {
         super(displayName, keyName);
-        this.getValue = ((creature) => {
-            return parseFloat(creature[this.keyName]);
-        }).bind(this);
+    }
+    getValue(creature) {
+        return parseFloat(creature[this.keyName]);
     }
 }
 class AbilityNumberStatValue extends NumberStatValue {
     constructor(displayName, keyName) {
         super(displayName, keyName.toLowerCase());
-        this.getValue = ((creature) => {
-            let searchString = creature.passive;
-            let indexOf = searchString.indexOf(this.keyName);
-            if (indexOf == -1) {
-                searchString = creature.activated;
-                indexOf = searchString.indexOf(this.keyName);
-            }
-            if (indexOf == -1)
-                return NaN;
-            let abilityNameEndIndex = indexOf + this.keyName.length;
-            let abilityValue = searchString.substring(searchString.indexOf("(", abilityNameEndIndex) + 1, searchString.indexOf(")", abilityNameEndIndex));
-            return parseFloat(abilityValue);
-        }).bind(this);
+    }
+    getValue(creature) {
+        let searchString = creature.passive;
+        let indexOf = searchString.indexOf(this.keyName);
+        if (indexOf == -1) {
+            searchString = creature.activated;
+            indexOf = searchString.indexOf(this.keyName);
+        }
+        if (indexOf == -1)
+            return NaN;
+        let abilityNameEndIndex = indexOf + this.keyName.length;
+        let abilityValue = searchString.substring(searchString.indexOf("(", abilityNameEndIndex) + 1, searchString.indexOf(")", abilityNameEndIndex));
+        return parseFloat(abilityValue);
     }
 }
 class StringStatValue extends StatValue {
     constructor(displayName, keyName) {
         super(displayName, keyName);
-        this.sort = ((creature1, creature2) => {
-            const creature1Val = this.getValue(creature1);
-            const creature2Val = this.getValue(creature2);
-            if (creature1Val == "N/A")
-                return Number.MAX_SAFE_INTEGER;
-            if (creature2Val == "N/A")
-                return Number.MIN_SAFE_INTEGER;
-            return creature1Val.localeCompare(creature2Val) * ((sortAscending) ? -1 : 1);
-        }).bind(this);
-        this.filter = ((creature, filterType, testVal) => {
-            switch (filterType) {
-                case FilterType.EQUALS: return this.getValue(creature).toLowerCase() == testVal.toLowerCase();
-                case FilterType.CONTAINS: return this.getValue(creature).toLowerCase().includes(testVal.toLowerCase());
-                default: return false;
-            }
-        }).bind(this);
+    }
+    sort(creature1, creature2) {
+        const creature1Val = this.getValue(creature1);
+        const creature2Val = this.getValue(creature2);
+        if (creature1Val == "N/A")
+            return Number.MAX_SAFE_INTEGER;
+        if (creature2Val == "N/A")
+            return Number.MIN_SAFE_INTEGER;
+        return creature1Val.localeCompare(creature2Val) * ((sortAscending) ? -1 : 1);
+    }
+    filter(creature, filterType, testVal) {
+        switch (filterType) {
+            case FilterType.EQUALS: return this.getValue(creature).toLowerCase() == testVal.toLowerCase();
+            case FilterType.CONTAINS: return this.getValue(creature).toLowerCase().includes(testVal.toLowerCase());
+            default: return false;
+        }
     }
 }
 class KeyedStringStatValue extends StringStatValue {
     constructor(displayName, keyName) {
         super(displayName, keyName);
-        this.getValue = ((creature) => {
-            return creature[this.keyName];
-        }).bind(this);
+    }
+    getValue(creature) {
+        return creature[this.keyName];
     }
 }
 class AbilityStringStatValue extends StringStatValue {
     constructor(displayName, keyName) {
         super(displayName, keyName.toLowerCase());
-        this.getValue = ((creature) => {
-            let searchString = creature.passive;
-            let indexOf = searchString.indexOf(this.keyName);
-            if (indexOf == -1) {
-                searchString = creature.activated;
-                indexOf = searchString.indexOf(this.keyName);
-            }
-            if (indexOf == -1)
-                return "N/A";
-            let abilityNameEndIndex = indexOf + this.keyName.length;
-            // noinspection UnnecessaryLocalVariableJS
-            let abilityValue = searchString.substring(searchString.indexOf("(", abilityNameEndIndex) + 1, searchString.indexOf(")", abilityNameEndIndex));
-            return abilityValue;
-        }).bind(this);
+    }
+    getValue(creature) {
+        let searchString = creature.passive;
+        let indexOf = searchString.indexOf(this.keyName);
+        if (indexOf == -1) {
+            searchString = creature.activated;
+            indexOf = searchString.indexOf(this.keyName);
+        }
+        if (indexOf == -1)
+            return "N/A";
+        let abilityNameEndIndex = indexOf + this.keyName.length;
+        // noinspection UnnecessaryLocalVariableJS
+        let abilityValue = searchString.substring(searchString.indexOf("(", abilityNameEndIndex) + 1, searchString.indexOf(")", abilityNameEndIndex));
+        return abilityValue;
     }
 }
 function initializeStatList() {
@@ -487,9 +494,9 @@ async function updateCreatureStatsTable() {
         // ensureTableBodyRemoved();  //THIS IS MORE EXPENSIVE BC ONLY DOM MODIFICATION PAST THIS POINT IS REPLACECHILDREN
         const wasAscending = sortAscending;
         sortAscending = false;
-        creatureList.sort(nameStat.sort);
+        creatureList.sort(nameStat.sort.bind(nameStat));
         sortAscending = wasAscending;
-        creatureList.sort(currentSortingStat.sort);
+        creatureList.sort(currentSortingStat.sort.bind(currentSortingStat));
         const rowsToAppend = [];
         for (const creature of creatureList)
             rowsToAppend.push(creature.tableRow);
