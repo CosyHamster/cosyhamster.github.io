@@ -21,14 +21,16 @@
                 top: 50vh;
                 left: 50vw;
                 z-index: 15;
-                transition: opacity 50ms;
                 transform: translate(-50%, -50%);
             }
             #loadingGray[enable]{
+                transition: opacity 500ms;
+                transition-delay: 500ms;
                 opacity: 1;
                 cursor: wait;
                 pointer-events: all;
             }
+
             .clickableButton{
                 position: relative;
                 z-index: 0;
