@@ -4,7 +4,7 @@ var nameStat;
 var statList = [];
 var selectedStats = [];
 var activeFilters = [];
-var currentSortFunction;
+var currentSortingStat;
 var sortAscending = false;
 var sortDirty = false;
 var LOADING_GRAY = document.getElementById('loadingGray');
@@ -372,6 +372,7 @@ function initializeCreatureList() {
                         creatureStats.push(value);
                     }
                     creatureList = creatureStats;
+                    document.documentElement.style.cursor = "";
                     document.getElementById("loadingText").remove();
                     resolve();
                 }).catch(onError);
@@ -488,7 +489,7 @@ async function updateCreatureStatsTable() {
         sortAscending = false;
         creatureList.sort(nameStat.sort);
         sortAscending = wasAscending;
-        creatureList.sort(currentSortFunction);
+        creatureList.sort(currentSortingStat.sort);
         const rowsToAppend = [];
         for (const creature of creatureList)
             rowsToAppend.push(creature.tableRow);
@@ -624,16 +625,39 @@ function createOption(value, text) {
     return option;
 }
 function onHeaderCellClick(headerCell) {
-    const prevSortFunction = currentSortFunction;
-    currentSortFunction = selectedStats[headerCell.cellIndex].sort;
-    if (prevSortFunction == currentSortFunction) {
+    const selectedSortingStat = selectedStats[headerCell.cellIndex];
+    if (currentSortingStat == selectedSortingStat) {
         sortAscending = !sortAscending;
     }
     else {
         sortAscending = false;
     }
+    currentSortingStat = selectedSortingStat;
     sortDirty = true;
-    updateCreatureStatsTable();
+    updateCreatureStatsTable().then(() => {
+        updateHeaderCellArrow(headerCell);
+    });
+}
+var lastSortedHeaderCell = null;
+function findAndUpdateHeaderCellArrow() {
+    const index = selectedStats.indexOf(currentSortingStat);
+    if (index != -1) {
+        const cells = STAT_LIST_TABLE.tHead.rows[0].cells;
+        if (index < cells.length) {
+            updateHeaderCellArrow(cells[index]);
+        }
+    }
+}
+function updateHeaderCellArrow(headerCell) {
+    if (lastSortedHeaderCell != null)
+        lastSortedHeaderCell.classList.remove("headerCellAscending", "headerCellDescending");
+    lastSortedHeaderCell = headerCell;
+    if (sortAscending) {
+        headerCell.classList.add("headerCellAscending");
+    }
+    else {
+        headerCell.classList.add("headerCellDescending");
+    }
 }
 function openChooseTypeMenu(button) {
     button.parentElement.after(FLOATING_WINDOW);
@@ -772,16 +796,17 @@ function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 (async () => {
     document.getElementById("loadingText").innerText = "LOADING TABLE...";
     initializeCreatureList().then(() => {
-        updateCreatureStatsTable();
+        updateCreatureStatsTable().then(findAndUpdateHeaderCellArrow);
     });
     initializeStatList();
     selectedStats.push(nameStat);
     selectedStats.push(getStatValueWithKeyName("type"));
     selectedStats.push(getStatValueWithKeyName("diet"));
     selectedStats.push(getStatValueWithKeyName("tier"));
-    currentSortFunction = nameStat.sort;
+    currentSortingStat = nameStat;
     sortAscending = false;
     sortDirty = true;
+    updateCreatureStatsTable().then(findAndUpdateHeaderCellArrow); //This ensures the creatures won't initialize before stats and then the table is never displayed.
     const exitFloatingWindowButton = FLOATING_WINDOW.querySelector("img");
     exitFloatingWindowButton.addEventListener("click", closeFloatingWindow);
     exitFloatingWindowButton.addEventListener("keydown", (keyEvent) => { if (keyEvent.key == "Enter")

@@ -3,7 +3,8 @@ var nameStat: StatValue;
 var statList: StatValue[] = [];
 var selectedStats: StatValue[] = [];
 var activeFilters: Filter[] = [];
-var currentSortFunction: (creature1: Creature, creature2: Creature) => number;
+
+var currentSortingStat: StatValue;
 var sortAscending = false;
 var sortDirty = false;
 
@@ -415,6 +416,7 @@ function initializeCreatureList(): Promise<void>{
                         creatureStats.push(value);
                     }
                     creatureList = creatureStats;
+                    document.documentElement.style.cursor = "";
                     document.getElementById("loadingText").remove();
                     resolve();
                 }).catch(onError);
@@ -541,7 +543,7 @@ async function updateCreatureStatsTable(){
         sortAscending = false;
         creatureList.sort(nameStat.sort);
         sortAscending = wasAscending;
-        creatureList.sort(currentSortFunction);
+        creatureList.sort(currentSortingStat.sort);
         
         const rowsToAppend: HTMLTableRowElement[] = [];
         for(const creature of creatureList) rowsToAppend.push(creature.tableRow);
@@ -682,15 +684,40 @@ function createOption(value: string, text: string): HTMLOptionElement{
 }
 
 function onHeaderCellClick(headerCell: HTMLTableCellElement){
-    const prevSortFunction = currentSortFunction;
-    currentSortFunction = selectedStats[headerCell.cellIndex].sort;
-    if(prevSortFunction == currentSortFunction){
+    const selectedSortingStat: StatValue = selectedStats[headerCell.cellIndex];
+    if(currentSortingStat == selectedSortingStat){
         sortAscending = !sortAscending;
     } else {
         sortAscending = false;
     }
+    currentSortingStat = selectedSortingStat;
     sortDirty = true;
-    updateCreatureStatsTable();
+    updateCreatureStatsTable().then(() => {
+        updateHeaderCellArrow(headerCell);
+    });
+}
+
+var lastSortedHeaderCell: HTMLTableCellElement = null;
+function findAndUpdateHeaderCellArrow(){
+    const index = selectedStats.indexOf(currentSortingStat);
+    if(index != -1){
+        const cells = STAT_LIST_TABLE.tHead.rows[0].cells;
+        if(index < cells.length){
+            updateHeaderCellArrow(cells[index]);
+        }
+    }
+}
+
+function updateHeaderCellArrow(headerCell: HTMLTableCellElement){
+    if(lastSortedHeaderCell != null)
+        lastSortedHeaderCell.classList.remove("headerCellAscending", "headerCellDescending");
+
+    lastSortedHeaderCell = headerCell;
+    if(sortAscending){
+        headerCell.classList.add("headerCellAscending");
+    } else {
+        headerCell.classList.add("headerCellDescending");
+    }
 }
 
 function openChooseTypeMenu(button: HTMLButtonElement){
@@ -843,7 +870,7 @@ function sleep(ms: number): Promise<void> { return new Promise(resolve => setTim
     document.getElementById("loadingText").innerText = "LOADING TABLE..."
 
     initializeCreatureList().then(() => {
-        updateCreatureStatsTable();
+        updateCreatureStatsTable().then(findAndUpdateHeaderCellArrow);
     });
 
     initializeStatList();
@@ -852,9 +879,11 @@ function sleep(ms: number): Promise<void> { return new Promise(resolve => setTim
     selectedStats.push(getStatValueWithKeyName("diet"));
     selectedStats.push(getStatValueWithKeyName("tier"));
 
-    currentSortFunction = nameStat.sort;
+    currentSortingStat = nameStat;
     sortAscending = false;
     sortDirty = true;
+
+    updateCreatureStatsTable().then(findAndUpdateHeaderCellArrow); //This ensures the creatures won't initialize before stats and then the table is never displayed.
 
     const exitFloatingWindowButton = FLOATING_WINDOW.querySelector("img");
     exitFloatingWindowButton.addEventListener("click", closeFloatingWindow);

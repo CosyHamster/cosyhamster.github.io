@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="cursor: progress">
     <head>
         <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
         <meta charset="utf-8">
@@ -66,6 +66,13 @@
                 cursor: cell;
                 background-color: white;
             }
+            /*http://xahlee.info/comp/unicode_arrows.html*/
+            .headerCellAscending:after{
+                content: "↓";
+            }
+            .headerCellDescending:after{
+                content: "↑";
+            }
             .creatureStatCell{
                 max-width: 25ch;
                 /* width: 25ch; */
@@ -102,12 +109,12 @@
             </tbody>
         </table>
 
-        <p style="font-family: cursive, serif;" id="loadingText">LOADING SCRIPTS...</p>
+        <p style="font-family: cursive, serif; cursor: inherit;" id="loadingText">LOADING SCRIPTS...</p>
         <noscript style="font-family: serif; font-size: x-large;">YOU MUST ENABLE JAVASCRIPT FOR THIS WEBSITE TO WORK!!!!!</noscript>
 
         <div id="floatingWindow" style="position:relative;width: max-content;max-width:75vw;height: 50vh;background-color:white;display: none;overflow:scroll;border:gray solid 1px;">
-            <img class="clickableButton" decoding="async" loading="lazy" tabindex="0" style="z-index: 2; border-radius: 8px; float: right; width: 20px; height: 20px; top: 0px; position:sticky;" src="../Icons/CancelIcon.svg" alt="Exit"/>
-            <input autocomplete="off" name="Search Stats" aria-description="Search Stat Types" type="search" id="floatingWindowSearchBar" placeholder="Search...">
+            <img class="clickableButton" decoding="async" tabindex="0" style="z-index: 2; border-radius: 8px; float: right; top: 0px; position:sticky;" width="20" height="20" src="../Icons/CancelIcon.svg" alt="Exit"/>
+            <input style="position: sticky; top:0px; height: 20px;" autocomplete="off" name="Search Stats" aria-description="Search Stat Types" type="search" id="floatingWindowSearchBar" placeholder="Search...">
             <table id="floatingWindowTable" style="width: calc(100% - 20px);">
                 <tbody></tbody>
             </table>
