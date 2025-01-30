@@ -411,7 +411,7 @@ function initializeCreatureList(): Promise<void>{
         function onError(reason: any){
             setTimeout(tryLoad, 3000);
             console.error(reason);
-            console.log("Retrying in 3000ms");
+            console.log("creatureStats.json failed to download. Retrying in 3000ms");
         }
     
         function tryLoad(){
@@ -425,8 +425,9 @@ function initializeCreatureList(): Promise<void>{
                     }
                     creatureList = creatureStats;
                     document.documentElement.style.cursor = "";
-                    document.getElementById("loadingText").remove();
+                    document.getElementById("loadingText")?.remove?.();
                     resolve();
+
                 }).catch(onError);
             }).catch(onError);
         }
@@ -485,6 +486,13 @@ function getStatValueWithKeyName(keyName: string): StatValue | null{
         if(statList[i].keyName == keyName) return statList[i];
     }
     return null;
+}
+
+function indexOfSelectedStat(selectedStat: StatValue){
+    for(let i = 0; i < selectedStats.length; i++){
+        if(selectedStats[i] == selectedStat) return i;
+    }
+    return -1;
 }
 
 async function updateCreatureStatsTable(){
@@ -792,12 +800,17 @@ function openConfigureTypesMenu(){
                 if(!selectedStats.includes(stat)) selectedStats.push(stat);
             }
         } else {
-            selectedStats = [];
+            const keepEnabled: StatValue[] = [];
+            for(const stat of selectedStats){
+                if(stat.canBeDisabled == false) keepEnabled.push(stat);
+            }
+            selectedStats = keepEnabled;
         }
 
-        for(const row of FLOATING_WINDOW_TABLE.querySelector("tbody").children){
+        for(const row of FLOATING_WINDOW_TABLE.querySelector("tbody").rows){
             var checkbox = row.querySelector("input");
-            checkbox.checked = selectAllCheckbox.checked;
+            if(checkbox.disabled == false)
+                checkbox.checked = selectAllCheckbox.checked;
         }
 
         updateCreatureStatsTable();
@@ -816,7 +829,7 @@ function openConfigureTypesMenu(){
         const cell = document.createElement("td");
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
-        // checkbox.disabled = !statValue.canBeDisabled;
+        checkbox.disabled = !statValue.canBeDisabled;
         checkbox.checked = getSelectedStatValueWithKeyName(statValue.keyName) != null;
         checkbox.addEventListener("change", () => {
             if(STAT_LIST_TABLE.hasAttribute("disabled")) {
@@ -874,11 +887,31 @@ function onFrame(_: DOMHighResTimeStamp){
 //@ts-ignore
 function sleep(ms: number): Promise<void> { return new Promise(resolve => setTimeout(resolve, ms)); }
 
+function onFinishLoadingTable(){
+    const columnIndexOfNameStat = indexOfSelectedStat(nameStat);
+    const nameHeaderCell = STAT_LIST_TABLE.tHead.rows[0].cells[columnIndexOfNameStat];
+    if(nameHeaderCell != null){
+        nameHeaderCell.style.position = "sticky";
+        nameHeaderCell.style.zIndex = "2";
+        nameHeaderCell.style.left = "0px";
+    }
+
+    for(const row of STAT_LIST_TABLE.querySelector("tbody").rows){
+        const nameCell = row.cells[columnIndexOfNameStat];
+        nameCell.style.backgroundColor = "inherit";
+        nameCell.style.position = "sticky";
+        nameCell.style.left = "0px";
+    }
+}
+
 (async () => { //START
     document.getElementById("loadingText").innerText = "LOADING TABLE..."
 
     initializeCreatureList().then(() => {
-        updateCreatureStatsTable().then(findAndUpdateHeaderCellArrow);
+        updateCreatureStatsTable().then(() => {
+            findAndUpdateHeaderCellArrow();
+            onFinishLoadingTable();
+        });
     });
 
     initializeStatList();
@@ -891,7 +924,10 @@ function sleep(ms: number): Promise<void> { return new Promise(resolve => setTim
     sortAscending = false;
     sortDirty = true;
 
-    updateCreatureStatsTable().then(findAndUpdateHeaderCellArrow); //This ensures the creatures won't initialize before stats and then the table is never displayed.
+    updateCreatureStatsTable().then(() => {
+        findAndUpdateHeaderCellArrow();
+        onFinishLoadingTable();
+    }); //This ensures the creatures won't initialize before stats and then the table is never displayed.
 
     const exitFloatingWindowButton = FLOATING_WINDOW.querySelector("img");
     exitFloatingWindowButton.addEventListener("click", closeFloatingWindow);
