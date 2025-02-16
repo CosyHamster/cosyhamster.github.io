@@ -56,24 +56,30 @@ class Filter{
 
 
 abstract class StatValue{
-    displayName: string;
     keyName: string;
+    displayName: string;
     canBeDisabled = true;
+
+    setDisplayName(displayName: string){
+        this.displayName = displayName;
+    }
+    setCanBeDisabled(canBeDisabled: boolean){
+        this.canBeDisabled = canBeDisabled;
+    }
     getDisplayValue(creature: Creature): string{
         return String(this.getValue(creature));
     }
     abstract getValue(creature: Creature): unknown;
     abstract sort(creature1: Creature, creature2: Creature): number;
     abstract filter(creature: Creature, filterType: FilterType, testVal: string): boolean;
-    protected constructor(displayName: string, keyName: string){
-        this.displayName = displayName;
-        this.keyName = keyName;
+    protected constructor(keyName: string){
+        this.keyName = this.displayName = keyName;
     }
 }
 
-class ValuelessAbilityStat extends StatValue{
-    constructor(displayName: string, keyName: string){
-        super(displayName, keyName.toLowerCase());
+class AbilityBooleanValue extends StatValue{
+    constructor(keyName: string){
+        super(keyName.toLowerCase());
     }
 
     override getDisplayValue(creature: Creature): string {
@@ -103,8 +109,8 @@ class ValuelessAbilityStat extends StatValue{
 
 
 abstract class NumberStatValue extends StatValue {
-    protected constructor(displayName: string, keyName: string){
-        super(displayName, keyName);
+    protected constructor(keyName: string){
+        super(keyName);
     }
 
     abstract override getValue(creature: Creature): number;
@@ -141,8 +147,8 @@ abstract class NumberStatValue extends StatValue {
 }
 
 class KeyedNumberStatValue extends NumberStatValue {
-    constructor(displayName: string, keyName: string){
-        super(displayName, keyName);
+    constructor(keyName: string){
+        super(keyName);
     }
 
     override getValue(creature: Creature): number {
@@ -151,8 +157,8 @@ class KeyedNumberStatValue extends NumberStatValue {
 }
 
 class AbilityNumberStatValue extends NumberStatValue {
-    constructor(displayName: string, keyName: string){
-        super(displayName, keyName.toLowerCase());
+    constructor(keyName: string){
+        super(keyName.toLowerCase());
     }
 
     override getValue(creature: Creature): number {
@@ -172,8 +178,8 @@ class AbilityNumberStatValue extends NumberStatValue {
 
 
 abstract class StringStatValue extends StatValue {
-    protected constructor(displayName: string, keyName: string){
-        super(displayName, keyName);
+    protected constructor(keyName: string){
+        super(keyName);
     }
 
     abstract override getValue(creature: Creature): string;
@@ -195,8 +201,8 @@ abstract class StringStatValue extends StatValue {
 }
 
 class KeyedStringStatValue extends StringStatValue {
-    constructor(displayName: string, keyName: string){
-        super(displayName, keyName);
+    constructor(keyName: string){
+        super(keyName);
     }
 
     override getValue(creature: Creature): string {
@@ -205,8 +211,8 @@ class KeyedStringStatValue extends StringStatValue {
 }
 
 class AbilityStringStatValue extends StringStatValue {
-    constructor(displayName: string, keyName: string){
-        super(displayName, keyName.toLowerCase());
+    constructor(keyName: string){
+        super(keyName.toLowerCase());
     }
 
     override getValue(creature: Creature): string {
@@ -224,54 +230,71 @@ class AbilityStringStatValue extends StringStatValue {
     }
 }
 
+type JSONStat = {
+    type: "string"|"date"|"number"|"boolean",
+    keyName: string,
+    displayName?: string,
+    keyed?: boolean
+    canBeDisabled?: boolean
+}
 
+function initializeStatList(): Promise<void> {
+    return new Promise((resolve) => {
+        function onError(reason: any){
+            setTimeout(tryLoad, 5000);
+            console.error(reason);
+            console.log("statList.json failed to download. Retrying in 5000ms");
+        }
 
-function initializeStatList(){
-    nameStat = new KeyedStringStatValue("Name", "common")
-    nameStat.canBeDisabled = false;
-    statList.push(nameStat);
+        function tryLoad(){
+            fetch("statList.json").then(response => {
+                if(!response.ok) throw new Error("Response is not ok");
+                response.json().then((jsonStatList: JSONStat[]) => {
+                    for (const jsonStat of jsonStatList) {
+                        statList.push(createStatValue(jsonStat));
+                    }
 
-    statList.push(new KeyedStringStatValue("Class", "class"));
-    statList.push(new KeyedStringStatValue("Type", "type"));
-    statList.push(new KeyedStringStatValue("Diet", "diet"));
-    statList.push(new KeyedNumberStatValue("Tier", "tier"));
-    statList.push(new KeyedNumberStatValue("Ambush", "ambush"));
-    statList.push(new KeyedNumberStatValue("Appetite", "appetite"));
-    statList.push(new KeyedNumberStatValue("Beached Speed", "beachSpeed"));
-    statList.push(new KeyedNumberStatValue("Bite Cooldown", "biteCooldown"));
-    statList.push(new KeyedStringStatValue("Blood Color", "bloodColor"));
-    statList.push(new KeyedStringStatValue("Blood Texture", "bloodTexture"));
-    statList.push(new KeyedStringStatValue("Breath Type", "breath"));
-    statList.push(new KeyedStringStatValue("Concept Artist(s)", "conceptBy"));
-    statList.push(new KeyedNumberStatValue("Bite Damage", "damage"));
-    statList.push(new KeyedNumberStatValue("Secondary Damage", "damage2"));
-    statList.push(new KeyedNumberStatValue("Dart Power", "dartPower"));
-    statList.push(new KeyedNumberStatValue("Dart Stamina Cost", "dartStamina"));
-    statList.push(new KeyedStringStatValue("Creation Date", "dateAdded"));
-    statList.push(new KeyedNumberStatValue("Fly Multiplier", "flyMultiplier"));
-    statList.push(new KeyedNumberStatValue("Fly Speed", "flySpeed"));
-    statList.push(new KeyedNumberStatValue("Fly Sprint Multiplier", "flySprintMultiplier"));
-    statList.push(new KeyedNumberStatValue("Glide Stamina Regen", "glideStaminaRegen"));
-    statList.push(new KeyedNumberStatValue("Growth Time (minutes)", "growthTime"));
-    statList.push(new KeyedNumberStatValue("Health", "health"));
-    statList.push(new KeyedNumberStatValue("Health Regen Percent", "healthRegen"));
-    statList.push(new KeyedNumberStatValue("Hunger Drain", "hungerDrain"));
-    statList.push(new KeyedNumberStatValue("Thirst Drain", "thirstDrain"));
-    statList.push(new KeyedStringStatValue("Image Link", "imageLink")); //I'll probably do something with this at some point lol
-    statList.push(new KeyedNumberStatValue("Minimum Age to use Spacebar", "jumpAge"));
-    statList.push(new KeyedNumberStatValue("Jump Power", "jumpPower"));
-    statList.push(new KeyedNumberStatValue("Jump Stamina Cost", "jumpStamina"));
-    statList.push(new KeyedNumberStatValue("Moisture Duration (secs)", "moistureTime"));
-    statList.push(new KeyedNumberStatValue("Night Vision", "nightvision"));
-    statList.push(new KeyedNumberStatValue("Oxygen Duration (secs)", "oxygenTime"));
-    statList.push(new KeyedNumberStatValue("Sprint Speed", "sprintSpeed"));
-    statList.push(new KeyedNumberStatValue("Walk and Swim Speed", "walkAndSwimSpeed"));
-    statList.push(new KeyedNumberStatValue("Stamina Regen", "staminaRegen"));
-    statList.push(new KeyedNumberStatValue("Max Stamina", "stamina"));
-    statList.push(new KeyedNumberStatValue("Stored Price", "storedPrice"));
-    statList.push(new KeyedNumberStatValue("Take off Multiplier", "takeoffMultiplier"));
-    statList.push(new KeyedNumberStatValue("Turn Radius", "turn"));
-    statList.push(new KeyedNumberStatValue("Weight (lbs)", "weight"));
+                    resolve();
+                }).catch(onError);
+            }).catch(onError);
+        }
+
+        function createStatValue(jsonStat: JSONStat): StatValue {
+            let statValue: StatValue;
+            if(jsonStat.keyed){
+                switch (jsonStat.type) {
+                    case "number":
+                        statValue = new KeyedNumberStatValue(jsonStat.keyName);
+                        break;
+                    case "string":
+                    case "date": //date is unimplemented so it is treated like a string
+                        statValue = new KeyedStringStatValue(jsonStat.keyName);
+                        break;
+                    case "boolean":
+                        throw TypeError("There is no class type for a keyed boolean StatValue");
+                }
+            } else {
+                switch (jsonStat.type) {
+                    case "boolean":
+                        statValue = new AbilityBooleanValue(jsonStat.keyName);
+                        break;
+                    case "number":
+                        statValue = new AbilityNumberStatValue(jsonStat.keyName);
+                        break;
+                    case "string":
+                    case "date": //date is unimplemented so it is treated like a string
+                        statValue = new AbilityStringStatValue(jsonStat.keyName);
+                }
+            }
+
+            statValue.setDisplayName(jsonStat.displayName ?? jsonStat.keyName);
+            if(jsonStat.canBeDisabled !== undefined) statValue.setCanBeDisabled(jsonStat.canBeDisabled);
+
+            return statValue;
+        }
+
+        tryLoad();
+    });
 
     // for(const creature of creatureList){
     //     for(let abilityString of creature.passive.split(',')){
@@ -300,122 +323,18 @@ function initializeStatList(){
     //         }
     //     }
     // }
-
-    statList.push(new ValuelessAbilityStat("Grab", "Grab"));
-    statList.push(new AbilityNumberStatValue("Latch", "Latch"));
-    statList.push(new ValuelessAbilityStat("Guilt", "Guilt"));
-    statList.push(new ValuelessAbilityStat("Harden", "Harden"));
-    statList.push(new ValuelessAbilityStat("Frosty", "Frosty"));
-    statList.push(new ValuelessAbilityStat("Climber", "Climber"));
-    statList.push(new ValuelessAbilityStat("Fortify", "Fortify"));
-    statList.push(new ValuelessAbilityStat("Berserk", "Berserk"));
-    statList.push(new ValuelessAbilityStat("Volcanic", "Volcanic"));
-    statList.push(new ValuelessAbilityStat("Earthquake", "Earthquake"));
-    statList.push(new ValuelessAbilityStat("Drowsy Area", "Drowsy Area"));
-    statList.push(new ValuelessAbilityStat("Egg Stealer", "Egg Stealer"));
-    statList.push(new ValuelessAbilityStat("Sticky Fur", "Sticky Fur"));
-    statList.push(new ValuelessAbilityStat("Adrenaline", "Adrenaline"));
-    statList.push(new ValuelessAbilityStat("Tail Drop", "Tail Drop"));
-    statList.push(new ValuelessAbilityStat("Agile Swimmer", "Agile Swimmer"));
-    statList.push(new ValuelessAbilityStat("Water Gale", "Water Gale"));
-    statList.push(new ValuelessAbilityStat("Life Leech", "Life Leech"));
-    statList.push(new ValuelessAbilityStat("Warden's Rage", "Warden's Rage"));
-    statList.push(new ValuelessAbilityStat("Will To Live", "Will To Live"));
-    statList.push(new ValuelessAbilityStat("Quick Recovery", "Quick Recovery"));
-    statList.push(new ValuelessAbilityStat("Reflect", "Reflect"));
-    statList.push(new ValuelessAbilityStat("Snow Shield", "Snow Shield"));
-    statList.push(new ValuelessAbilityStat("Unbreakable", "Unbreakable"));
-    statList.push(new ValuelessAbilityStat("Serrated Teeth", "Serrated Teeth"));
-    statList.push(new ValuelessAbilityStat("Iron Stomach", "Iron Stomach"));
-    statList.push(new ValuelessAbilityStat("Keen Observer", "Keen Observer"));
-    statList.push(new ValuelessAbilityStat("Healing Pulse", "Healing Pulse"));
-    statList.push(new ValuelessAbilityStat("Pack Healer", "Pack Healer"));
-    statList.push(new ValuelessAbilityStat("Mud Pile", "Mud Pile"));
-    statList.push(new ValuelessAbilityStat("Strength In Numbers", "Strength In Numbers"));
-    statList.push(new ValuelessAbilityStat("Hunters Curse", "Hunter's Curse"));
-    statList.push(new ValuelessAbilityStat("Unbridled Rage", "Unbridled Rage"));
-    statList.push(new ValuelessAbilityStat("Cause Fear", "Cause Fear"));
-    statList.push(new ValuelessAbilityStat("Dazzling Flash", "Dazzling Flash"));
-    statList.push(new ValuelessAbilityStat("Shock Area", "Shock Area"));
-    statList.push(new ValuelessAbilityStat("Invisibility", "Invisibility"));
-    statList.push(new ValuelessAbilityStat("Stamina Puddle", "Stamina Puddle"));
-    statList.push(new ValuelessAbilityStat("Poison Area", "Poison Area"));
-    statList.push(new ValuelessAbilityStat("Channeling", "Channeling"));
-    statList.push(new ValuelessAbilityStat("Toxic Trap", "Toxic Trap"));
-    statList.push(new ValuelessAbilityStat("Thorn Trap", "Thorn Trap"));
-    statList.push(new ValuelessAbilityStat("Sticky Trap", "Sticky Trap"));
-    statList.push(new ValuelessAbilityStat("Frost Snare", "Frost Snare"));
-    statList.push(new ValuelessAbilityStat("Speed Steal", "Speed Steal"));
-    statList.push(new ValuelessAbilityStat("Speed Blitz", "Speed Blitz"));
-    statList.push(new ValuelessAbilityStat("Sonic Wings", "Sonic Wings"));
-    statList.push(new ValuelessAbilityStat("Escape Area", "Escape Area"));
-    statList.push(new ValuelessAbilityStat("Self Destruct", "Self-Destruct"));
-    statList.push(new ValuelessAbilityStat("Rewind", "Rewind"));
-    statList.push(new ValuelessAbilityStat("Raider", "Raider"));
-    statList.push(new ValuelessAbilityStat("Change Weather", "Change Weather"));
-    statList.push(new ValuelessAbilityStat("Area Food Restore", "Area Food Restore"));
-    statList.push(new ValuelessAbilityStat("Area Water Restore", "Area Water Restore"));
-    statList.push(new ValuelessAbilityStat("Broodwatcher", "Broodwatcher"));
-    statList.push(new AbilityNumberStatValue("Spite", "Spite"));
-    statList.push(new AbilityNumberStatValue("Diver", "Diver"));
-    statList.push(new AbilityNumberStatValue("Hunker", "Hunker"));
-    statList.push(new AbilityNumberStatValue("Burrower", "Burrower"));
-    statList.push(new AbilityNumberStatValue("Radiation", "Radiation"));
-    statList.push(new AbilityNumberStatValue("Frost Nova", "Frost Nova"));
-    statList.push(new AbilityNumberStatValue("Heal Aura", "Heal Aura"));
-    statList.push(new AbilityNumberStatValue("Healing Hunter", "Healing Hunter"));
-    statList.push(new AbilityNumberStatValue("Healing Step", "Healing Step"));
-    statList.push(new AbilityNumberStatValue("Cursed Sigil", "Cursed Sigil"));
-    statList.push(new AbilityNumberStatValue("First Strike", "First Strike"));
-    statList.push(new AbilityNumberStatValue("Soft Landing", "Soft Landing"));
-    //aliment attack
-    statList.push(new AbilityNumberStatValue("Bleed Attack", "Bleed Attack"));
-    statList.push(new AbilityNumberStatValue("Poison Attack", "Poison Attack"));
-    statList.push(new AbilityNumberStatValue("Necropoison Attack", "Necropoison Attack"));
-    statList.push(new AbilityNumberStatValue("Burn Attack", "Burn Attack"));
-    statList.push(new AbilityNumberStatValue("Disease Attack", "Disease Attack"));
-    statList.push(new AbilityNumberStatValue("Frostbite Attack", "Frostbite Attack"));
-    statList.push(new AbilityNumberStatValue("Corrosion Attack", "Corrosion Attack"));
-    statList.push(new AbilityNumberStatValue("Injury Attack", "Injury Attack"));
-    statList.push(new AbilityNumberStatValue("Wing Shredder", "Wing Shredder"));
-    //block aliment
-    statList.push(new AbilityNumberStatValue("Block Bleed", "Block Bleed"));
-    statList.push(new AbilityNumberStatValue("Block Poison", "Block Poison"));
-    statList.push(new AbilityNumberStatValue("Block Necropoison", "Block Necropoison"));
-    statList.push(new AbilityNumberStatValue("Block Burn", "Block Burn"));
-    statList.push(new AbilityNumberStatValue("Block Disease", "Block Disease"));
-    statList.push(new AbilityNumberStatValue("Block Frostbite", "Block Frostbite"));
-    statList.push(new AbilityNumberStatValue("Block Corrosion", "Block Corrosion"));
-    statList.push(new AbilityNumberStatValue("Block Injury", "Block Injury"));
-    statList.push(new AbilityNumberStatValue("Breath Resistance", "Breath Resistance"));
-    //defensive aliment
-    statList.push(new AbilityNumberStatValue("Defensive Bleed", "Defensive Bleed"));
-    statList.push(new AbilityNumberStatValue("Defensive Poison", "Defensive Poison"));
-    statList.push(new AbilityNumberStatValue("Toxic Trail", "Toxic Trail"));
-    statList.push(new AbilityNumberStatValue("Defensive Necropoison", "Defensive Necropoison"));
-    statList.push(new AbilityNumberStatValue("Defensive Burn", "Defensive Burn"));
-    statList.push(new AbilityNumberStatValue("Defensive Paralyze", "Defensive Paralyze"));
-    statList.push(new AbilityNumberStatValue("Defensive Disease", "Defensive Disease"));
-    statList.push(new AbilityNumberStatValue("Defensive Frostbite", "Defensive Frostbite"));
-    statList.push(new AbilityNumberStatValue("Defensive Corrosion", "Defensive Corrosion"));
-    statList.push(new AbilityNumberStatValue("Defensive Injury", "Defensive Injury"));
-    statList.push(new AbilityNumberStatValue("Defensive Wing Shredder", "Defensive Wing Shredder"));
-
-    statList.push(new AbilityStringStatValue("Charge", "Charge"));
-    statList.push(new AbilityStringStatValue("Totem", "Totem"));
-    statList.push(new AbilityStringStatValue("Yolk Bomb", "Yolk Bomb"));
 }
 
 function initializeCreatureList(): Promise<void>{
     return new Promise((resolve) => {
         function onError(reason: any){
-            setTimeout(tryLoad, 3000);
+            setTimeout(tryLoad, 5000);
             console.error(reason);
-            console.log("creatureStats.json failed to download. Retrying in 3000ms");
+            console.log("creatureStats.json failed to download. Retrying in 5000ms");
         }
     
         function tryLoad(){
-            fetch("creatureStats.json", {priority: "high"}).then(response => {
+            fetch("creatureStats.json").then(response => {
                 if(!response.ok) throw new Error("Response is not ok");
                 response.json().then((uninitializedCreatureStats: {[key: string]: Creature}) => {
                     const creatureStats: Creature[] = [];
@@ -424,8 +343,7 @@ function initializeCreatureList(): Promise<void>{
                         creatureStats.push(value);
                     }
                     creatureList = creatureStats;
-                    document.documentElement.style.cursor = "";
-                    document.getElementById("loadingText")?.remove?.();
+
                     resolve();
 
                 }).catch(onError);
@@ -618,6 +536,7 @@ function createFilter(): HTMLDivElement{
     textInput.type = "text";
     textInput.name = "statFilterInput"
     textInput.style.width = "20ch";
+    textInput.placeholder = "Enter text or number";
     const reverseLabel = document.createElement("label");
     reverseLabel.setAttribute("data-labelType", "reverse");
     reverseLabel.title = "Show the creatures that don't match this filter!"
@@ -737,6 +656,8 @@ function updateHeaderCellArrow(headerCell: HTMLTableCellElement){
 }
 
 function openChooseTypeMenu(button: HTMLButtonElement){
+    if(statList.length == 0) return; //uninitialized
+
     button.parentElement.after(FLOATING_WINDOW);
     FLOATING_WINDOW_SEARCH_BAR.oninput = chooseTypeSearchBarUpdate; 
 
@@ -780,6 +701,8 @@ function chooseTypeSearchBarUpdate(){
 }
 
 function openConfigureTypesMenu(){
+    if(statList.length == 0) return; //uninitialized
+
     CONFIGURE_STAT_TYPES_BUTTON.after(FLOATING_WINDOW);
     FLOATING_WINDOW_SEARCH_BAR.oninput = configureTypesSearchBarUpdate; 
 
@@ -887,47 +810,55 @@ function onFrame(_: DOMHighResTimeStamp){
 //@ts-ignore
 function sleep(ms: number): Promise<void> { return new Promise(resolve => setTimeout(resolve, ms)); }
 
-function onFinishLoadingTable(){
-    const columnIndexOfNameStat = indexOfSelectedStat(nameStat);
-    const nameHeaderCell = STAT_LIST_TABLE.tHead.rows[0].cells[columnIndexOfNameStat];
-    if(nameHeaderCell != null){
-        nameHeaderCell.style.position = "sticky";
-        nameHeaderCell.style.zIndex = "2";
-        nameHeaderCell.style.left = "0px";
-    }
+function onFinishedLoadingData(){
+    updateCreatureStatsTable().then(() => {
+        findAndUpdateHeaderCellArrow();
+        document.documentElement.style.cursor = "";
+        document.getElementById("loadingText")?.remove?.();
 
-    for(const row of STAT_LIST_TABLE.querySelector("tbody").rows){
-        const nameCell = row.cells[columnIndexOfNameStat];
-        nameCell.style.backgroundColor = "inherit";
-        nameCell.style.position = "sticky";
-        nameCell.style.left = "0px";
-    }
+        const columnIndexOfNameStat = indexOfSelectedStat(nameStat);
+        const nameHeaderCell = STAT_LIST_TABLE.tHead.rows[0].cells[columnIndexOfNameStat];
+        if(nameHeaderCell != null){
+            nameHeaderCell.style.position = "sticky";
+            nameHeaderCell.style.zIndex = "2";
+            nameHeaderCell.style.left = "0px";
+        }
+
+        for(const row of STAT_LIST_TABLE.querySelector("tbody").rows){
+            const nameCell = row.cells[columnIndexOfNameStat];
+            nameCell.style.backgroundColor = "inherit";
+            nameCell.style.position = "sticky";
+            nameCell.style.left = "0px";
+        }
+    })
 }
 
 (async () => { //START
     document.getElementById("loadingText").innerText = "LOADING TABLE..."
 
-    initializeCreatureList().then(() => {
-        updateCreatureStatsTable().then(() => {
-            findAndUpdateHeaderCellArrow();
-            onFinishLoadingTable();
-        });
+    let loadedItems = 0;
+    initializeStatList().then(() => {
+        nameStat = getStatValueWithKeyName("common");
+
+        selectedStats.push(nameStat);
+        selectedStats.push(getStatValueWithKeyName("type"));
+        selectedStats.push(getStatValueWithKeyName("diet"));
+        selectedStats.push(getStatValueWithKeyName("tier"));
+
+        currentSortingStat = nameStat;
+        sortAscending = false;
+        sortDirty = true;
+
+        if(++loadedItems == 2){
+            onFinishedLoadingData();
+        }
     });
 
-    initializeStatList();
-    selectedStats.push(nameStat);
-    selectedStats.push(getStatValueWithKeyName("type"));
-    selectedStats.push(getStatValueWithKeyName("diet"));
-    selectedStats.push(getStatValueWithKeyName("tier"));
-
-    currentSortingStat = nameStat;
-    sortAscending = false;
-    sortDirty = true;
-
-    updateCreatureStatsTable().then(() => {
-        findAndUpdateHeaderCellArrow();
-        onFinishLoadingTable();
-    }); //This ensures the creatures won't initialize before stats and then the table is never displayed.
+    initializeCreatureList().then(() => {
+        if(++loadedItems == 2){
+            onFinishedLoadingData();
+        }
+    });
 
     const exitFloatingWindowButton = FLOATING_WINDOW.querySelector("img");
     exitFloatingWindowButton.addEventListener("click", closeFloatingWindow);
