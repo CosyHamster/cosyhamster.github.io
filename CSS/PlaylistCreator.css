@@ -259,7 +259,15 @@ dialog::backdrop{
     overflow: scroll /*hidden*/;
     white-space: nowrap;
     /* max-width: 75vw; 45.5ch */
-    max-width: 50cqw;
+}
+.fileSizeLabel{
+    position: absolute;
+    transform: translate(-100%, 0);
+    /*left: calc(100% - 3px);*/
+    left: 100%;
+}
+.songNumber{
+    flex: 0 1 auto;
 }
 .largerSize{ max-width: 90%; }
 progress {
@@ -302,7 +310,9 @@ table{
     border-radius: 0;
 }
 .songBorder{
+    display: flex;
     border-top: 1px solid rgb(74, 74, 74);
     border-collapse: collapse;
     border-radius: 0;
+    width: 100%;
 }

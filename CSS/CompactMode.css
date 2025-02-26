@@ -6,3 +6,13 @@
     border-width: 0.5em 0 0.5em 1.0em; /*1.5em 0 1.5em 2.5em; *//* 37px 0 37px 60px */
 }
 .smallplaypause input[type=checkbox] + div{ height: 1em; /*original: 3em*/ }
+
+.fileSizeLabel{
+    margin-left: auto;
+    flex: 1 0 auto; /* fill all available space */
+    text-align: right;
+
+    position: unset;
+    transform: unset;
+    left: unset;
+}

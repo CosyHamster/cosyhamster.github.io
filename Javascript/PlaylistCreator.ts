@@ -47,7 +47,82 @@ const enum ProgressBarSeekAction {
 interface ContextMenuOption {
   text: string,
   icon?: string,
-  action: () => void
+  action: (event: UIEvent) => void
+}
+
+class SongTableRow {
+  tableRow: HTMLTableRowElement;
+
+  constructor(tableRow?: HTMLTableRowElement){
+    if(tableRow){
+      this.tableRow = tableRow;
+      return;
+    }
+
+    const row = curDoc.createElement('tr');//PLAYLIST_VIEWER_TABLE.insertRow(PLAYLIST_VIEWER_TABLE.rows.length)
+    const cell1 = row.insertCell(0);
+    cell1.className = "songBorder";
+    cell1.setAttribute("style", "display:flex;width:100%;");
+    initializeRowEvents(row);
+
+    const songNumber = curDoc.createElement('div');
+    setAttributes(songNumber, {
+      class: 'songNumber text',
+    });
+
+
+    const playButton = curDoc.createElement('label');
+    playButton.style.flex = "flex: 0 1 auto;";
+    playButton.setAttribute('class', 'smallplaypause playpause');
+
+    const checkbox = curDoc.createElement('input');
+    registerChangeEvent(checkbox, () => onClickSpecificPlaySong(checkbox));
+    setAttributes(checkbox, {
+      type: 'checkbox',
+      class: 'smallplaypause playpause'
+    });
+
+    playButton.append(checkbox, curDoc.createElement('div'));
+
+    const songName = curDoc.createElement('div');
+    songName.setAttribute("style", "align-self: end; flex: 0 1 auto; margin-right: 5px;");
+    songName.setAttribute('class', 'songName text');
+
+    const fileSize = curDoc.createElement('div');
+    fileSize.setAttribute('class', 'songName fileSizeLabel');
+
+
+
+    cell1.append(songNumber, playButton, songName, fileSize);
+    filePlayingCheckboxes.push(checkbox);
+
+    this.tableRow = row;
+  }
+
+  setSongName(fileName: string){
+    const songNameElement: HTMLDivElement = this.tableRow.firstElementChild.querySelector(".songName:nth-child(odd)");
+    songNameElement.textContent = fileName;
+    songNameElement.setAttribute('title', fileName);
+  }
+  updateRowSongNumber(){
+    this.setRowSongNumber(this.tableRow.rowIndex);
+  }
+  setRowSongNumber(songNumber: number){
+    const songNumberElement: HTMLDivElement = this.tableRow.firstElementChild.querySelector(".songNumber");
+    songNumberElement.textContent = `${songNumber}. `;
+  }
+  updateFileSizeDisplay(bytes: number){
+    const megabytes: string = getInMegabytes(bytes);
+    this.setFileSizeDisplay(`${megabytes} MB`, `${bytes} bytes`);
+  }
+  setFileSizeDisplay(textContent: string, titleText: string){
+    const fileSizeDisplay = this.tableRow.firstElementChild.querySelector(".fileSizeLabel");
+    fileSizeDisplay.textContent = textContent;
+    fileSizeDisplay.setAttribute('title', titleText);
+  }
+  getPlaySongCheckbox(): HTMLInputElement {
+    return this.tableRow.firstElementChild.querySelector("input.playpause");
+  }
 }
 
 class SongLoader{
@@ -78,16 +153,15 @@ class SongLoader{
 
       const onProgress = (progressEvent: ProgressEvent<FileReader>) => {
         if (sounds[currentSongIndex].file == this.song.file) PROGRESS_BAR.value = (100 * progressEvent.loaded) / progressEvent.total;
-        const fileBytes = this.song.file.size;
-        setSongFileSizeDisplay(
-            this.song,
-            `${getInMegabytes(progressEvent.loaded)} MB / ${getInMegabytes(fileBytes)} MB`,
-            `${progressEvent.loaded} bytes / ${fileBytes} bytes`
+        const bytes = this.song.file.size;
+        this.song.currentRow.setFileSizeDisplay(
+            `${getInMegabytes(progressEvent.loaded)} MB / ${getInMegabytes(bytes)} MB`,
+            `${progressEvent.loaded} bytes / ${bytes} bytes`
         );
       }
       const onLoaded = async () => {
         resolve(this.createHowl());
-        updateSongFileSizeDisplay(this.song);
+        this.song.updateFileSizeDisplay();
         this.triggerAbort();
       }
       const errorFunc = (progressEvent: ProgressEvent<FileReader>) => {
@@ -120,7 +194,7 @@ class SongLoader{
     if(this.finishedLoadingAbortController){
       this.finishedLoadingAbortController.abort();
     }
-    updateSongFileSizeDisplay(this.song);
+    this.song.updateFileSizeDisplay();
   }
   async createHowl(): Promise<Howl> {
     // LOADING_GRAY.toggleAttribute("enable", true);
@@ -154,11 +228,11 @@ class SongLoader{
 class Song {
   file: File;
   nativeIndex: number;
-  currentRow: HTMLTableRowElement;
+  currentRow: SongTableRow;
   songLoader?: SongLoader = null;
   howl?: Howl = null;
 
-  constructor(file: File, nativeIndex: number, currentRow: HTMLTableRowElement){
+  constructor(file: File, nativeIndex: number, currentRow: SongTableRow){
     this.file = file;
     this.nativeIndex = nativeIndex;
     this.currentRow = currentRow;
@@ -238,6 +312,10 @@ class Song {
   /** @returns Whether the associated {@link Howl} is created for this Song. */
   isInExistence(){
     return this.howl != null;
+  }
+
+  updateFileSizeDisplay(){
+    this.currentRow.updateFileSizeDisplay(this.file.size);
   }
 }
 
@@ -484,9 +562,7 @@ var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(),
   DURATION_OF_SONG_DISPLAY = document.getElementById('secondDurationLabel') as HTMLElement,
   DROPPING_FILE_OVERLAY = document.getElementById("dragOverDisplay") as HTMLDivElement;
 
-var fileNameDisplays: HTMLElement[] = [];
 var filePlayingCheckboxes: HTMLInputElement[] = [];
-var fileSizeDisplays: HTMLElement[] = [];
 var sounds: Song[] = [];
 var selectedRows: HTMLTableRowElement[] = [];
 var hoveredRowInDragAndDrop: HTMLTableRowElement = null; //does not work with importing files, only when organizing added files
@@ -677,8 +753,7 @@ function createNewSong(fileName: string, index: number): HTMLTableRowElement { /
   setAttributes(songNumber, {
     style: 'float: left; display: inline-block;',
     class: 'songNumber text',
-    index: String(index)
-  })
+  });
 
   const playButton = curDoc.createElement('label');
   playButton.setAttribute('class', 'smallplaypause playpause');
@@ -695,8 +770,6 @@ function createNewSong(fileName: string, index: number): HTMLTableRowElement { /
   playButton.append(checkbox, curDoc.createElement('div'));
   cell1.append(fileSize, songNumber, playButton, songName);
 
-  fileSizeDisplays.push(fileSize);
-  fileNameDisplays.push(songName);
   filePlayingCheckboxes.push(checkbox);
 
   return row;
@@ -717,7 +790,8 @@ function toggleCompactMode() {
 function onFrameStepped() {
   if (skipSongQueued) {
     skipSongQueued = false;
-    filePlayingCheckboxes[(currentSongIndex + 1) % filePlayingCheckboxes.length].dispatchEvent(new MouseEvent('click'));
+    const nextSongIndex = (currentSongIndex + 1) % sounds.length;
+    sounds[nextSongIndex].currentRow.getPlaySongCheckbox().dispatchEvent(new MouseEvent('click'));
   }
 
   PRELOAD_DIST_ELEMENT.max = String(Math.max(sounds.length - 1, 1));
@@ -851,32 +925,44 @@ async function importFiles(element: DataTransfer | ArrayLike<File>) {
     const lengthBeforeBegin = sounds.length;
     let offsetBecauseOfSkipped = 0
     changeStatus(`Importing ${files.length} Files...`);
-    
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       if (file == null) continue;
+
       const fileExtension = getFileExtension(file.name);
       if (SKIP_UNPLAYABLE_CHECKBOX.checked && !isValidExtension(fileExtension)) {
         displayError("TypeError", `The file type '${fileExtension}' is unsupported.`, "This file is unsupported and cannot be imported!", file.name);
         ++offsetBecauseOfSkipped;
         continue;
       }
-      const nativeIndex: number = i + lengthBeforeBegin - offsetBecauseOfSkipped;
-      const tableRow: HTMLTableRowElement = createNewSong(file.name, nativeIndex);
-      const song = new Song(file, nativeIndex, tableRow);
 
-      songTableRows.push(tableRow); //index (2nd parameter) is used to number the checkboxes
+      const nativeIndex: number = i + lengthBeforeBegin - offsetBecauseOfSkipped;
+      const songRow: SongTableRow = new SongTableRow();
+      songRow.setSongName(file.name);
+      songRow.updateFileSizeDisplay(file.size);
+      songRow.setRowSongNumber(nativeIndex);
+      const song = new Song(file, nativeIndex, songRow);
+
+      songTableRows.push(songRow.tableRow); //index (2nd parameter) is used to number the checkboxes
       sounds.push(song);
-      updateSongFileSizeDisplay(song);
       updateTranslationOfMainTable();
     }
 
-    const QUANTUM = 32768;
-    const playlistTableBody = PLAYLIST_VIEWER_TABLE.tBodies[0];
-    for (let i = 0; i < songTableRows.length; i += QUANTUM) {
-      playlistTableBody.append( ...songTableRows.slice(i, Math.min(i + QUANTUM, songTableRows.length)) );
-    }
+    replaceRowsInPlaylistTable(songTableRows);
     changeStatus(`${files.length - offsetBecauseOfSkipped} files added!`);
+  }
+}
+
+function replaceRowsInPlaylistTable(songTableRows: HTMLTableRowElement[]){
+  const QUANTUM = 32768;
+  const playlistTableBody = PLAYLIST_VIEWER_TABLE.tBodies[0];
+  const headerRow = playlistTableBody.rows[0];
+  playlistTableBody.replaceChildren();
+  playlistTableBody.appendChild(headerRow);
+
+  for (let i = 0; i < songTableRows.length; i += QUANTUM) {
+    playlistTableBody.append( ...songTableRows.slice(i, Math.min(i + QUANTUM, songTableRows.length)) );
   }
 }
 
@@ -916,7 +1002,7 @@ function handleShuffleButton(enable: boolean) {
     shuffle();
     refreshSongNames();
     for (let i = 0; i < sounds.length; i++) {
-      updateSongFileSizeDisplays();
+      sounds[i].updateFileSizeDisplay();
     }
     return;
   }
@@ -928,8 +1014,8 @@ function handleShuffleButton(enable: boolean) {
   for (let i = 0; i < tempArray.length; i++) {
     let sound = tempArray[i];
     sounds[sound.nativeIndex] = sound;
-    sound.currentRow = PLAYLIST_VIEWER_TABLE.rows[sound.nativeIndex+1];
-    updateSongFileSizeDisplay(sound);
+    sound.currentRow = new SongTableRow(PLAYLIST_VIEWER_TABLE.rows[sound.nativeIndex+1]);
+    sound.updateFileSizeDisplay();
 
     if (!foundCurrentPlayingSong && currentSongIndex !== null && i == currentSongIndex) {
       currentSongIndex = sound.nativeIndex;
@@ -955,15 +1041,16 @@ function shuffle() {
       else if (currentSongIndex == randomIndex) currentSongIndex = currentIndex;
 
       const currentCheckbox = filePlayingCheckboxes[currentSongIndex];
-      filePlayingCheckboxes.forEach(it => { it.checked = false; });
+      filePlayingCheckboxes.forEach(box => { box.checked = false; });
       currentCheckbox.checked = true;
     }
 
     let tempForSwapping = sounds[currentIndex];
     sounds[currentIndex] = sounds[randomIndex];
 
-    tempForSwapping.currentRow = PLAYLIST_VIEWER_TABLE.rows[randomIndex+1];
-    sounds[randomIndex].currentRow = PLAYLIST_VIEWER_TABLE.rows[currentIndex+1];
+    //TODO: Optimize row swapping
+    tempForSwapping.currentRow = new SongTableRow(PLAYLIST_VIEWER_TABLE.rows[randomIndex+1]);
+    sounds[randomIndex].currentRow = new SongTableRow(PLAYLIST_VIEWER_TABLE.rows[currentIndex+1]);
 
     sounds[randomIndex] = tempForSwapping;
   }
@@ -1077,8 +1164,7 @@ function pauseOrUnpauseCurrentSong(pause: boolean){ //controls playAll button, c
 
 function refreshSongNames() {
   for (let i = 0; i < sounds.length; i++) {
-    fileNameDisplays[i].textContent = sounds[i].file.name;
-    fileNameDisplays[i].setAttribute('title', sounds[i].file.name);
+    sounds[i].currentRow.setSongName(sounds[i].file.name);
   }
 }
 function setCurrentFileName(name: string) {
@@ -1287,8 +1373,6 @@ function deleteSelectedSongs() {
     
     sounds.splice(index, 1);
     filePlayingCheckboxes.splice(index, 1);
-    fileNameDisplays.splice(index, 1);
-    fileSizeDisplays.splice(index, 1);
   }
   deselectAll();
   updateSongNumberings();
@@ -1303,8 +1387,6 @@ function moveSelectedSongs(toIndex: number) {
     tableBody.removeChild(selectedRows[i]);
     sounds.splice(toIndex, 0, sounds.splice(index, 1)[0]);
     filePlayingCheckboxes.splice(toIndex, 0, filePlayingCheckboxes.splice(index, 1)[0]);
-    fileNameDisplays.splice(toIndex, 0, fileNameDisplays.splice(index, 1)[0]);
-    fileSizeDisplays.splice(toIndex, 0, fileSizeDisplays.splice(index, 1)[0]);
     tableBody.insertBefore(selectedRows[i], tableBody.children[toIndex + 1])
     currentSongIndex = currentlyPlayingRow.rowIndex-1;
   }
@@ -1370,8 +1452,7 @@ function updateTranslationOfMainTable(){//COMPACT_MODE_TOGGLE.checked
 }
 function updateSongNumberings() {
   for(const song of sounds){
-    var row = song.currentRow;
-    row.querySelector(".songNumber").textContent = `${row.rowIndex}. `
+    song.currentRow.updateRowSongNumber();
   }
   // let songNumbers = curDoc.getElementsByClassName('songNumber');
   // for (let i = 0; i < songNumbers.length; i++) {
@@ -1380,25 +1461,6 @@ function updateSongNumberings() {
   //   if (row == null) continue;
   //   songNumber.textContent = `${row.rowIndex}. `;
   // }
-}
-function setSongFileSizeDisplay(song: Song, textContent: string, hoverText: string) {
-  const row = song.currentRow;
-  const fileSizeDisplay = row.querySelector(".fileSizeLabel");
-  fileSizeDisplay.textContent = textContent;
-  fileSizeDisplay.setAttribute('title', hoverText);
-}
-function updateSongFileSizeDisplay(song: Song) {
-  const row = song.currentRow;
-  const fileSizeDisplay = row.querySelector(".fileSizeLabel");
-  const bytes = song.file.size;
-  const megabytes: string = getInMegabytes(bytes);
-  fileSizeDisplay.textContent = `${megabytes} MB`
-  fileSizeDisplay.setAttribute('title', `${bytes} bytes`);
-}
-function updateSongFileSizeDisplays() {
-  for(const song of sounds){
-    updateSongFileSizeDisplay(song);
-  }
 }
 
 function rowValid(row: Element) { return row?.constructor?.name == "HTMLTableRowElement" && row != PLAYLIST_VIEWER_TABLE.rows[0] && row.closest('table') == PLAYLIST_VIEWER_TABLE; }

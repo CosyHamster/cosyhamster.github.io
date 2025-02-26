@@ -26,7 +26,7 @@
         <input accept="audio/*" type="file" style="display: none;" id="0input" multiple>
         <input accept="audio/*" type="file" style="display: none;" id="inputDirectory" multiple webkitdirectory>
         <label for="0input"><img id="uploadFilesLabel" class="clickableButton" tabindex="0" data-onRightClick="uploadFileMenu" src="../Icons/UploadIcon.svg" width=20 height=20 alt=""/></label> <!--https://commons.wikimedia.org/wiki/File:OOjs_UI_icon_upload.svg-->
-        <div style="cursor: pointer;" tabindex="0" class="largerSize songName playingStatus text" id="currentFileName">Upload Files to Begin!</div>
+        <div style="cursor: pointer; width: 50%;" tabindex="0" class="largerSize songName playingStatus text" id="currentFileName">Upload Files to Begin!</div>
         <img tabindex="0" class="clickableButton" id="settingsButton" data-onRightClick="quickSettings" width=20 height=20 style="float: right;" src="../Icons/SettingsIcon.svg" alt="Settings"/> <!--https://en.m.wikipedia.org/wiki/File:Ic_settings_48px.svg-->
 
         <table class="mainTable" style="--moveDown: 30vh;">
@@ -106,7 +106,7 @@
                 </tr>
                 <tr>
                     <td colspan=5>
-                        <table tabindex="0" style="width:100%; border: 1px" id="Playlist_Viewer">
+                        <table tabindex="0" style="width:100%; border: 1px; table-layout: fixed;" id="Playlist_Viewer">
                             <tbody>
                                 <tr>
                                     <th>Playlist</th>

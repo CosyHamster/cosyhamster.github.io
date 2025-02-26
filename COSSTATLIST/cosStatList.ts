@@ -752,6 +752,7 @@ function openConfigureTypesMenu(){
         const cell = document.createElement("td");
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
+        checkbox.name = statValue.displayName;
         checkbox.disabled = !statValue.canBeDisabled;
         checkbox.checked = getSelectedStatValueWithKeyName(statValue.keyName) != null;
         checkbox.addEventListener("change", () => {

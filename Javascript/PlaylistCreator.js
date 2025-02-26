@@ -31,6 +31,65 @@ else {
     /* cspell: disable-next-line */
     ON_MOBILE = (/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series([46])0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(userAgent) || /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br([ev])w|bumb|bw-([nu])|c55\/|capi|ccwa|cdm-|cell|chtm|cldc|cmd-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc-s|devi|dica|dmob|do([cp])o|ds(12|-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly([-_])|g1 u|g560|gene|gf-5|g-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd-([mpt])|hei-|hi(pt|ta)|hp( i|ip)|hs-c|ht(c([- _agpst])|tp)|hu(aw|tc)|i-(20|go|ma)|i230|iac([ \-\/])|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja([tv])a|jbro|jemu|jigs|kddi|keji|kgt([ \/])|klon|kpt |kwc-|kyo([ck])|le(no|xi)|lg( g|\/([klu])|50|54|-[a-w])|libw|lynx|m1-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t([- ov])|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30([02])|n50([025])|n7(0([01])|10)|ne(([cm])-|on|tf|wf|wg|wt)|nok([6i])|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan([adt])|pdxg|pg(13|-([1-8]|c))|phil|pire|pl(ay|uc)|pn-2|po(ck|rt|se)|prox|psio|pt-g|qa-a|qc(07|12|21|32|60|-[2-7]|i-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h-|oo|p-)|sdk\/|se(c([-01])|47|mc|nd|ri)|sgh-|shar|sie([-m])|sk-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h-|v-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl-|tdg-|tel([im])|tim-|t-mo|to(pl|sh)|ts(70|m-|m3|m5)|tx-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c([- ])|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas-|your|zeto|zte-/i.test(userAgent.substring(0, 4)));
 }
+class SongTableRow {
+    constructor(tableRow) {
+        if (tableRow) {
+            this.tableRow = tableRow;
+            return;
+        }
+        const row = curDoc.createElement('tr'); //PLAYLIST_VIEWER_TABLE.insertRow(PLAYLIST_VIEWER_TABLE.rows.length)
+        const cell1 = row.insertCell(0);
+        cell1.className = "songBorder";
+        cell1.setAttribute("style", "display:flex;width:100%;");
+        initializeRowEvents(row);
+        const songNumber = curDoc.createElement('div');
+        setAttributes(songNumber, {
+            class: 'songNumber text',
+        });
+        const playButton = curDoc.createElement('label');
+        playButton.style.flex = "flex: 0 1 auto;";
+        playButton.setAttribute('class', 'smallplaypause playpause');
+        const checkbox = curDoc.createElement('input');
+        registerChangeEvent(checkbox, () => onClickSpecificPlaySong(checkbox));
+        setAttributes(checkbox, {
+            type: 'checkbox',
+            class: 'smallplaypause playpause'
+        });
+        playButton.append(checkbox, curDoc.createElement('div'));
+        const songName = curDoc.createElement('div');
+        songName.setAttribute("style", "align-self: end; flex: 0 1 auto; margin-right: 5px;");
+        songName.setAttribute('class', 'songName text');
+        const fileSize = curDoc.createElement('div');
+        fileSize.setAttribute('class', 'songName fileSizeLabel');
+        cell1.append(songNumber, playButton, songName, fileSize);
+        filePlayingCheckboxes.push(checkbox);
+        this.tableRow = row;
+    }
+    setSongName(fileName) {
+        const songNameElement = this.tableRow.firstElementChild.querySelector(".songName:nth-child(odd)");
+        songNameElement.textContent = fileName;
+        songNameElement.setAttribute('title', fileName);
+    }
+    updateRowSongNumber() {
+        this.setRowSongNumber(this.tableRow.rowIndex);
+    }
+    setRowSongNumber(songNumber) {
+        const songNumberElement = this.tableRow.firstElementChild.querySelector(".songNumber");
+        songNumberElement.textContent = `${songNumber}. `;
+    }
+    updateFileSizeDisplay(bytes) {
+        const megabytes = getInMegabytes(bytes);
+        this.setFileSizeDisplay(`${megabytes} MB`, `${bytes} bytes`);
+    }
+    setFileSizeDisplay(textContent, titleText) {
+        const fileSizeDisplay = this.tableRow.firstElementChild.querySelector(".fileSizeLabel");
+        fileSizeDisplay.textContent = textContent;
+        fileSizeDisplay.setAttribute('title', titleText);
+    }
+    getPlaySongCheckbox() {
+        return this.tableRow.firstElementChild.querySelector("input.playpause");
+    }
+}
 class SongLoader {
     constructor(song) {
         this.fileReader = new FileReader();
@@ -62,12 +121,12 @@ class SongLoader {
             const onProgress = (progressEvent) => {
                 if (sounds[currentSongIndex].file == this.song.file)
                     PROGRESS_BAR.value = (100 * progressEvent.loaded) / progressEvent.total;
-                const fileBytes = this.song.file.size;
-                setSongFileSizeDisplay(this.song, `${getInMegabytes(progressEvent.loaded)} MB / ${getInMegabytes(fileBytes)} MB`, `${progressEvent.loaded} bytes / ${fileBytes} bytes`);
+                const bytes = this.song.file.size;
+                this.song.currentRow.setFileSizeDisplay(`${getInMegabytes(progressEvent.loaded)} MB / ${getInMegabytes(bytes)} MB`, `${progressEvent.loaded} bytes / ${bytes} bytes`);
             };
             const onLoaded = async () => {
                 resolve(this.createHowl());
-                updateSongFileSizeDisplay(this.song);
+                this.song.updateFileSizeDisplay();
                 this.triggerAbort();
             };
             const errorFunc = (progressEvent) => {
@@ -108,7 +167,7 @@ class SongLoader {
         if (this.finishedLoadingAbortController) {
             this.finishedLoadingAbortController.abort();
         }
-        updateSongFileSizeDisplay(this.song);
+        this.song.updateFileSizeDisplay();
     }
     async createHowl() {
         // LOADING_GRAY.toggleAttribute("enable", true);
@@ -220,6 +279,9 @@ class Song {
     /** @returns Whether the associated {@link Howl} is created for this Song. */
     isInExistence() {
         return this.howl != null;
+    }
+    updateFileSizeDisplay() {
+        this.currentRow.updateFileSizeDisplay(this.file.size);
     }
 }
 class RegistrableEvent {
@@ -409,9 +471,7 @@ COMPACT_MODE_TOGGLE = document.getElementById('compactMode'), SEEK_DURATION_NUMB
 PROGRESS_BAR = document.getElementById('progress-bar'), HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay'), VOLUME_CHANGER = document.getElementById('0playVolume'), PLAY_RATE = document.getElementById('0playRate'), PLAY_PAN = document.getElementById('0playPan'), SEEK_BACK = document.getElementById('seekBack'), 
 // SEEK_FORWARD = document.getElementById('seekForward') as HTMLTableCellElement,
 REPEAT_BUTTON = document.getElementById('repeatButton'), REPEAT_BUTTON_IMAGE = document.getElementById("repeatButtonImg"), SHUFFLE_BUTTON = document.getElementById('shuffleButton'), MUTE_BUTTON = document.getElementById('0Mute'), PLAY_BUTTON = document.getElementById('playpause'), STATUS_TEXT = document.getElementById('0status'), CURRENT_FILE_NAME = document.getElementById('currentFileName'), DURATION_OF_SONG_DISPLAY = document.getElementById('secondDurationLabel'), DROPPING_FILE_OVERLAY = document.getElementById("dragOverDisplay");
-var fileNameDisplays = [];
 var filePlayingCheckboxes = [];
-var fileSizeDisplays = [];
 var sounds = [];
 var selectedRows = [];
 var hoveredRowInDragAndDrop = null; //does not work with importing files, only when organizing added files
@@ -608,7 +668,6 @@ function createNewSong(fileName, index) {
     setAttributes(songNumber, {
         style: 'float: left; display: inline-block;',
         class: 'songNumber text',
-        index: String(index)
     });
     const playButton = curDoc.createElement('label');
     playButton.setAttribute('class', 'smallplaypause playpause');
@@ -622,8 +681,6 @@ function createNewSong(fileName, index) {
     });
     playButton.append(checkbox, curDoc.createElement('div'));
     cell1.append(fileSize, songNumber, playButton, songName);
-    fileSizeDisplays.push(fileSize);
-    fileNameDisplays.push(songName);
     filePlayingCheckboxes.push(checkbox);
     return row;
 }
@@ -641,7 +698,8 @@ function toggleCompactMode() {
 function onFrameStepped() {
     if (skipSongQueued) {
         skipSongQueued = false;
-        filePlayingCheckboxes[(currentSongIndex + 1) % filePlayingCheckboxes.length].dispatchEvent(new MouseEvent('click'));
+        const nextSongIndex = (currentSongIndex + 1) % sounds.length;
+        sounds[nextSongIndex].currentRow.getPlaySongCheckbox().dispatchEvent(new MouseEvent('click'));
     }
     PRELOAD_DIST_ELEMENT.max = String(Math.max(sounds.length - 1, 1));
     if (COMPACT_MODE_LINK_ELEMENT?.sheet) {
@@ -782,19 +840,27 @@ async function importFiles(element) {
                 continue;
             }
             const nativeIndex = i + lengthBeforeBegin - offsetBecauseOfSkipped;
-            const tableRow = createNewSong(file.name, nativeIndex);
-            const song = new Song(file, nativeIndex, tableRow);
-            songTableRows.push(tableRow); //index (2nd parameter) is used to number the checkboxes
+            const songRow = new SongTableRow();
+            songRow.setSongName(file.name);
+            songRow.updateFileSizeDisplay(file.size);
+            songRow.setRowSongNumber(nativeIndex);
+            const song = new Song(file, nativeIndex, songRow);
+            songTableRows.push(songRow.tableRow); //index (2nd parameter) is used to number the checkboxes
             sounds.push(song);
-            updateSongFileSizeDisplay(song);
             updateTranslationOfMainTable();
         }
-        const QUANTUM = 32768;
-        const playlistTableBody = PLAYLIST_VIEWER_TABLE.tBodies[0];
-        for (let i = 0; i < songTableRows.length; i += QUANTUM) {
-            playlistTableBody.append(...songTableRows.slice(i, Math.min(i + QUANTUM, songTableRows.length)));
-        }
+        replaceRowsInPlaylistTable(songTableRows);
         changeStatus(`${files.length - offsetBecauseOfSkipped} files added!`);
+    }
+}
+function replaceRowsInPlaylistTable(songTableRows) {
+    const QUANTUM = 32768;
+    const playlistTableBody = PLAYLIST_VIEWER_TABLE.tBodies[0];
+    const headerRow = playlistTableBody.rows[0];
+    playlistTableBody.replaceChildren();
+    playlistTableBody.appendChild(headerRow);
+    for (let i = 0; i < songTableRows.length; i += QUANTUM) {
+        playlistTableBody.append(...songTableRows.slice(i, Math.min(i + QUANTUM, songTableRows.length)));
     }
 }
 function onPlayRateUpdate(newRate) {
@@ -830,7 +896,7 @@ function handleShuffleButton(enable) {
         shuffle();
         refreshSongNames();
         for (let i = 0; i < sounds.length; i++) {
-            updateSongFileSizeDisplays();
+            sounds[i].updateFileSizeDisplay();
         }
         return;
     }
@@ -839,8 +905,8 @@ function handleShuffleButton(enable) {
     for (let i = 0; i < tempArray.length; i++) {
         let sound = tempArray[i];
         sounds[sound.nativeIndex] = sound;
-        sound.currentRow = PLAYLIST_VIEWER_TABLE.rows[sound.nativeIndex + 1];
-        updateSongFileSizeDisplay(sound);
+        sound.currentRow = new SongTableRow(PLAYLIST_VIEWER_TABLE.rows[sound.nativeIndex + 1]);
+        sound.updateFileSizeDisplay();
         if (!foundCurrentPlayingSong && currentSongIndex !== null && i == currentSongIndex) {
             currentSongIndex = sound.nativeIndex;
             const currentCheckbox = filePlayingCheckboxes[currentSongIndex];
@@ -865,13 +931,14 @@ function shuffle() {
             else if (currentSongIndex == randomIndex)
                 currentSongIndex = currentIndex;
             const currentCheckbox = filePlayingCheckboxes[currentSongIndex];
-            filePlayingCheckboxes.forEach(it => { it.checked = false; });
+            filePlayingCheckboxes.forEach(box => { box.checked = false; });
             currentCheckbox.checked = true;
         }
         let tempForSwapping = sounds[currentIndex];
         sounds[currentIndex] = sounds[randomIndex];
-        tempForSwapping.currentRow = PLAYLIST_VIEWER_TABLE.rows[randomIndex + 1];
-        sounds[randomIndex].currentRow = PLAYLIST_VIEWER_TABLE.rows[currentIndex + 1];
+        //TODO: Optimize row swapping
+        tempForSwapping.currentRow = new SongTableRow(PLAYLIST_VIEWER_TABLE.rows[randomIndex + 1]);
+        sounds[randomIndex].currentRow = new SongTableRow(PLAYLIST_VIEWER_TABLE.rows[currentIndex + 1]);
         sounds[randomIndex] = tempForSwapping;
     }
 }
@@ -974,8 +1041,7 @@ function pauseOrUnpauseCurrentSong(pause) {
 }
 function refreshSongNames() {
     for (let i = 0; i < sounds.length; i++) {
-        fileNameDisplays[i].textContent = sounds[i].file.name;
-        fileNameDisplays[i].setAttribute('title', sounds[i].file.name);
+        sounds[i].currentRow.setSongName(sounds[i].file.name);
     }
 }
 function setCurrentFileName(name) {
@@ -1192,8 +1258,6 @@ function deleteSelectedSongs() {
         }
         sounds.splice(index, 1);
         filePlayingCheckboxes.splice(index, 1);
-        fileNameDisplays.splice(index, 1);
-        fileSizeDisplays.splice(index, 1);
     }
     deselectAll();
     updateSongNumberings();
@@ -1208,8 +1272,6 @@ function moveSelectedSongs(toIndex) {
         tableBody.removeChild(selectedRows[i]);
         sounds.splice(toIndex, 0, sounds.splice(index, 1)[0]);
         filePlayingCheckboxes.splice(toIndex, 0, filePlayingCheckboxes.splice(index, 1)[0]);
-        fileNameDisplays.splice(toIndex, 0, fileNameDisplays.splice(index, 1)[0]);
-        fileSizeDisplays.splice(toIndex, 0, fileSizeDisplays.splice(index, 1)[0]);
         tableBody.insertBefore(selectedRows[i], tableBody.children[toIndex + 1]);
         currentSongIndex = currentlyPlayingRow.rowIndex - 1;
     }
@@ -1283,8 +1345,7 @@ function updateTranslationOfMainTable() {
 }
 function updateSongNumberings() {
     for (const song of sounds) {
-        var row = song.currentRow;
-        row.querySelector(".songNumber").textContent = `${row.rowIndex}. `;
+        song.currentRow.updateRowSongNumber();
     }
     // let songNumbers = curDoc.getElementsByClassName('songNumber');
     // for (let i = 0; i < songNumbers.length; i++) {
@@ -1293,25 +1354,6 @@ function updateSongNumberings() {
     //   if (row == null) continue;
     //   songNumber.textContent = `${row.rowIndex}. `;
     // }
-}
-function setSongFileSizeDisplay(song, textContent, hoverText) {
-    const row = song.currentRow;
-    const fileSizeDisplay = row.querySelector(".fileSizeLabel");
-    fileSizeDisplay.textContent = textContent;
-    fileSizeDisplay.setAttribute('title', hoverText);
-}
-function updateSongFileSizeDisplay(song) {
-    const row = song.currentRow;
-    const fileSizeDisplay = row.querySelector(".fileSizeLabel");
-    const bytes = song.file.size;
-    const megabytes = getInMegabytes(bytes);
-    fileSizeDisplay.textContent = `${megabytes} MB`;
-    fileSizeDisplay.setAttribute('title', `${bytes} bytes`);
-}
-function updateSongFileSizeDisplays() {
-    for (const song of sounds) {
-        updateSongFileSizeDisplay(song);
-    }
 }
 function rowValid(row) { return row?.constructor?.name == "HTMLTableRowElement" && row != PLAYLIST_VIEWER_TABLE.rows[0] && row.closest('table') == PLAYLIST_VIEWER_TABLE; }
 function findValidTableRow(topLevelElement) {
