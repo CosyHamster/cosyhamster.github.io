@@ -23,7 +23,7 @@ var curDoc: Document = document;
 const SITE_DEPRECATED = document.URL.toLowerCase().includes('codehs') || document.URL.includes("127.0.0.1");
 var ON_MOBILE: boolean;
 
-//@ts-expect-error
+//@ts-ignore
 if(navigator.userAgentData) { ON_MOBILE = navigator.userAgentData.mobile; }
 else {
   //@ts-expect-error
@@ -493,7 +493,7 @@ class DataTransferItemGrabber { //this exists because javascript has bugs (it ke
     return new Promise(async resolve => {
       if (this.files.length > 0) resolve(this.files);
       let fileEntryArray: FileSystemEntry[] = []; //collect all file entries that need to be scanned
-      //@ts-expect-error
+      //@ts-ignore
       for (let i = 0; i < this.dataTransferItemList.length; i++) fileEntryArray.push(this.dataTransferItemList[i]?.webkitGetAsEntry?.() ?? this.dataTransferItemList[i]);
       await this.scanFilesInArray(fileEntryArray);
 
@@ -1344,9 +1344,9 @@ function onSingleClick(mouseEvent: MouseEvent) {
 //   spawnContextMenu(clientX, clientY, contextOptions, true);
 // }
 function scrollRowIntoView(row: HTMLTableRowElement){
-  //@ts-expect-error
+  //@ts-ignore
   if(row.scrollIntoViewIfNeeded){
-    //@ts-expect-error
+    //@ts-ignore
     row.scrollIntoViewIfNeeded();
   } else {
     row.scrollIntoView({behavior: "instant", block: "nearest"});
@@ -1514,7 +1514,7 @@ async function togglePictureInPicture() {
 }
 
 async function enterPictureInPicture() {
-  // @ts-expect-error
+  // @ts-ignore
   storedWindow = await documentPictureInPicture.requestWindow({width: 450, height: 450, disallowReturnToOpener: false, preferInitialWindowPlacement: false});
   curWin = storedWindow;
   curDoc = storedWindow.document;
@@ -1568,17 +1568,20 @@ function initContextMenu(): void {
 
     switch ((pointerEvent.target as Element).getAttribute('data-onRightClick')) {
       case "uploadFileMenu": {
-        pointerEvent.preventDefault()
+        pointerEvent.preventDefault();
         return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, [
           { text: "Upload Files", icon: "../Icons/UploadIcon.svg", action: () => UPLOAD_BUTTON.dispatchEvent(new MouseEvent('click')) },
           { text: "Upload Folder", icon: "../Icons/UploadIcon.svg", action: () => UPLOAD_DIRECTORY_BUTTON.dispatchEvent(new MouseEvent('click')) }
         ], false);
       }
       case "quickSettings": {
-        pointerEvent.preventDefault()
-        return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, [
-          { text: "Toggle PIP (WIP)", action: () => TOGGLE_PIP_BUTTON.dispatchEvent(new MouseEvent('click')) },
-        ], true);
+        pointerEvent.preventDefault();
+
+        const options: ContextMenuOption[] = [];
+        if("documentPictureInPicture" in curWin)
+          options.push({ text: "Toggle PIP (WIP)", action: () => TOGGLE_PIP_BUTTON.dispatchEvent(new MouseEvent('click')) });
+
+        return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, options, true);
       }
       default: {
         // return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, [], true);

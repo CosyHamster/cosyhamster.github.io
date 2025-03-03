@@ -21,7 +21,7 @@ var curWin = window;
 var curDoc = document;
 const SITE_DEPRECATED = document.URL.toLowerCase().includes('codehs') || document.URL.includes("127.0.0.1");
 var ON_MOBILE;
-//@ts-expect-error
+//@ts-ignore
 if (navigator.userAgentData) {
     ON_MOBILE = navigator.userAgentData.mobile;
 }
@@ -241,6 +241,7 @@ async function loadAndDisplaySongLengths() {
                 }, { passive: true, once: true });
                 audio.preload = "metadata";
                 audio.src = fileReader.result;
+                // @ts-ignore
                 resolve();
             };
             fileReader.addEventListener('loadend', onLoaded, { passive: true });
@@ -436,7 +437,7 @@ class DataTransferItemGrabber {
             if (this.files.length > 0)
                 resolve(this.files);
             let fileEntryArray = []; //collect all file entries that need to be scanned
-            //@ts-expect-error
+            //@ts-ignore
             for (let i = 0; i < this.dataTransferItemList.length; i++)
                 fileEntryArray.push(this.dataTransferItemList[i]?.webkitGetAsEntry?.() ?? this.dataTransferItemList[i]);
             await this.scanFilesInArray(fileEntryArray);
@@ -1221,9 +1222,9 @@ function onSingleClick(mouseEvent) {
 //   spawnContextMenu(clientX, clientY, contextOptions, true);
 // }
 function scrollRowIntoView(row) {
-    //@ts-expect-error
+    //@ts-ignore
     if (row.scrollIntoViewIfNeeded) {
-        //@ts-expect-error
+        //@ts-ignore
         row.scrollIntoViewIfNeeded();
     }
     else {
@@ -1402,7 +1403,7 @@ async function togglePictureInPicture() {
     TOGGLE_PIP_BUTTON.disabled = false;
 }
 async function enterPictureInPicture() {
-    // @ts-expect-error
+    // @ts-ignore
     storedWindow = await documentPictureInPicture.requestWindow({ width: 450, height: 450, disallowReturnToOpener: false, preferInitialWindowPlacement: false });
     curWin = storedWindow;
     curDoc = storedWindow.document;
@@ -1457,9 +1458,10 @@ function initContextMenu() {
             }
             case "quickSettings": {
                 pointerEvent.preventDefault();
-                return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, [
-                    { text: "Toggle PIP (WIP)", action: () => TOGGLE_PIP_BUTTON.dispatchEvent(new MouseEvent('click')) },
-                ], true);
+                const options = [];
+                if ("documentPictureInPicture" in curWin)
+                    options.push({ text: "Toggle PIP (WIP)", action: () => TOGGLE_PIP_BUTTON.dispatchEvent(new MouseEvent('click')) });
+                return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, options, true);
             }
             default: {
                 // return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, [], true);
