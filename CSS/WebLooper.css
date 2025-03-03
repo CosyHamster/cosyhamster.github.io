@@ -4,7 +4,7 @@ progress {
     transition: 0.3s;
     margin: 0px;
 }
-text[class='songName']{
+text[class='scrollableText']{
     display: inline-block;
     text-overflow: ellipsis;
     overflow: hidden;

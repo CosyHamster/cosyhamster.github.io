@@ -251,14 +251,19 @@ dialog::backdrop{
     font-weight: bold;
     color:black;
 }
-.songName::-webkit-scrollbar{ display: none; }
-.songName{
+.scrollableText::-webkit-scrollbar{ display: none; }
+.scrollableText{
     display: inline-block;
     font-family: Cambria, serif;
     text-overflow: clip;
     overflow: scroll /*hidden*/;
     white-space: nowrap;
     /* max-width: 75vw; 45.5ch */
+}
+.songName{
+    align-self: end;
+    flex: 1 1 auto;
+    margin-right: 5px;
 }
 .fileSizeLabel{
     position: absolute;

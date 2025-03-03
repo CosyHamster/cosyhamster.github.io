@@ -57,16 +57,15 @@ class SongTableRow {
         });
         playButton.append(checkbox, curDoc.createElement('div'));
         const songName = curDoc.createElement('div');
-        songName.setAttribute("style", "align-self: end; flex: 0 1 auto; margin-right: 5px;");
-        songName.setAttribute('class', 'songName text');
+        songName.setAttribute('class', 'songName scrollableText text');
         const fileSize = curDoc.createElement('div');
-        fileSize.setAttribute('class', 'songName fileSizeLabel');
+        fileSize.setAttribute('class', 'scrollableText fileSizeLabel');
         cell1.append(songNumber, playButton, songName, fileSize);
         filePlayingCheckboxes.push(checkbox);
         this.tableRow = row;
     }
     setSongName(fileName) {
-        const songNameElement = this.tableRow.firstElementChild.querySelector(".songName:nth-child(odd)");
+        const songNameElement = this.tableRow.firstElementChild.querySelector(".scrollableText:nth-child(odd)");
         songNameElement.textContent = fileName;
         songNameElement.setAttribute('title', fileName);
     }
@@ -77,11 +76,15 @@ class SongTableRow {
         const songNumberElement = this.tableRow.firstElementChild.querySelector(".songNumber");
         songNumberElement.textContent = `${songNumber}. `;
     }
+    updateFileInfoDisplay(duration) {
+        const formattedDuration = new Time(duration).toString();
+        this.setFileDisplay(formattedDuration, `${duration} seconds`);
+    }
     updateFileSizeDisplay(bytes) {
         const megabytes = getInMegabytes(bytes);
-        this.setFileSizeDisplay(`${megabytes} MB`, `${bytes} bytes`);
+        this.setFileDisplay(`${megabytes} MB`, `${bytes} bytes`);
     }
-    setFileSizeDisplay(textContent, titleText) {
+    setFileDisplay(textContent, titleText) {
         const fileSizeDisplay = this.tableRow.firstElementChild.querySelector(".fileSizeLabel");
         fileSizeDisplay.textContent = textContent;
         fileSizeDisplay.setAttribute('title', titleText);
@@ -121,12 +124,18 @@ class SongLoader {
             const onProgress = (progressEvent) => {
                 if (sounds[currentSongIndex].file == this.song.file)
                     PROGRESS_BAR.value = (100 * progressEvent.loaded) / progressEvent.total;
-                const bytes = this.song.file.size;
-                this.song.currentRow.setFileSizeDisplay(`${getInMegabytes(progressEvent.loaded)} MB / ${getInMegabytes(bytes)} MB`, `${progressEvent.loaded} bytes / ${bytes} bytes`);
+                if (SHOW_LENGTHS.checked) {
+                    this.song.currentRow.setFileDisplay(`${Math.round(100 * progressEvent.loaded / progressEvent.total)} %`, `${progressEvent.loaded} bytes / ${progressEvent.total} bytes`);
+                }
+                else {
+                    this.song.currentRow.setFileDisplay(`${getInMegabytes(progressEvent.loaded)} MB / ${getInMegabytes(progressEvent.total)} MB`, `${progressEvent.loaded} bytes / ${progressEvent.total} bytes`);
+                }
             };
             const onLoaded = async () => {
-                resolve(this.createHowl());
-                this.song.updateFileSizeDisplay();
+                const howl = await this.createHowl();
+                this.song.howl = howl;
+                resolve(howl);
+                this.song.updateFileInfoDisplay();
                 this.triggerAbort();
             };
             const errorFunc = (progressEvent) => {
@@ -167,7 +176,7 @@ class SongLoader {
         if (this.finishedLoadingAbortController) {
             this.finishedLoadingAbortController.abort();
         }
-        this.song.updateFileSizeDisplay();
+        this.song.updateFileInfoDisplay();
     }
     async createHowl() {
         // LOADING_GRAY.toggleAttribute("enable", true);
@@ -182,6 +191,10 @@ class SongLoader {
         console.timeEnd("createHowl");
         // LOADING_GRAY.toggleAttribute("enable", false);
         reapplySoundAttributes(sound);
+        sound.on("load", () => {
+            this.song.duration = sound.duration();
+            this.song.updateFileInfoDisplay();
+        });
         sound.on('end', () => {
             if (REPEAT_BUTTON.checked) {
                 if (sounds[currentSongIndex].isInExistence() && !sounds[currentSongIndex].howl.playing()) {
@@ -195,10 +208,53 @@ class SongLoader {
         return sound;
     }
 }
+let updatingFileInfos = false;
+async function updateAllFileInfos() {
+    if (updatingFileInfos == true)
+        return;
+    updatingFileInfos = true;
+    if (SHOW_LENGTHS.checked) {
+        await loadAndDisplaySongLengths();
+    }
+    for (const song of sounds) {
+        song.updateFileInfoDisplay();
+    }
+    updatingFileInfos = false;
+}
+async function loadAndDisplaySongLengths() {
+    for (const song of sounds) {
+        if (!SHOW_LENGTHS.checked) {
+            return;
+        }
+        if (song.duration !== null) {
+            song.updateFileInfoDisplay();
+            continue;
+        }
+        await new Promise((resolve) => {
+            const fileReader = new FileReader();
+            const onLoaded = () => {
+                const audio = curDoc.createElement('audio');
+                audio.addEventListener("durationchange", () => {
+                    song.duration = audio.duration;
+                    song.onDurationLoaded();
+                    console.log(audio.duration);
+                }, { passive: true, once: true });
+                audio.preload = "metadata";
+                audio.src = fileReader.result;
+                resolve();
+            };
+            fileReader.addEventListener('loadend', onLoaded, { passive: true });
+            fileReader.addEventListener('error', resolve, { passive: true });
+            fileReader.addEventListener('abort', resolve, { passive: true });
+            fileReader.readAsDataURL(song.file);
+        });
+    }
+}
 class Song {
     constructor(file, nativeIndex, currentRow) {
-        this.songLoader = null;
         this.howl = null;
+        this.songLoader = null;
+        this.duration = null;
         this.file = file;
         this.nativeIndex = nativeIndex;
         this.currentRow = currentRow;
@@ -229,21 +285,21 @@ class Song {
     }
     async loadSong() {
         return new Promise(resolve => {
-            if (this.howl) {
+            if (this.howl != null) {
                 resolve(true);
                 return;
             }
             if (this.songLoader == null || this.songLoader.finishedLoadingAbortController.signal.aborted)
                 this.songLoader = new SongLoader(this);
             else
-                this.songLoader?.finishedLoadingAbortController?.signal?.addEventListener?.("abort", () => {
-                    resolve(!!this.howl);
+                this.songLoader.finishedLoadingAbortController.signal.addEventListener("abort", () => {
+                    resolve(this.howl != null);
                 });
             this.songLoader.loadSong().then(howl => {
                 this.howl = howl;
                 resolve(true);
             }, (error) => {
-                console.warn("Failed loading song: " + this.file.name + ". Error: " + error);
+                console.warn("Failed loading song: " + this.file.name + ".\nError: " + error);
                 resolve(false);
             }).finally(() => {
                 this.songLoader = null;
@@ -251,11 +307,11 @@ class Song {
         });
     }
     unload() {
-        if (this.songLoader) {
+        if (this.songLoader != null) {
             this.songLoader.quitLoading();
             this.songLoader = null;
         }
-        if (this.howl) {
+        if (this.howl != null) {
             this.howl.unload();
             this.howl = null;
         }
@@ -280,8 +336,18 @@ class Song {
     isInExistence() {
         return this.howl != null;
     }
-    updateFileSizeDisplay() {
-        this.currentRow.updateFileSizeDisplay(this.file.size);
+    updateFileInfoDisplay() {
+        if (SHOW_LENGTHS.checked) {
+            if (this.duration !== null) {
+                this.currentRow.updateFileInfoDisplay(this.duration);
+            }
+        }
+        else {
+            this.currentRow.updateFileSizeDisplay(this.file.size);
+        }
+    }
+    onDurationLoaded() {
+        this.updateFileInfoDisplay();
     }
 }
 class RegistrableEvent {
@@ -466,7 +532,7 @@ var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(), K
     SELECTING: "lightblue",
     NONE: ""
 }, PAUSED = false, PLAYING = true, MAIN_TABLE = document.body.querySelector(".mainTable"), PLAYLIST_VIEWER_TABLE = document.getElementById("Playlist_Viewer"), PRELOAD_DIST_ELEMENT = document.getElementById('preloadDistance'), PRELOAD_TYPE_SELECTOR = document.getElementById("preloadType"), COMPACT_MODE_LINK_ELEMENT = null, //document.getElementById('compactModeStyleLink'),
-COMPACT_MODE_TOGGLE = document.getElementById('compactMode'), SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration'), SEEK_DURATION_DISPLAY = document.getElementById("seekDurationDisplay"), SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional'), SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable'), REORDER_FILES_CHECKBOX = document.getElementById('reorderFiles'), TOGGLE_PIP_BUTTON = document.getElementById('enterPIP'), UPLOAD_BUTTON = document.getElementById('0input'), UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory'), PLAY_RATE_RANGE = document.getElementById('0playRateSlider'), SETTINGS_POPUP = document.getElementById('settingsPage'), ERROR_POPUP = document.getElementById('errorPopup'), DEPRECATED_POPUP = document.getElementById('deprecatedPopup'), DIALOGS = [SETTINGS_POPUP, ERROR_POPUP, DEPRECATED_POPUP], ERROR_LIST = document.getElementById('errorList'), CONTEXT_MENU = document.getElementById('rightClickContextMenu'), 
+COMPACT_MODE_TOGGLE = document.getElementById('compactMode'), SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration'), SEEK_DURATION_DISPLAY = document.getElementById("seekDurationDisplay"), SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional'), SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable'), SHOW_LENGTHS = document.getElementById('showLengths'), REORDER_FILES_CHECKBOX = document.getElementById('reorderFiles'), TOGGLE_PIP_BUTTON = document.getElementById('enterPIP'), UPLOAD_BUTTON = document.getElementById('0input'), UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory'), PLAY_RATE_RANGE = document.getElementById('0playRateSlider'), SETTINGS_POPUP = document.getElementById('settingsPage'), ERROR_POPUP = document.getElementById('errorPopup'), DEPRECATED_POPUP = document.getElementById('deprecatedPopup'), DIALOGS = [SETTINGS_POPUP, ERROR_POPUP, DEPRECATED_POPUP], ERROR_LIST = document.getElementById('errorList'), CONTEXT_MENU = document.getElementById('rightClickContextMenu'), 
 // LOADING_GRAY = document.getElementById('loadingGray') as HTMLDivElement,
 PROGRESS_BAR = document.getElementById('progress-bar'), HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay'), VOLUME_CHANGER = document.getElementById('0playVolume'), PLAY_RATE = document.getElementById('0playRate'), PLAY_PAN = document.getElementById('0playPan'), SEEK_BACK = document.getElementById('seekBack'), 
 // SEEK_FORWARD = document.getElementById('seekForward') as HTMLTableCellElement,
@@ -524,6 +590,7 @@ var currentSongIndex = null;
     registerKeyDownEvent(SEEK_BACK.nextElementSibling, () => PLAY_BUTTON.click());
     registerChangeEvent(PLAY_BUTTON, () => pauseOrUnpauseCurrentSong(!PLAY_BUTTON.checked));
     registerChangeEvent(COMPACT_MODE_TOGGLE, toggleCompactMode);
+    registerChangeEvent(SHOW_LENGTHS, updateAllFileInfos);
     registerChangeEvent(REORDER_FILES_CHECKBOX, () => {
         const checked = REORDER_FILES_CHECKBOX.checked;
         const rows = PLAYLIST_VIEWER_TABLE.rows;
@@ -645,44 +712,6 @@ function registerChangeEvent(element, func) {
 }
 function registerInputEvent(elem, func) {
     elem.addEventListener('input', func, { passive: true });
-}
-/**
- * @satisfies New song was not pushed to sounds array beforehand.
- * @param fileName The name of the song to be added to the Playlist Table.
- * @param index The song's index.
- */
-function createNewSong(fileName, index) {
-    const row = curDoc.createElement('tr'); //PLAYLIST_VIEWER_TABLE.insertRow(PLAYLIST_VIEWER_TABLE.rows.length)
-    const cell1 = row.insertCell(0);
-    cell1.className = "songBorder";
-    initializeRowEvents(row);
-    const fileSize = curDoc.createElement('div');
-    fileSize.setAttribute('class', 'songName fileSizeLabel');
-    fileSize.setAttribute('style', 'position: absolute; transform: translate(-100%, 0); left: calc(100% - 3px);');
-    const songName = curDoc.createElement('div');
-    songName.setAttribute('class', 'songName text');
-    songName.setAttribute('title', `${fileName}`);
-    songName.textContent = fileName;
-    const songNumber = curDoc.createElement('div');
-    songNumber.textContent = `${sounds.length + 1}. `;
-    setAttributes(songNumber, {
-        style: 'float: left; display: inline-block;',
-        class: 'songNumber text',
-    });
-    const playButton = curDoc.createElement('label');
-    playButton.setAttribute('class', 'smallplaypause playpause');
-    playButton.setAttribute('for', `${index}playButton`);
-    const checkbox = curDoc.createElement('input');
-    registerChangeEvent(checkbox, () => onClickSpecificPlaySong(checkbox));
-    setAttributes(checkbox, {
-        type: 'checkbox',
-        id: `${index}playButton`,
-        class: 'smallplaypause playpause'
-    });
-    playButton.append(checkbox, curDoc.createElement('div'));
-    cell1.append(fileSize, songNumber, playButton, songName);
-    filePlayingCheckboxes.push(checkbox);
-    return row;
 }
 function toggleCompactMode() {
     if (COMPACT_MODE_LINK_ELEMENT === null) {
@@ -849,16 +878,17 @@ async function importFiles(element) {
             sounds.push(song);
             updateTranslationOfMainTable();
         }
-        replaceRowsInPlaylistTable(songTableRows);
+        updateAllFileInfos();
+        addRowsInPlaylistTable(songTableRows);
         changeStatus(`${files.length - offsetBecauseOfSkipped} files added!`);
     }
 }
-function replaceRowsInPlaylistTable(songTableRows) {
+function addRowsInPlaylistTable(songTableRows) {
     const QUANTUM = 32768;
     const playlistTableBody = PLAYLIST_VIEWER_TABLE.tBodies[0];
-    const headerRow = playlistTableBody.rows[0];
-    playlistTableBody.replaceChildren();
-    playlistTableBody.appendChild(headerRow);
+    // const headerRow = playlistTableBody.rows[0];
+    // playlistTableBody.replaceChildren();
+    // playlistTableBody.appendChild(headerRow);
     for (let i = 0; i < songTableRows.length; i += QUANTUM) {
         playlistTableBody.append(...songTableRows.slice(i, Math.min(i + QUANTUM, songTableRows.length)));
     }
@@ -896,7 +926,7 @@ function handleShuffleButton(enable) {
         shuffle();
         refreshSongNames();
         for (let i = 0; i < sounds.length; i++) {
-            sounds[i].updateFileSizeDisplay();
+            sounds[i].updateFileInfoDisplay();
         }
         return;
     }
@@ -906,7 +936,7 @@ function handleShuffleButton(enable) {
         let sound = tempArray[i];
         sounds[sound.nativeIndex] = sound;
         sound.currentRow = new SongTableRow(PLAYLIST_VIEWER_TABLE.rows[sound.nativeIndex + 1]);
-        sound.updateFileSizeDisplay();
+        sound.updateFileInfoDisplay();
         if (!foundCurrentPlayingSong && currentSongIndex !== null && i == currentSongIndex) {
             currentSongIndex = sound.nativeIndex;
             const currentCheckbox = filePlayingCheckboxes[currentSongIndex];
@@ -972,7 +1002,8 @@ async function startPlayingSpecificSong(index) {
         sounds[index].howl.stop();
     Howler.stop();
     currentSongIndex = index;
-    const soundName = sounds[index].file.name, fileExtension = getFileExtension(soundName);
+    const soundName = sounds[index].file.name;
+    const fileExtension = getFileExtension(soundName);
     if (SKIP_UNPLAYABLE_CHECKBOX.checked && !isValidExtension(fileExtension)) {
         displayError("TypeError", `The file type '${fileExtension}' is unsupported.`, "This file is unsupported and cannot be played!", soundName);
         skipSongQueued = true;
@@ -1347,13 +1378,6 @@ function updateSongNumberings() {
     for (const song of sounds) {
         song.currentRow.updateRowSongNumber();
     }
-    // let songNumbers = curDoc.getElementsByClassName('songNumber');
-    // for (let i = 0; i < songNumbers.length; i++) {
-    //   let songNumber = songNumbers[i];
-    //   let row = tryFindTableRowInParents(songNumber);
-    //   if (row == null) continue;
-    //   songNumber.textContent = `${row.rowIndex}. `;
-    // }
 }
 function rowValid(row) { return row?.constructor?.name == "HTMLTableRowElement" && row != PLAYLIST_VIEWER_TABLE.rows[0] && row.closest('table') == PLAYLIST_VIEWER_TABLE; }
 function findValidTableRow(topLevelElement) {

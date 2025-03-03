@@ -9,8 +9,8 @@
 
 .fileSizeLabel{
     margin-left: auto;
-    flex: 1 0 auto; /* fill all available space */
-    text-align: right;
+    flex: 0 0 auto; /* fill all available space */
+    /*text-align: right;*/
 
     position: unset;
     transform: unset;
