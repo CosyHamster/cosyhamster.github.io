@@ -12,7 +12,6 @@
     flex: 0 0 auto; /* fill all available space */
     /*text-align: right;*/
 
-    position: unset;
-    transform: unset;
-    left: unset;
+    position: static;
+    transform: none;
 }

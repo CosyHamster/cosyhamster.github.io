@@ -7,7 +7,7 @@ import("./howler.js").catch((error) => {
 });
 
 var audio = new Audio();
-var useHowlerForDownloading = true;
+var useObjectURLS = true;
 var aiffIsPlayable = !!(audio.canPlayType("audio/aiff") || audio.canPlayType("audio/x-aiff"));
 function codecsMixin(extension: string): boolean {
   switch(extension){
@@ -128,6 +128,9 @@ class SongTableRow {
   getPlaySongCheckbox(): HTMLInputElement {
     return this.tableRow.firstElementChild.querySelector("input.playpause");
   }
+  isRemoved(){
+    return this.tableRow.parentNode == null;
+  }
 }
 
 class SongLoader{
@@ -140,7 +143,7 @@ class SongLoader{
   
   loadSong(): Promise<Howl>{
     return new Promise<Howl>(async (resolve, reject) => {
-      if(useHowlerForDownloading){
+      if(useObjectURLS){
         if(this.song.howl == null){
           const howl = this.createHowl();
           this.song.howl = howl;
@@ -186,8 +189,8 @@ class SongLoader{
           );
         }
       }
-      const onLoaded = async () => {
-        const howl = await this.createHowl();
+      const onLoaded = () => {
+        const howl = this.createHowl();
         this.song.howl = howl;
         resolve(howl);
 
@@ -196,13 +199,15 @@ class SongLoader{
       }
       const errorFunc = (progressEvent: ProgressEvent<FileReader>) => {
         this.triggerAbort();
-        switch (progressEvent.target.error.name) {
-          case "NotFoundError": { displayError(progressEvent.target.error.name, "Failed to find file!", progressEvent.target.error.message, this.song.file.name); break; }
-          case "NotReadableError": { displayError(progressEvent.target.error.name, "This file needs to be reimported to the playlist!", progressEvent.target.error.message, this.song.file.name); break; }
-          default: { displayError(progressEvent.target.error.name, "Unknown Error!", progressEvent.target.error.message, this.song.file.name); break; }
+        //TODO: implement these error handlers for songs loaded using the object URL. accessing {sounds[currentSongIndex].howl._sounds[0]._node (.readyState === 3)} may help.
+        const error = progressEvent.target.error;
+        switch (error.name) {
+          case "NotFoundError": { displayError(error, "Failed to find file!", this.song.file.name); break; }
+          case "NotReadableError": { displayError(error, "This file's access had changed. Try reimporting it.", this.song.file.name); break; }
+          default: { displayError(error, error.message, this.song.file.name); break; }
         }
 
-        reject(progressEvent.target.error.name);
+        reject(error.name);
       }
       const warnUser = () => {
         this.triggerAbort();
@@ -229,17 +234,14 @@ class SongLoader{
   createHowl() {
     // LOADING_GRAY.toggleAttribute("enable", true);
     // await sleep(0); //dom update before beginning the load
-    console.time("createHowl");
     const sound: Howl = new Howl({
-      // src: [this.fileReader.result as string],
-      src: this.song.fileURL,
+      src: (useObjectURLS) ? this.song.fileURL : this.fileReader.result as string,
       preload: PRELOAD_TYPE_SELECTOR.value === "process",
       autoplay: false,
       loop: false,
       format: getFileExtension(this.song.file.name)
     });
 
-    console.timeEnd("createHowl");
     // LOADING_GRAY.toggleAttribute("enable", false);
 
     reapplySoundAttributes(sound);
@@ -262,11 +264,7 @@ class SongLoader{
   }
 }
 
-let updatingFileInfos = false;
 async function updateAllFileInfos(){
-  if(updatingFileInfos == true) return;
-  updatingFileInfos = true;
-
   if(SHOW_LENGTHS.checked){
     loadAndDisplaySongLengths();
   }
@@ -274,51 +272,48 @@ async function updateAllFileInfos(){
   for(const song of sounds){
     song.updateFileInfoDisplay();
   }
-  updatingFileInfos = false;
 }
 
-async function loadAndDisplaySongLengths(){
-  // const queuedSongs = sounds.slice(0); //clone array
-  for (let i = 0; i < sounds.length; i++) {
-    if(!SHOW_LENGTHS.checked){ return; }
-    const song = sounds[i];
 
+let queuedSongs: Set<Song> = new Set();
+async function loadAndDisplaySongLengths(){
+  const loadSongs = queuedSongs.size == 0;
+  for(const song of sounds){
+    if(song.duration === null)
+      queuedSongs.add(song);
+  }
+
+  if(!loadSongs) return;
+  for(const song of queuedSongs){
+    if(!SHOW_LENGTHS.checked){ queuedSongs.clear(); return; }
+    queuedSongs.delete(song);
+
+    if(song.currentRow.isRemoved()) continue;
     if(song.duration !== null) {
       song.updateFileInfoDisplay();
       continue;
     }
 
     await new Promise<void>((resolve) => {
-      // const fileReader = new FileReader();
+      const audio = curDoc.createElement('audio');
+      const abortController = new AbortController();
+      audio.addEventListener("durationchange", () => {
+        abortController.abort();
+        song.duration = audio.duration;
+        song.onDurationLoaded();
+        resolve();
+      }, {passive: true, once: true, signal: abortController.signal});
+      audio.addEventListener("error", () => {
+        abortController.abort();
+        resolve();
+      }, {passive: true, once: true, signal: abortController.signal});
+      audio.addEventListener("abort", () => {
+        abortController.abort();
+        resolve();
+      }, {passive: true, once: true, signal: abortController.signal});
 
-      // const onLoaded = () => {
-        const audio = curDoc.createElement('audio');
-        const abortController = new AbortController();
-        audio.addEventListener("durationchange", () => {
-          abortController.abort();
-          song.duration = audio.duration;
-          song.onDurationLoaded();
-          resolve();
-        }, {passive: true, once: true, signal: abortController.signal});
-        audio.addEventListener("error", () => {
-          abortController.abort();
-          resolve();
-        }, {passive: true, once: true, signal: abortController.signal});
-        audio.addEventListener("abort", () => {
-          abortController.abort();
-          resolve();
-        }, {passive: true, once: true, signal: abortController.signal});
-
-        audio.preload = "metadata";
-        audio.src = song.fileURL;//fileReader.result as string;
-        // // @ts-ignore
-        // resolve();
-      // }
-      //
-      // fileReader.addEventListener('loadend', onLoaded, {passive: true});
-      // fileReader.addEventListener('error', resolve, {passive: true});
-      // fileReader.addEventListener('abort', resolve, {passive: true});
-      // fileReader.readAsDataURL(song.file);
+      audio.preload = "metadata";
+      audio.src = song.fileURL;
     });
   }
 }
@@ -871,7 +866,7 @@ function onFrameStepped() {
   }
 
   if (currentSongIndex === null || !sounds[currentSongIndex].isLoaded()) return cannotUpdateProgress(sounds[currentSongIndex]?.isLoading?.());
-  else if(sounds[currentSongIndex].howl.playing() && (STATUS_TEXT.textContent == StatusTexts.PROCESSING || STATUS_TEXT.textContent == StatusTexts.DOWNLOADING)) onLatePlayStart();
+  else if(sounds[currentSongIndex].howl.playing() && (STATUS_TEXT.textContent == StatusTexts.LOADING || STATUS_TEXT.textContent == StatusTexts.DOWNLOADING)) onLatePlayStart();
   let songDuration = sounds[currentSongIndex].howl.duration();
   let currentTime = sounds[currentSongIndex].howl.seek();
 
@@ -887,7 +882,8 @@ function onLatePlayStart() {
 }
 function cannotUpdateProgress(isProcessing: boolean) {
   if (isProcessing) changeStatus(StatusTexts.LOADING);
-  if (useHowlerForDownloading) PROGRESS_BAR.value = 0;
+  if (useObjectURLS) PROGRESS_BAR.value = 0;
+
   if (DURATION_OF_SONG_DISPLAY.textContent != "00:00") DURATION_OF_SONG_DISPLAY.textContent = "00:00";
   if (HOVERED_TIME_DISPLAY.style.left != '-9999px') HOVERED_TIME_DISPLAY.style.left = '-9999px';
 }
@@ -941,12 +937,11 @@ function progressBarSeek(mouse: PointerEvent, hoverType: ProgressBarSeekAction):
 }
 
 /**
- * @param {string} errorType The name of the exception.
- * @param {string} errorText A shortened error message.
- * @param {string} errorMessage The full error message.
+ * @param {string} error The exception.
+ * @param {string} shortMessage A user-readable error message, if the type of error is known.
  * @param {string} errorCategory The category the error is contained in.
 */
-function displayError(errorType: string, errorText: string, errorMessage: string, errorCategory: string) {
+function displayError(error: Error, shortMessage: string, errorCategory: string) {
   let insertAfter;
   const children = ERROR_LIST.children;
   for (let i = 0; i < children.length; i++) {
@@ -955,19 +950,21 @@ function displayError(errorType: string, errorText: string, errorMessage: string
       break;
     }
   }
+
   const songTitle = curDoc.createElement('dt');
   songTitle.textContent = errorCategory;
   const songError = curDoc.createElement('dd');
-  songError.textContent = errorType.concat(": ", errorText);
-  songError.title = errorMessage;
+  songError.textContent = error.name.concat(": ", shortMessage);
+  songError.title = error.message;
 
   if (insertAfter) {
     insertAfter.after(songError);
   } else {
     ERROR_LIST.append(songTitle, songError);
   }
-  ERROR_POPUP.showModal();
-  console.error(`${errorType}: ${errorText} ${errorMessage}`);
+
+  console.error(error);
+  if(!ERROR_POPUP.open) ERROR_POPUP.showModal();
 }
 
 function seek(seekDirection: number) { //controls audio seeking, seekDuration: usually +1 || -1
@@ -1002,7 +999,8 @@ async function importFiles(element: DataTransfer | ArrayLike<File>) {
 
       const fileExtension = getFileExtension(file.name);
       if (SKIP_UNPLAYABLE_CHECKBOX.checked && !isValidExtension(fileExtension)) {
-        displayError("TypeError", `The file type '${fileExtension}' is unsupported.`, "This file is unsupported and cannot be imported!", file.name);
+        const error = new TypeError(`The file ${file.name} failed to import because its extension ${fileExtension} is unsupported and cannot be played!`);
+        displayError(error, `The file type '${fileExtension}' is unsupported.`, file.name);
         ++offsetBecauseOfSkipped;
         continue;
       }
@@ -1019,9 +1017,9 @@ async function importFiles(element: DataTransfer | ArrayLike<File>) {
       updateTranslationOfMainTable();
     }
 
-    updateAllFileInfos();
     addRowsInPlaylistTable(songTableRows);
     changeStatus(`${files.length - offsetBecauseOfSkipped} files added!`);
+    updateAllFileInfos();
   }
 }
 
@@ -1160,7 +1158,8 @@ async function startPlayingSpecificSong(index: number){ //called by HTML element
   const soundName = sounds[index].file.name;
   const fileExtension = getFileExtension(soundName);
   if (SKIP_UNPLAYABLE_CHECKBOX.checked && !isValidExtension(fileExtension)) {
-    displayError("TypeError", `The file type '${fileExtension}' is unsupported.`, "This file is unsupported and cannot be played!", soundName);
+    const error = new TypeError(`The file ${soundName} failed to import because its extension ${fileExtension} is unsupported and cannot be played!`);
+    displayError(error, `The file type '${fileExtension}' is unsupported.`, soundName);
     skipSongQueued = true;
     return;
   }
@@ -1224,7 +1223,7 @@ function pauseOrUnpauseCurrentSong(pause: boolean){ //controls playAll button, c
 
   if (pause) { //if set to paused
     PLAY_BUTTON.checked = PAUSED;
-    sounds[currentSongIndex].howl.pause()
+    sounds[currentSongIndex].howl.pause();
     changeStatus(StatusTexts.PAUSED);
     return;
   }
