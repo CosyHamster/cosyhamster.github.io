@@ -7,6 +7,7 @@ import("./howler.js").catch((error) => {
 });
 
 var audio = new Audio();
+var useHowlerForDownloading = true;
 var aiffIsPlayable = !!(audio.canPlayType("audio/aiff") || audio.canPlayType("audio/x-aiff"));
 function codecsMixin(extension: string): boolean {
   switch(extension){
@@ -89,6 +90,7 @@ class SongTableRow {
 
     const fileSize = curDoc.createElement('div');
     fileSize.setAttribute('class', 'scrollableText fileSizeLabel');
+    fileSize.addEventListener("contextmenu", onRightClickFileDisplay);
 
 
 
@@ -137,7 +139,22 @@ class SongLoader{
   }
   
   loadSong(): Promise<Howl>{
-    return new Promise<Howl>((resolve, reject) => {
+    return new Promise<Howl>(async (resolve, reject) => {
+      if(useHowlerForDownloading){
+        if(this.song.howl == null){
+          const howl = this.createHowl();
+          this.song.howl = howl;
+          resolve(howl);
+
+          this.song.updateFileInfoDisplay();
+          this.triggerAbort();
+        }
+
+        return;
+      }
+
+
+
       if(!this.finishedLoadingAbortController){
         this.finishedLoadingAbortController = new AbortController();
       } else {
@@ -209,15 +226,17 @@ class SongLoader{
     }
     this.song.updateFileInfoDisplay();
   }
-  async createHowl(): Promise<Howl> {
+  createHowl() {
     // LOADING_GRAY.toggleAttribute("enable", true);
     // await sleep(0); //dom update before beginning the load
     console.time("createHowl");
     const sound: Howl = new Howl({
-      src: [this.fileReader.result as string],
+      // src: [this.fileReader.result as string],
+      src: this.song.fileURL,
       preload: PRELOAD_TYPE_SELECTOR.value === "process",
       autoplay: false,
       loop: false,
+      format: getFileExtension(this.song.file.name)
     });
 
     console.timeEnd("createHowl");
@@ -249,7 +268,7 @@ async function updateAllFileInfos(){
   updatingFileInfos = true;
 
   if(SHOW_LENGTHS.checked){
-    await loadAndDisplaySongLengths();
+    loadAndDisplaySongLengths();
   }
 
   for(const song of sounds){
@@ -257,41 +276,56 @@ async function updateAllFileInfos(){
   }
   updatingFileInfos = false;
 }
+
 async function loadAndDisplaySongLengths(){
-  for(const song of sounds) {
+  // const queuedSongs = sounds.slice(0); //clone array
+  for (let i = 0; i < sounds.length; i++) {
     if(!SHOW_LENGTHS.checked){ return; }
+    const song = sounds[i];
 
     if(song.duration !== null) {
       song.updateFileInfoDisplay();
       continue;
     }
 
-    await new Promise((resolve) => {
-      const fileReader = new FileReader();
+    await new Promise<void>((resolve) => {
+      // const fileReader = new FileReader();
 
-      const onLoaded = () => {
+      // const onLoaded = () => {
         const audio = curDoc.createElement('audio');
+        const abortController = new AbortController();
         audio.addEventListener("durationchange", () => {
+          abortController.abort();
           song.duration = audio.duration;
           song.onDurationLoaded();
-          console.log(audio.duration);
-        }, {passive: true, once: true});
-        audio.preload = "metadata";
-        audio.src = fileReader.result as string;
-        // @ts-ignore
-        resolve();
-      }
+          resolve();
+        }, {passive: true, once: true, signal: abortController.signal});
+        audio.addEventListener("error", () => {
+          abortController.abort();
+          resolve();
+        }, {passive: true, once: true, signal: abortController.signal});
+        audio.addEventListener("abort", () => {
+          abortController.abort();
+          resolve();
+        }, {passive: true, once: true, signal: abortController.signal});
 
-      fileReader.addEventListener('loadend', onLoaded, {passive: true});
-      fileReader.addEventListener('error', resolve, {passive: true});
-      fileReader.addEventListener('abort', resolve, {passive: true});
-      fileReader.readAsDataURL(song.file);
+        audio.preload = "metadata";
+        audio.src = song.fileURL;//fileReader.result as string;
+        // // @ts-ignore
+        // resolve();
+      // }
+      //
+      // fileReader.addEventListener('loadend', onLoaded, {passive: true});
+      // fileReader.addEventListener('error', resolve, {passive: true});
+      // fileReader.addEventListener('abort', resolve, {passive: true});
+      // fileReader.readAsDataURL(song.file);
     });
   }
 }
 
 class Song {
   file: File;
+  fileURL: string;
   howl?: Howl = null;
   songLoader?: SongLoader = null;
   duration: number = null;
@@ -300,6 +334,7 @@ class Song {
 
   constructor(file: File, nativeIndex: number, currentRow: SongTableRow){
     this.file = file;
+    this.fileURL = URL.createObjectURL(this.file);
     this.nativeIndex = nativeIndex;
     this.currentRow = currentRow;
   }
@@ -362,6 +397,11 @@ class Song {
       this.howl = null;
     }
   }
+
+  onDelete(){
+    URL.revokeObjectURL(this.fileURL);
+  }
+
   /** @returns Whether the {@link Howl} exists for the audio, is fully loaded, but is not currently playing. */
   isPaused(){
     return this.isLoaded() && this.howl.playing() == false;
@@ -589,6 +629,7 @@ var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(),
     PLAYING: "Playing",
     PAUSED: "Paused",
     STOPPED: "Stopped",
+    LOADING: "Loading",
     DOWNLOADING: "Downloading File...",
     PROCESSING: "Processing...",
     RETRIEVING: "Retrieving Files...",
@@ -721,13 +762,7 @@ var currentSongIndex: number | null = null;
   registerInputEvent(PRELOAD_DIST_ELEMENT, () => { PRELOAD_DIST_ELEMENT.labels[0].textContent = `Value: ${PRELOAD_DIST_ELEMENT.value}` });
   registerInputEvent(PLAY_PAN, () => { if(currentHowlExists()) sounds[currentSongIndex].howl.stereo(Number(PLAY_PAN.value)); PLAY_PAN.labels[0].textContent = `${Math.floor(Number(PLAY_PAN.value) * 100)}%`; });
   registerInputEvent(VOLUME_CHANGER, () => { if (currentHowlExists()) sounds[currentSongIndex].howl.volume(Number(VOLUME_CHANGER.value)); VOLUME_CHANGER.labels[0].textContent = `${Math.floor(Number(VOLUME_CHANGER.value) * 100)}%`; });
-  PLAYLIST_VIEWER_TABLE.addEventListener("keyup", (keyEvent) => {
-    if(keyEvent.key == "Tab"){
-      if(selectedRows.length == 0 && PLAYLIST_VIEWER_TABLE.rows[1]) selectRow(PLAYLIST_VIEWER_TABLE.rows[1]);
-      if(selectedRows[0]) scrollRowIntoView(selectedRows[0]);
-    }
-  });
-  PLAYLIST_VIEWER_TABLE.addEventListener("keydown", selectionLogicForKeyboard);
+  initializeTableEvents();
   
   ERROR_POPUP.addEventListener("close", onCloseErrorPopup);
   SEEK_DURATION_NUMBER_INPUT.addEventListener('input', updateSeekDurationDisplay, { passive: true });
@@ -792,6 +827,7 @@ function onCloseErrorPopup() {
   }
 }
 
+/** Registers a click event which calls the specified function. Call the returned function to add a keyboard event. */
 function registerClickEvent(element: EventTarget | string, func: (event: Event) => void): () => void {
   if (typeof element === 'string') element = curDoc.getElementById(element);
   element.addEventListener('click', func, { passive: true })
@@ -850,7 +886,8 @@ function onLatePlayStart() {
   reapplySoundAttributes(sounds[currentSongIndex].howl);
 }
 function cannotUpdateProgress(isProcessing: boolean) {
-  if (isProcessing) changeStatus(StatusTexts.PROCESSING);
+  if (isProcessing) changeStatus(StatusTexts.LOADING);
+  if (useHowlerForDownloading) PROGRESS_BAR.value = 0;
   if (DURATION_OF_SONG_DISPLAY.textContent != "00:00") DURATION_OF_SONG_DISPLAY.textContent = "00:00";
   if (HOVERED_TIME_DISPLAY.style.left != '-9999px') HOVERED_TIME_DISPLAY.style.left = '-9999px';
 }
@@ -1230,11 +1267,21 @@ function getInMegabytes(bytes: number): string { return (bytes / 1_048_576).toFi
 function getFileExtension(fileName: string): string { return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase(); }
 
 /*            TABLE INTERACTION FUNCTIONS             */
+
+function initializeTableEvents(){
+  PLAYLIST_VIEWER_TABLE.addEventListener("keyup", (keyEvent) => {
+    if(keyEvent.key == "Tab"){
+      if(selectedRows.length == 0 && PLAYLIST_VIEWER_TABLE.rows[1]) selectRow(PLAYLIST_VIEWER_TABLE.rows[1]);
+      if(selectedRows[0]) scrollRowIntoView(selectedRows[0]);
+    }
+  });
+  PLAYLIST_VIEWER_TABLE.addEventListener("keydown", selectionLogicForKeyboard);
+  PLAYLIST_VIEWER_TABLE.addEventListener('click', onSingleClick, { passive: true });
+  PLAYLIST_VIEWER_TABLE.addEventListener('dblclick', onDoubleClick, { passive: true });
+  PLAYLIST_VIEWER_TABLE.addEventListener("contextmenu", onRowRightClick);
+}
 function initializeRowEvents(row: HTMLTableRowElement) {
   row.setAttribute('draggable', (REORDER_FILES_CHECKBOX.checked).toString());
-  row.addEventListener('click', onSingleClick, { passive: true });
-  // row.addEventListener('contextmenu', onRightClick);
-  row.addEventListener('dblclick', onDoubleClick, { passive: true });
   row.addEventListener('dragstart', (event: DragEvent) => {
     if (onlyFiles(event.dataTransfer)) return;
     if (selectedRows.length == 0) selectRow(row);
@@ -1404,7 +1451,8 @@ function deleteSelectedSongs() {
         --sounds[i].nativeIndex;
       }
     }
-    
+
+    sounds[index].onDelete();
     sounds.splice(index, 1);
     filePlayingCheckboxes.splice(index, 1);
   }
@@ -1544,28 +1592,30 @@ function moveElementsToDocument(oldDoc: Document, newDoc: Document) {
 
 /*                       CONTEXT MENU                      */
 
-function initContextMenu(): void {
-  curDoc.addEventListener('contextmenu', (pointerEvent) => {
-    selectingSongRow: { //if clicking a row
-      let row: Element = pointerEvent.target as Element;
-      if (!rowValid(row)) {
-        row = tryFindTableRowInParents(row as Element);
-        if (!rowValid(row)) break selectingSongRow;
-      }
+function onRightClickFileDisplay(mouseEvent: MouseEvent) {
+  mouseEvent.preventDefault();
+  mouseEvent.stopPropagation();
+  return spawnContextMenu(mouseEvent.clientX, mouseEvent.clientY, [{ text: (SHOW_LENGTHS.checked) ? "Show File Sizes" : "Show Sound Lengths", action: () => SHOW_LENGTHS.dispatchEvent(new MouseEvent('click')) }], false);
+}
+function onRowRightClick(mouseEvent: MouseEvent) {
+    const row = findValidTableRow(mouseEvent.target as Element);
+    if(row == null) return;
 
-      if (!selectedRows.includes(row as HTMLTableRowElement)) {
-        deselectAll();
-        selectRow(row as HTMLTableRowElement);
-      }
-
-      const contextOptions: ContextMenuOption[] = [];
-      if (selectedRows.length == 1) contextOptions.push({ text: (currentSongIndex != selectedRows[0].rowIndex - 1) ? "Play" : "Stop", action: () => playRow(selectedRows[0]) });
-      contextOptions.push({ text: "Delete", action: deleteSelectedSongs });
-
-      pointerEvent.preventDefault()
-      return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, contextOptions, true);
+    if (!selectedRows.includes(row)) {
+      deselectAll();
+      selectRow(row);
     }
 
+    const contextOptions: ContextMenuOption[] = [];
+    if (selectedRows.length == 1) contextOptions.push({ text: (currentSongIndex != selectedRows[0].rowIndex - 1) ? "Play" : "Stop", action: () => playRow(selectedRows[0]) });
+    contextOptions.push({ text: "Delete", action: deleteSelectedSongs });
+
+    mouseEvent.preventDefault();
+    mouseEvent.stopPropagation();
+    return spawnContextMenu(mouseEvent.clientX, mouseEvent.clientY, contextOptions, true);
+}
+function initContextMenu() {
+  curDoc.addEventListener('contextmenu', (pointerEvent) => {
     switch ((pointerEvent.target as Element).getAttribute('data-onRightClick')) {
       case "uploadFileMenu": {
         pointerEvent.preventDefault();

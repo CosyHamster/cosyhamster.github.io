@@ -7,6 +7,7 @@ import("./howler.js").catch((error) => {
     document.head.appendChild(howlerScript);
 });
 var audio = new Audio();
+var useHowlerForDownloading = true;
 var aiffIsPlayable = !!(audio.canPlayType("audio/aiff") || audio.canPlayType("audio/x-aiff"));
 function codecsMixin(extension) {
     switch (extension) {
@@ -60,6 +61,7 @@ class SongTableRow {
         songName.setAttribute('class', 'songName scrollableText text');
         const fileSize = curDoc.createElement('div');
         fileSize.setAttribute('class', 'scrollableText fileSizeLabel');
+        fileSize.addEventListener("contextmenu", onRightClickFileDisplay);
         cell1.append(songNumber, playButton, songName, fileSize);
         filePlayingCheckboxes.push(checkbox);
         this.tableRow = row;
@@ -99,7 +101,17 @@ class SongLoader {
         this.song = song;
     }
     loadSong() {
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
+            if (useHowlerForDownloading) {
+                if (this.song.howl == null) {
+                    const howl = this.createHowl();
+                    this.song.howl = howl;
+                    resolve(howl);
+                    this.song.updateFileInfoDisplay();
+                    this.triggerAbort();
+                }
+                return;
+            }
             if (!this.finishedLoadingAbortController) {
                 this.finishedLoadingAbortController = new AbortController();
             }
@@ -178,15 +190,17 @@ class SongLoader {
         }
         this.song.updateFileInfoDisplay();
     }
-    async createHowl() {
+    createHowl() {
         // LOADING_GRAY.toggleAttribute("enable", true);
         // await sleep(0); //dom update before beginning the load
         console.time("createHowl");
         const sound = new Howl({
-            src: [this.fileReader.result],
+            // src: [this.fileReader.result as string],
+            src: this.song.fileURL,
             preload: PRELOAD_TYPE_SELECTOR.value === "process",
             autoplay: false,
             loop: false,
+            format: getFileExtension(this.song.file.name)
         });
         console.timeEnd("createHowl");
         // LOADING_GRAY.toggleAttribute("enable", false);
@@ -214,7 +228,7 @@ async function updateAllFileInfos() {
         return;
     updatingFileInfos = true;
     if (SHOW_LENGTHS.checked) {
-        await loadAndDisplaySongLengths();
+        loadAndDisplaySongLengths();
     }
     for (const song of sounds) {
         song.updateFileInfoDisplay();
@@ -222,32 +236,45 @@ async function updateAllFileInfos() {
     updatingFileInfos = false;
 }
 async function loadAndDisplaySongLengths() {
-    for (const song of sounds) {
+    // const queuedSongs = sounds.slice(0); //clone array
+    for (let i = 0; i < sounds.length; i++) {
         if (!SHOW_LENGTHS.checked) {
             return;
         }
+        const song = sounds[i];
         if (song.duration !== null) {
             song.updateFileInfoDisplay();
             continue;
         }
         await new Promise((resolve) => {
-            const fileReader = new FileReader();
-            const onLoaded = () => {
-                const audio = curDoc.createElement('audio');
-                audio.addEventListener("durationchange", () => {
-                    song.duration = audio.duration;
-                    song.onDurationLoaded();
-                    console.log(audio.duration);
-                }, { passive: true, once: true });
-                audio.preload = "metadata";
-                audio.src = fileReader.result;
-                // @ts-ignore
+            // const fileReader = new FileReader();
+            // const onLoaded = () => {
+            const audio = curDoc.createElement('audio');
+            const abortController = new AbortController();
+            audio.addEventListener("durationchange", () => {
+                abortController.abort();
+                song.duration = audio.duration;
+                song.onDurationLoaded();
                 resolve();
-            };
-            fileReader.addEventListener('loadend', onLoaded, { passive: true });
-            fileReader.addEventListener('error', resolve, { passive: true });
-            fileReader.addEventListener('abort', resolve, { passive: true });
-            fileReader.readAsDataURL(song.file);
+            }, { passive: true, once: true, signal: abortController.signal });
+            audio.addEventListener("error", () => {
+                abortController.abort();
+                resolve();
+            }, { passive: true, once: true, signal: abortController.signal });
+            audio.addEventListener("abort", () => {
+                abortController.abort();
+                resolve();
+            }, { passive: true, once: true, signal: abortController.signal });
+            audio.preload = "metadata";
+            audio.src = song.fileURL; //fileReader.result as string;
+            // // @ts-ignore
+            // resolve();
+            // }
+            //
+            // fileReader.addEventListener('loadend', onLoaded, {passive: true});
+            // fileReader.addEventListener('error', resolve, {passive: true});
+            // fileReader.addEventListener('abort', resolve, {passive: true});
+            // fileReader.readAsDataURL(song.file);
         });
     }
 }
@@ -257,6 +284,7 @@ class Song {
         this.songLoader = null;
         this.duration = null;
         this.file = file;
+        this.fileURL = URL.createObjectURL(this.file);
         this.nativeIndex = nativeIndex;
         this.currentRow = currentRow;
     }
@@ -316,6 +344,9 @@ class Song {
             this.howl.unload();
             this.howl = null;
         }
+    }
+    onDelete() {
+        URL.revokeObjectURL(this.fileURL);
     }
     /** @returns Whether the {@link Howl} exists for the audio, is fully loaded, but is not currently playing. */
     isPaused() {
@@ -524,6 +555,7 @@ var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(), K
     PLAYING: "Playing",
     PAUSED: "Paused",
     STOPPED: "Stopped",
+    LOADING: "Loading",
     DOWNLOADING: "Downloading File...",
     PROCESSING: "Processing...",
     RETRIEVING: "Retrieving Files...",
@@ -624,15 +656,7 @@ var currentSongIndex = null;
         sounds[currentSongIndex].howl.stereo(Number(PLAY_PAN.value)); PLAY_PAN.labels[0].textContent = `${Math.floor(Number(PLAY_PAN.value) * 100)}%`; });
     registerInputEvent(VOLUME_CHANGER, () => { if (currentHowlExists())
         sounds[currentSongIndex].howl.volume(Number(VOLUME_CHANGER.value)); VOLUME_CHANGER.labels[0].textContent = `${Math.floor(Number(VOLUME_CHANGER.value) * 100)}%`; });
-    PLAYLIST_VIEWER_TABLE.addEventListener("keyup", (keyEvent) => {
-        if (keyEvent.key == "Tab") {
-            if (selectedRows.length == 0 && PLAYLIST_VIEWER_TABLE.rows[1])
-                selectRow(PLAYLIST_VIEWER_TABLE.rows[1]);
-            if (selectedRows[0])
-                scrollRowIntoView(selectedRows[0]);
-        }
-    });
-    PLAYLIST_VIEWER_TABLE.addEventListener("keydown", selectionLogicForKeyboard);
+    initializeTableEvents();
     ERROR_POPUP.addEventListener("close", onCloseErrorPopup);
     SEEK_DURATION_NUMBER_INPUT.addEventListener('input', updateSeekDurationDisplay, { passive: true });
     PROGRESS_BAR.addEventListener('pointerenter', (pointer) => progressBarSeek(pointer, 1 /* ProgressBarSeekAction.DISPLAY_TIME */), { passive: true });
@@ -696,6 +720,7 @@ function onCloseErrorPopup() {
         ERROR_LIST.removeChild(childElement);
     }
 }
+/** Registers a click event which calls the specified function. Call the returned function to add a keyboard event. */
 function registerClickEvent(element, func) {
     if (typeof element === 'string')
         element = curDoc.getElementById(element);
@@ -755,7 +780,9 @@ function onLatePlayStart() {
 }
 function cannotUpdateProgress(isProcessing) {
     if (isProcessing)
-        changeStatus(StatusTexts.PROCESSING);
+        changeStatus(StatusTexts.LOADING);
+    if (useHowlerForDownloading)
+        PROGRESS_BAR.value = 0;
     if (DURATION_OF_SONG_DISPLAY.textContent != "00:00")
         DURATION_OF_SONG_DISPLAY.textContent = "00:00";
     if (HOVERED_TIME_DISPLAY.style.left != '-9999px')
@@ -1104,11 +1131,22 @@ function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 function getInMegabytes(bytes) { return (bytes / 1048576).toFixed(2); }
 function getFileExtension(fileName) { return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase(); }
 /*            TABLE INTERACTION FUNCTIONS             */
+function initializeTableEvents() {
+    PLAYLIST_VIEWER_TABLE.addEventListener("keyup", (keyEvent) => {
+        if (keyEvent.key == "Tab") {
+            if (selectedRows.length == 0 && PLAYLIST_VIEWER_TABLE.rows[1])
+                selectRow(PLAYLIST_VIEWER_TABLE.rows[1]);
+            if (selectedRows[0])
+                scrollRowIntoView(selectedRows[0]);
+        }
+    });
+    PLAYLIST_VIEWER_TABLE.addEventListener("keydown", selectionLogicForKeyboard);
+    PLAYLIST_VIEWER_TABLE.addEventListener('click', onSingleClick, { passive: true });
+    PLAYLIST_VIEWER_TABLE.addEventListener('dblclick', onDoubleClick, { passive: true });
+    PLAYLIST_VIEWER_TABLE.addEventListener("contextmenu", onRowRightClick);
+}
 function initializeRowEvents(row) {
     row.setAttribute('draggable', (REORDER_FILES_CHECKBOX.checked).toString());
-    row.addEventListener('click', onSingleClick, { passive: true });
-    // row.addEventListener('contextmenu', onRightClick);
-    row.addEventListener('dblclick', onDoubleClick, { passive: true });
     row.addEventListener('dragstart', (event) => {
         if (onlyFiles(event.dataTransfer))
             return;
@@ -1288,6 +1326,7 @@ function deleteSelectedSongs() {
                 --sounds[i].nativeIndex;
             }
         }
+        sounds[index].onDelete();
         sounds.splice(index, 1);
         filePlayingCheckboxes.splice(index, 1);
     }
@@ -1428,26 +1467,29 @@ function moveElementsToDocument(oldDoc, newDoc) {
     DIALOGS.forEach(dialog => dialog.close()); //Dialogs lose their state when transferring and become glitched
 }
 /*                       CONTEXT MENU                      */
+function onRightClickFileDisplay(mouseEvent) {
+    mouseEvent.preventDefault();
+    mouseEvent.stopPropagation();
+    return spawnContextMenu(mouseEvent.clientX, mouseEvent.clientY, [{ text: (SHOW_LENGTHS.checked) ? "Show File Sizes" : "Show Sound Lengths", action: () => SHOW_LENGTHS.dispatchEvent(new MouseEvent('click')) }], false);
+}
+function onRowRightClick(mouseEvent) {
+    const row = findValidTableRow(mouseEvent.target);
+    if (row == null)
+        return;
+    if (!selectedRows.includes(row)) {
+        deselectAll();
+        selectRow(row);
+    }
+    const contextOptions = [];
+    if (selectedRows.length == 1)
+        contextOptions.push({ text: (currentSongIndex != selectedRows[0].rowIndex - 1) ? "Play" : "Stop", action: () => playRow(selectedRows[0]) });
+    contextOptions.push({ text: "Delete", action: deleteSelectedSongs });
+    mouseEvent.preventDefault();
+    mouseEvent.stopPropagation();
+    return spawnContextMenu(mouseEvent.clientX, mouseEvent.clientY, contextOptions, true);
+}
 function initContextMenu() {
     curDoc.addEventListener('contextmenu', (pointerEvent) => {
-        selectingSongRow: { //if clicking a row
-            let row = pointerEvent.target;
-            if (!rowValid(row)) {
-                row = tryFindTableRowInParents(row);
-                if (!rowValid(row))
-                    break selectingSongRow;
-            }
-            if (!selectedRows.includes(row)) {
-                deselectAll();
-                selectRow(row);
-            }
-            const contextOptions = [];
-            if (selectedRows.length == 1)
-                contextOptions.push({ text: (currentSongIndex != selectedRows[0].rowIndex - 1) ? "Play" : "Stop", action: () => playRow(selectedRows[0]) });
-            contextOptions.push({ text: "Delete", action: deleteSelectedSongs });
-            pointerEvent.preventDefault();
-            return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, contextOptions, true);
-        }
         switch (pointerEvent.target.getAttribute('data-onRightClick')) {
             case "uploadFileMenu": {
                 pointerEvent.preventDefault();
