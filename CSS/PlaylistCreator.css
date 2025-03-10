@@ -297,6 +297,9 @@ dt::after {
   content: ": ";
 }
 
+#Playlist_Viewer {
+    user-select: none;
+}
 .mainTable {
     position: absolute;
     border: 1px solid black;

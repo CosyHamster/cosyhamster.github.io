@@ -485,6 +485,7 @@
                 setupAudioContext();
             }
             // Setup user-defined default properties.
+            self._providedBuffer = o.providedBuffer || null;
             self._autoplay = o.autoplay || false;
             self._format = (typeof o.format !== 'string') ? o.format : [o.format];
             self._html5 = o.html5 || false;
@@ -2068,6 +2069,11 @@
             decodeAudioData(dataView.buffer, self);
         }
         else {
+            if(self._providedBuffer != null){
+                decodeAudioData(self._providedBuffer, self);
+                return;
+            }
+
             // Load the buffer from the URL.
             var xhr = new XMLHttpRequest();
             xhr.open(self._xhr.method, url, true);

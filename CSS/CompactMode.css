@@ -7,7 +7,7 @@
 }
 .smallplaypause input[type=checkbox] + div{ height: 1em; /*original: 3em*/ }
 
-.fileSizeLabel{
+.fileSizeLabel {
     margin-left: auto;
     flex: 0 0 auto; /* fill all available space */
     /*text-align: right;*/

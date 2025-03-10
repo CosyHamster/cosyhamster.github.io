@@ -7,7 +7,7 @@ import("./howler.js").catch((error) => {
 });
 
 var audio = new Audio();
-var useObjectURLS = true;
+var useObjectURLS = false;
 var aiffIsPlayable = !!(audio.canPlayType("audio/aiff") || audio.canPlayType("audio/x-aiff"));
 function codecsMixin(extension: string): boolean {
   switch(extension){
@@ -142,6 +142,11 @@ class SongLoader{
   }
   
   loadSong(): Promise<Howl>{
+    // const xml = new XMLHttpRequest();
+    // xml.responseType = "blob";
+    // xml.onprogress = (xmlHttpRequest: XMLHttpRequest, ev: ProgressEvent<EventTarget>) => {return 5}
+    // xml.open()
+
     return new Promise<Howl>(async (resolve, reject) => {
       if(useObjectURLS){
         if(this.song.howl == null){
@@ -218,7 +223,7 @@ class SongLoader{
       this.fileReader.addEventListener('loadend', onLoaded, { passive: true, signal: this.finishedLoadingAbortController.signal });
       this.fileReader.addEventListener('error', errorFunc, { passive: true, signal: this.finishedLoadingAbortController.signal });
       this.fileReader.addEventListener('abort', warnUser, { passive: true, signal: this.finishedLoadingAbortController.signal });
-      this.fileReader.readAsDataURL(this.song.file);
+      this.fileReader.readAsArrayBuffer(this.song.file);
     });
   };
   quitLoading(){
@@ -234,13 +239,16 @@ class SongLoader{
   createHowl() {
     // LOADING_GRAY.toggleAttribute("enable", true);
     // await sleep(0); //dom update before beginning the load
+    console.time("createHowl");
     const sound: Howl = new Howl({
-      src: (useObjectURLS) ? this.song.fileURL : this.fileReader.result as string,
+      providedBuffer: (useObjectURLS) ? null : this.fileReader.result as ArrayBuffer, //providedBuffer will be used over src
+      src: this.song.fileURL,
       preload: PRELOAD_TYPE_SELECTOR.value === "process",
       autoplay: false,
       loop: false,
-      format: getFileExtension(this.song.file.name)
+      format: getFileExtension(this.song.file.name),
     });
+    console.timeEnd("createHowl");
 
     // LOADING_GRAY.toggleAttribute("enable", false);
 
@@ -389,11 +397,15 @@ class Song {
     }
     if(this.howl != null){
       this.howl.unload();
+      if(this.howl._src != this.fileURL)
+        URL.revokeObjectURL(this.howl._src);
+
       this.howl = null;
     }
   }
 
   onDelete(){
+    this.unload();
     URL.revokeObjectURL(this.fileURL);
   }
 

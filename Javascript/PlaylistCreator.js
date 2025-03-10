@@ -7,7 +7,7 @@ import("./howler.js").catch((error) => {
     document.head.appendChild(howlerScript);
 });
 var audio = new Audio();
-var useObjectURLS = true;
+var useObjectURLS = false;
 var aiffIsPlayable = !!(audio.canPlayType("audio/aiff") || audio.canPlayType("audio/x-aiff"));
 function codecsMixin(extension) {
     switch (extension) {
@@ -104,6 +104,10 @@ class SongLoader {
         this.song = song;
     }
     loadSong() {
+        // const xml = new XMLHttpRequest();
+        // xml.responseType = "blob";
+        // xml.onprogress = (xmlHttpRequest: XMLHttpRequest, ev: ProgressEvent<EventTarget>) => {return 5}
+        // xml.open()
         return new Promise(async (resolve, reject) => {
             if (useObjectURLS) {
                 if (this.song.howl == null) {
@@ -181,7 +185,7 @@ class SongLoader {
             this.fileReader.addEventListener('loadend', onLoaded, { passive: true, signal: this.finishedLoadingAbortController.signal });
             this.fileReader.addEventListener('error', errorFunc, { passive: true, signal: this.finishedLoadingAbortController.signal });
             this.fileReader.addEventListener('abort', warnUser, { passive: true, signal: this.finishedLoadingAbortController.signal });
-            this.fileReader.readAsDataURL(this.song.file);
+            this.fileReader.readAsArrayBuffer(this.song.file);
         });
     }
     ;
@@ -198,13 +202,16 @@ class SongLoader {
     createHowl() {
         // LOADING_GRAY.toggleAttribute("enable", true);
         // await sleep(0); //dom update before beginning the load
+        console.time("createHowl");
         const sound = new Howl({
-            src: (useObjectURLS) ? this.song.fileURL : this.fileReader.result,
+            providedBuffer: (useObjectURLS) ? null : this.fileReader.result, //providedBuffer will be used over src
+            src: this.song.fileURL,
             preload: PRELOAD_TYPE_SELECTOR.value === "process",
             autoplay: false,
             loop: false,
-            format: getFileExtension(this.song.file.name)
+            format: getFileExtension(this.song.file.name),
         });
+        console.timeEnd("createHowl");
         // LOADING_GRAY.toggleAttribute("enable", false);
         reapplySoundAttributes(sound);
         sound.on("load", () => {
@@ -339,10 +346,13 @@ class Song {
         }
         if (this.howl != null) {
             this.howl.unload();
+            if (this.howl._src != this.fileURL)
+                URL.revokeObjectURL(this.howl._src);
             this.howl = null;
         }
     }
     onDelete() {
+        this.unload();
         URL.revokeObjectURL(this.fileURL);
     }
     /** @returns Whether the {@link Howl} exists for the audio, is fully loaded, but is not currently playing. */
