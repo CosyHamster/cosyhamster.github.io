@@ -136,7 +136,7 @@ class SongLoader {
                             resolve(this.song.howl);
                         else
                             reject("Failed to find howl after waiting for previous load to finish.");
-                    }, { once: true });
+                    }, { passive: true, once: true });
                     return;
                 }
             }
@@ -181,6 +181,10 @@ class SongLoader {
                 this.triggerAbort();
                 reject(`File Aborted: ${this.song.file.name}`);
             };
+            this.finishedLoadingAbortController.signal.addEventListener('abort', () => {
+                this.fileReader.abort();
+                console.log('fileReader aborted');
+            }, { passive: true, once: true, signal: this.finishedLoadingAbortController.signal });
             this.fileReader.addEventListener('progress', onProgress, { passive: true, signal: this.finishedLoadingAbortController.signal });
             this.fileReader.addEventListener('loadend', onLoaded, { passive: true, signal: this.finishedLoadingAbortController.signal });
             this.fileReader.addEventListener('error', errorFunc, { passive: true, signal: this.finishedLoadingAbortController.signal });
@@ -379,6 +383,9 @@ class Song {
         if (SHOW_LENGTHS.checked) {
             if (this.duration !== null) {
                 this.currentRow.updateFileInfoDisplay(this.duration);
+            }
+            else {
+                // this.currentRow.setFileDisplay(":??", "Loading.");
             }
         }
         else {
