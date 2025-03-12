@@ -14,20 +14,6 @@
             "purpose": "any"
         }
     ],
-    "screenshots": [
-        {
-            "src": "Icons/desktopSS.png",
-            "sizes": "1920x1080",
-            "type": "image/png",
-            "form_factor": "wide",
-            "label": "Front page"
-        }, {
-            "src": "Icons/mobileSS.png",
-            "sizes": "1080x1920",
-            "type": "image/png",
-            "label": "Front page"
-        }
-    ],
     "shortcuts": [
         {
             "name": "Web Looper",

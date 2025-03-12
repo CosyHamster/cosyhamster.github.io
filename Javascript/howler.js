@@ -1538,6 +1538,7 @@
                 }
                 // Empty out all of the nodes.
                 delete sounds[i]._node;
+                delete self._providedBuffer;
                 // Make sure all timers are cleared out.
                 self._clearTimer(sounds[i]._id);
             }
@@ -2069,8 +2070,9 @@
             decodeAudioData(dataView.buffer, self);
         }
         else {
-            if(self._providedBuffer != null){
+            if(self._providedBuffer){
                 decodeAudioData(self._providedBuffer, self);
+                delete self._providedBuffer;
                 return;
             }
 

@@ -21,7 +21,8 @@ function codecsMixin(extension: string): boolean {
 var storedWindow: Window;
 var curWin: Window = window;
 var curDoc: Document = document;
-const SITE_DEPRECATED = document.URL.toLowerCase().includes('codehs') || document.URL.includes("127.0.0.1");
+const SITE_DEPRECATED = document.URL.toLowerCase().includes('codehs');
+const NO_SERVICE_WORKER = document.URL.includes("127.0.0.1");
 var ON_MOBILE: boolean;
 
 //@ts-ignore
@@ -704,7 +705,7 @@ var skipSongQueued = false;
 var currentSongIndex: number | null = null;
 
 /* start */(() => {
-  if ("serviceWorker" in navigator && !SITE_DEPRECATED) {
+  if ("serviceWorker" in navigator && !NO_SERVICE_WORKER) {
     navigator.serviceWorker.register("../ServiceWorker.js");
   }
 
@@ -1028,7 +1029,7 @@ async function importFiles(element: DataTransfer | ArrayLike<File>) {
       const songRow: SongTableRow = new SongTableRow();
       songRow.setSongName(file.name);
       songRow.updateFileSizeDisplay(file.size);
-      songRow.setRowSongNumber(nativeIndex);
+      songRow.setRowSongNumber(nativeIndex+1);
       const song = new Song(file, nativeIndex, songRow);
 
       songTableRows.push(songRow.tableRow); //index (2nd parameter) is used to number the checkboxes

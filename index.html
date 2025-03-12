@@ -10,8 +10,8 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <link rel="stylesheet" href="CSS/background.css">
     <script>
-      const SITE_DEPRECATED = document.URL.toLowerCase().includes('codehs');
-      if ("serviceWorker" in navigator && !SITE_DEPRECATED) {
+      const NO_SERVICE_WORKER = document.URL.includes("127.0.0.1");
+      if ("serviceWorker" in navigator && !NO_SERVICE_WORKER) {
         navigator.serviceWorker.register("ServiceWorker.js");
       }
     </script>

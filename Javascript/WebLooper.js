@@ -1,4 +1,4 @@
-const SITE_DEPRECATED = document.URL.toLowerCase().includes('codehs');
+const NO_SERVICE_WORKER = document.URL.includes("127.0.0.1");
 
 import("./howler.js").catch((error) => {
     console.warn(error);
@@ -95,7 +95,7 @@ processQueue = [],
 fadeControllerQuantity = 0;
 
 (() => {
-    if ("serviceWorker" in navigator) {
+    if ("serviceWorker" in navigator && !NO_SERVICE_WORKER) {
         navigator.serviceWorker.register("../ServiceWorker.js");
     }
     createNewPlayer(0)

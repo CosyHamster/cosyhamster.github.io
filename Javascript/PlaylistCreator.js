@@ -20,7 +20,8 @@ function codecsMixin(extension) {
 var storedWindow;
 var curWin = window;
 var curDoc = document;
-const SITE_DEPRECATED = document.URL.toLowerCase().includes('codehs') || document.URL.includes("127.0.0.1");
+const SITE_DEPRECATED = document.URL.toLowerCase().includes('codehs');
+const NO_SERVICE_WORKER = document.URL.includes("127.0.0.1");
 var ON_MOBILE;
 //@ts-ignore
 if (navigator.userAgentData) {
@@ -591,7 +592,7 @@ var hoveredRowInDragAndDrop = null; //does not work with importing files, only w
 var skipSongQueued = false;
 var currentSongIndex = null;
 /* start */ (() => {
-    if ("serviceWorker" in navigator && !SITE_DEPRECATED) {
+    if ("serviceWorker" in navigator && !NO_SERVICE_WORKER) {
         navigator.serviceWorker.register("../ServiceWorker.js");
     }
     registerDialogInertEvents();
@@ -915,7 +916,7 @@ async function importFiles(element) {
             const songRow = new SongTableRow();
             songRow.setSongName(file.name);
             songRow.updateFileSizeDisplay(file.size);
-            songRow.setRowSongNumber(nativeIndex);
+            songRow.setRowSongNumber(nativeIndex + 1);
             const song = new Song(file, nativeIndex, songRow);
             songTableRows.push(songRow.tableRow); //index (2nd parameter) is used to number the checkboxes
             sounds.push(song);
