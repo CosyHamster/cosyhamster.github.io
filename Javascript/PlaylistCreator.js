@@ -11,8 +11,8 @@ var useObjectURLS = false;
 var aiffIsPlayable = !!(audio.canPlayType("audio/aiff") || audio.canPlayType("audio/x-aiff"));
 function codecsMixin(extension) {
     switch (extension) {
-        case "aif": return aiffIsPlayable;
-        case "aiff": return aiffIsPlayable;
+        case "aif":
+        case "aiff":
         case "aff": return aiffIsPlayable;
         default: return Howler.codecs(extension);
     }
@@ -355,6 +355,7 @@ class Song {
                 URL.revokeObjectURL(this.howl._src);
             this.howl = null;
         }
+        this.updateFileInfoDisplay();
     }
     onDelete() {
         this.unload();

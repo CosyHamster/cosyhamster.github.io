@@ -111,7 +111,7 @@
     white-space: nowrap;
     position: relative;
     transform: translateX(-50%);
-    transition: background-color 150ms;
+    /*transition: background-color 150ms;*/
 
     --distance-from-sides: 5px;
     left: calc(50% - var(--distance-from-sides));
