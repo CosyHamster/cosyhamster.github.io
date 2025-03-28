@@ -1306,8 +1306,13 @@ function initializeRowEvents(row: HTMLTableRowElement) {
   row.addEventListener('dragstart', (event: DragEvent) => {
     if (onlyFiles(event.dataTransfer)) return;
     if (selectedRows.length == 0) selectRow(row);
+
     event.dataTransfer.clearData();
-    event.dataTransfer.setData("text/plain", "action:reorganizingPlaylist");
+    for(const selectedRow of selectedRows){
+      event.dataTransfer.items.add(sounds[selectedRow.rowIndex-1].file);
+    }
+    event.dataTransfer.setData("text/draggingAction", "action:reorganizingPlaylist");
+
     whileDraggingRows(event);
   });
   row.addEventListener('dragover', (event) => {
@@ -1350,7 +1355,7 @@ function whileDraggingRows(event: DragEvent): void  {
   event.stopPropagation();
 }
 function onDropRow(event: DragEvent) {
-  if (event.dataTransfer.getData("text/plain") != "action:reorganizingPlaylist") return;
+  if (event.dataTransfer.getData("text/draggingAction") != "action:reorganizingPlaylist") return;
   stopHighlightingRow();
   sortSelectedRows();
   let row: Element = event.target as Element;

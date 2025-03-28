@@ -546,13 +546,13 @@ function playAllSounds(id){ //controls playing and pausing. doesn't toggle "Play
     for(let i = 0; i < sounds.length; i++){
         if(sounds[i] == null || sounds[i].state() !== 'loaded') continue;
 
-        if(document.getElementById(id).innerText === "Stop All"){ sounds[i].stop(); continue; }
+        if(document.getElementById(id).textContent === "Stop All"){ sounds[i].stop(); continue; }
 
         if(ratesInIndexOrder[i].value !== 0) sounds[i].play();
         statusObjects[i].innerHTML = "Playing";
         if(document.getElementById("1playAfter0").checked) break;
     }
-    if(document.getElementById(id).innerText === "Stop All") for(var i = 0; i < statusObjects.length; i++) statusObjects[i].innerHTML = "Stopped";
+    if(document.getElementById(id).textContent === "Stop All") for(var i = 0; i < statusObjects.length; i++) statusObjects[i].innerHTML = "Stopped";
 }
 
 function togglePlayButtonText(id){

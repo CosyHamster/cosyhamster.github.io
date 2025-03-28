@@ -21,7 +21,20 @@
 
             /** @type HTMLInputElement */
             var textBox = document.getElementById("luaObject");
-            document.getElementById('submit').addEventListener("click", function() {
+            /** @type HTMLButtonElement */
+            var submit = document.getElementById('submit');
+
+            submit.addEventListener("click", async function() {
+                try {
+                    submit.disabled = true;
+                    await onClick();
+                } finally {
+                    submit.disabled = false;
+                    submit.textContent = "COPY AS JSON";
+                }
+            });
+
+            async function onClick(){
                 const s = textBox.value;
                 const charArray = [];
                 for(let i = 0; i < s.length; i++) {
@@ -39,8 +52,11 @@
                     }
                 }
 
-                navigator.clipboard.writeText(JSON.stringify(objectParse(charArray.join(''))));
-            })
+                submit.textContent = "COPYING";
+                await navigator.clipboard.writeText(JSON.stringify(objectParse(charArray.join(''))));
+                submit.textContent = "COPIED!";
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
         </script>
     </body>
 </html>
