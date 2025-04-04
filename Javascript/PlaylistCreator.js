@@ -6,9 +6,9 @@ import("./howler.js").catch((error) => {
     howlerScript.src = "../Javascript/howler.js";
     document.head.appendChild(howlerScript);
 });
+var audio = new Audio();
 var useObjectURLS = false;
-const audio = new Audio();
-const aiffIsPlayable = !!(audio.canPlayType("audio/aiff") || audio.canPlayType("audio/x-aiff"));
+var aiffIsPlayable = !!(audio.canPlayType("audio/aiff") || audio.canPlayType("audio/x-aiff"));
 function codecsMixin(extension) {
     switch (extension) {
         case "aif":
@@ -17,12 +17,12 @@ function codecsMixin(extension) {
         default: return Howler.codecs(extension);
     }
 }
-let storedWindow;
-let curWin = window;
-let curDoc = document;
+var storedWindow;
+var curWin = window;
+var curDoc = document;
 const SITE_DEPRECATED = document.URL.toLowerCase().includes('codehs');
 const NO_SERVICE_WORKER = document.URL.includes("127.0.0.1");
-let ON_MOBILE;
+var ON_MOBILE;
 //@ts-ignore
 if (navigator.userAgentData) {
     ON_MOBILE = navigator.userAgentData.mobile;
@@ -567,9 +567,7 @@ class DataTransferItemGrabber {
         }
     }
 }
-var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(),
-KEY_DOWN_EVENT = new KeyDownEventRegistrar(),
-StatusTexts = {
+var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(), KEY_DOWN_EVENT = new KeyDownEventRegistrar(), StatusTexts = {
     PLAYING: "Playing",
     PAUSED: "Paused",
     STOPPED: "Stopped",
@@ -588,12 +586,12 @@ COMPACT_MODE_TOGGLE = document.getElementById('compactMode'), SEEK_DURATION_NUMB
 PROGRESS_BAR = document.getElementById('progress-bar'), HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay'), VOLUME_CHANGER = document.getElementById('0playVolume'), PLAY_RATE = document.getElementById('0playRate'), PLAY_PAN = document.getElementById('0playPan'), SEEK_BACK = document.getElementById('seekBack'), 
 // SEEK_FORWARD = document.getElementById('seekForward') as HTMLTableCellElement,
 REPEAT_BUTTON = document.getElementById('repeatButton'), REPEAT_BUTTON_IMAGE = document.getElementById("repeatButtonImg"), SHUFFLE_BUTTON = document.getElementById('shuffleButton'), MUTE_BUTTON = document.getElementById('0Mute'), PLAY_BUTTON = document.getElementById('playpause'), STATUS_TEXT = document.getElementById('0status'), CURRENT_FILE_NAME = document.getElementById('currentFileName'), DURATION_OF_SONG_DISPLAY = document.getElementById('secondDurationLabel'), DROPPING_FILE_OVERLAY = document.getElementById("dragOverDisplay");
+var filePlayingCheckboxes = [];
 var sounds = [];
 var selectedRows = [];
+var hoveredRowInDragAndDrop = null; //does not work with importing files, only when organizing added files
+var skipSongQueued = false;
 var currentSongIndex = null;
-let skipSongQueued = false;
-let hoveredRowInDragAndDrop = null; //does not work with importing files, only when organizing added files
-let filePlayingCheckboxes = [];
 /* start */ (() => {
     if ("serviceWorker" in navigator && !NO_SERVICE_WORKER) {
         navigator.serviceWorker.register("../ServiceWorker.js");
@@ -665,6 +663,7 @@ let filePlayingCheckboxes = [];
     registerKeyDownEvent(SHUFFLE_BUTTON.labels[0], () => SHUFFLE_BUTTON.click());
     registerChangeEvent(SHUFFLE_BUTTON, () => handleShuffleButton(SHUFFLE_BUTTON.checked));
     registerChangeEvent(PLAY_RATE, () => onPlayRateUpdate(parseFloat(PLAY_RATE.value)));
+    registerChangeEvent(SEEK_DISTANCE_PROPORTIONAL_CHECKBOX, updateSeekDurationDisplay);
     registerKeyDownEvent(UPLOAD_BUTTON.labels[0].querySelector("img"), () => UPLOAD_BUTTON.click());
     registerChangeEvent(UPLOAD_BUTTON, () => importFiles(UPLOAD_BUTTON.files));
     registerChangeEvent(UPLOAD_DIRECTORY_BUTTON, () => importFiles(UPLOAD_DIRECTORY_BUTTON.files));
@@ -821,7 +820,7 @@ function updateCurrentTimeDisplay(currentTime, songDurationInSeconds) {
     const progressBarDomRect = PROGRESS_BAR.getBoundingClientRect();
     if (progressBarDomRect.top + 50 < 0)
         return; //return if you scrolled away from the progress bar (+50 to include the hoveredTimeDisplay)
-    const hoveredTimeDisplayWidth = HOVERED_TIME_DISPLAY.getBoundingClientRect();
+    var hoveredTimeDisplayWidth = HOVERED_TIME_DISPLAY.getBoundingClientRect();
     const beginningOfProgressBar = (progressBarDomRect.left - hoveredTimeDisplayWidth.width / 2) + curWin.scrollX;
     const currentTimeString = new Time(currentTime).toString();
     if (HOVERED_TIME_DISPLAY.children[0].textContent != currentTimeString)
@@ -944,6 +943,7 @@ function onPlayRateUpdate(newRate) {
     let stringRate = String(newRate);
     PLAY_RATE_RANGE.value = stringRate;
     PLAY_RATE.value = stringRate;
+    updateSeekDurationDisplay();
     if (!currentHowlExists())
         return;
     if (newRate <= 0) {
@@ -960,12 +960,13 @@ function onPlayRateUpdate(newRate) {
     sounds[currentSongIndex].howl.rate(newRate);
 }
 function updateSeekDurationDisplay() {
-    let duration = Number(SEEK_DURATION_NUMBER_INPUT.value);
+    const duration = Number(SEEK_DURATION_NUMBER_INPUT.value);
+    const playRate = (SEEK_DISTANCE_PROPORTIONAL_CHECKBOX.checked) ? Number(PLAY_RATE.value) : 1;
     if (duration < 1) {
-        SEEK_DURATION_DISPLAY.textContent = `${duration * 1000} ms`;
+        SEEK_DURATION_DISPLAY.textContent = `${(duration * playRate) * 1000} ms`;
     }
     else {
-        SEEK_DURATION_DISPLAY.textContent = `${duration} sec`;
+        SEEK_DURATION_DISPLAY.textContent = `${duration * playRate} sec`;
     }
 }
 function handleShuffleButton(enable) {
@@ -1185,7 +1186,7 @@ function initializeRowEvents(row) {
     });
     row.addEventListener('drop', onDropRow);
 }
-let previouslyActiveRow = null;
+var previouslyActiveRow = null;
 function setRowActive(row) {
     if (previouslyActiveRow != null && previouslyActiveRow != row) {
         updateRowColor(previouslyActiveRow); //previouslyActiveRow.style.backgroundColor = RowColors.NONE;
@@ -1385,7 +1386,7 @@ function selectionLogicForKeyboard(keyboardEvent) {
         case "Enter": return startPlayingFromKeyboard(keyboardEvent);
     }
 }
-let indexScrollDirection = 0;
+var indexScrollDirection = 0;
 function arrowSelection(keyboardEvent, indexIncrement) {
     keyboardEvent.preventDefault();
     sortSelectedRows();

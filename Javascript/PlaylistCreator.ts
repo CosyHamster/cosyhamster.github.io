@@ -772,6 +772,7 @@ var currentSongIndex: number | null = null;
   registerKeyDownEvent(SHUFFLE_BUTTON.labels[0], () => SHUFFLE_BUTTON.click());
   registerChangeEvent(SHUFFLE_BUTTON, () => handleShuffleButton(SHUFFLE_BUTTON.checked));
   registerChangeEvent(PLAY_RATE, () => onPlayRateUpdate(parseFloat(PLAY_RATE.value)));
+  registerChangeEvent(SEEK_DISTANCE_PROPORTIONAL_CHECKBOX, updateSeekDurationDisplay);
   registerKeyDownEvent(UPLOAD_BUTTON.labels[0].querySelector("img"), () => UPLOAD_BUTTON.click());
   registerChangeEvent(UPLOAD_BUTTON, () => importFiles(UPLOAD_BUTTON.files));
   registerChangeEvent(UPLOAD_DIRECTORY_BUTTON, () => importFiles(UPLOAD_DIRECTORY_BUTTON.files));
@@ -1059,8 +1060,10 @@ function addRowsInPlaylistTable(songTableRows: HTMLTableRowElement[]){
 
 function onPlayRateUpdate(newRate: number) {
   let stringRate = String(newRate);
+
   PLAY_RATE_RANGE.value = stringRate;
   PLAY_RATE.value = stringRate;
+  updateSeekDurationDisplay();
   if (!currentHowlExists()) return;
 
   if (newRate <= 0) {
@@ -1080,11 +1083,12 @@ function onPlayRateUpdate(newRate: number) {
 }
 
 function updateSeekDurationDisplay() {
-  let duration = Number(SEEK_DURATION_NUMBER_INPUT.value);
+  const duration = Number(SEEK_DURATION_NUMBER_INPUT.value);
+  const playRate = (SEEK_DISTANCE_PROPORTIONAL_CHECKBOX.checked) ? Number(PLAY_RATE.value) : 1;
   if (duration < 1) {
-    SEEK_DURATION_DISPLAY.textContent = `${duration * 1000} ms`;
+    SEEK_DURATION_DISPLAY.textContent = `${(duration*playRate) * 1000} ms`;
   } else {
-    SEEK_DURATION_DISPLAY.textContent = `${duration} sec`;
+    SEEK_DURATION_DISPLAY.textContent = `${duration*playRate} sec`;
   }
 }
 
