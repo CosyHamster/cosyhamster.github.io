@@ -140,6 +140,12 @@
   },
   {
     "type": "number",
+    "displayName": "Veneration Rate",
+    "keyName": "venerationRate",
+    "keyed": true
+  },
+  {
+    "type": "number",
     "displayName": "Health",
     "keyName": "health",
     "keyed": true
@@ -218,14 +224,14 @@
   },
   {
     "type": "number",
-    "displayName": "Stamina Regen",
-    "keyName": "staminaRegen",
+    "displayName": "Max Stamina",
+    "keyName": "stamina",
     "keyed": true
   },
   {
     "type": "number",
-    "displayName": "Max Stamina",
-    "keyName": "stamina",
+    "displayName": "Stamina Regen",
+    "keyName": "stamRegen",
     "keyed": true
   },
   {
