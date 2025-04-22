@@ -135,9 +135,9 @@ class AbilityNumberStatValue extends NumberStatValue {
         if (indexOf == -1) {
             searchString = creature.activated;
             indexOf = searchString.indexOf(this.keyName);
+            if (indexOf == -1)
+                return NaN;
         }
-        if (indexOf == -1)
-            return NaN;
         let abilityNameEndIndex = indexOf + this.keyName.length;
         let abilityValue = searchString.substring(searchString.indexOf("(", abilityNameEndIndex) + 1, searchString.indexOf(")", abilityNameEndIndex));
         return parseFloat(abilityValue);
@@ -182,13 +182,50 @@ class AbilityStringStatValue extends StringStatValue {
         if (indexOf == -1) {
             searchString = creature.activated;
             indexOf = searchString.indexOf(this.keyName);
+            if (indexOf == -1)
+                return "N/A";
         }
-        if (indexOf == -1)
-            return "N/A";
         let abilityNameEndIndex = indexOf + this.keyName.length;
         // noinspection UnnecessaryLocalVariableJS
         let abilityValue = searchString.substring(searchString.indexOf("(", abilityNameEndIndex) + 1, searchString.indexOf(")", abilityNameEndIndex));
         return abilityValue;
+    }
+}
+class DateStatValue extends StatValue {
+    constructor(keyName) {
+        super(keyName);
+    }
+    sort(creature1, creature2) {
+        const creature1Value = this.getValue(creature1);
+        const creature2Value = this.getValue(creature2);
+        return (sortAscending) ? creature1Value - creature2Value : creature2Value - creature1Value;
+    }
+    filter(creature, filterType, testVal) {
+        const date = this.getDateStringAsNumber(testVal);
+        switch (filterType) {
+            case FilterType.EQUALS: return this.getDisplayValue(creature).toLowerCase() == testVal.toLowerCase();
+            case FilterType.CONTAINS: return this.getDisplayValue(creature).toLowerCase().includes(testVal.toLowerCase());
+            case FilterType.LESS_THAN: return this.getValue(creature) < date;
+            case FilterType.LESS_THAN_EQUALS: return this.getValue(creature) <= date;
+            case FilterType.GREATER_THAN: return this.getValue(creature) > date;
+            case FilterType.GREATER_THAN_EQUALS: return this.getValue(creature) >= date;
+            default: return false;
+        }
+    }
+    getDateStringAsNumber(date) {
+        const dateComponents = date.split("/", 3).map((comp) => parseInt(comp));
+        return new Date(dateComponents[2], dateComponents[0] - 1, dateComponents[1]).getTime();
+    }
+}
+class KeyedDateStatValue extends DateStatValue {
+    constructor(keyName) {
+        super(keyName);
+    }
+    getDisplayValue(creature) {
+        return creature[this.keyName];
+    }
+    getValue(creature) {
+        return this.getDateStringAsNumber(this.getDisplayValue(creature));
     }
 }
 function initializeStatList() {
@@ -217,8 +254,10 @@ function initializeStatList() {
                     case "number":
                         statValue = new KeyedNumberStatValue(jsonStat.keyName);
                         break;
-                    case "string":
                     case "date": //date is unimplemented so it is treated like a string
+                        statValue = new KeyedDateStatValue(jsonStat.keyName);
+                        break;
+                    case "string":
                         statValue = new KeyedStringStatValue(jsonStat.keyName);
                         break;
                     case "boolean":
@@ -234,7 +273,7 @@ function initializeStatList() {
                         statValue = new AbilityNumberStatValue(jsonStat.keyName);
                         break;
                     case "string":
-                    case "date": //date is unimplemented so it is treated like a string
+                    case "date": //no abilities use the date type. there is no reason to implement this.
                         statValue = new AbilityStringStatValue(jsonStat.keyName);
                 }
             }
@@ -504,7 +543,7 @@ function updateFilterChanges() {
         const statTypeIndex = Number(div.querySelector("button[name='statTypeSelect']").value);
         if (Number.isNaN(statTypeIndex) || statTypeIndex == -1)
             continue;
-        const filterType = getFilterTypeFromValue(div.querySelector("select").value);
+        const filterType = getFilterTypeFromValue(div.querySelector("select").selectedIndex); // const filterType = getFilterTypeFromValue(div.querySelector("select").value);
         if (filterType == null)
             continue;
         const inputtedText = div.querySelector("input[type='text']").value;
@@ -533,13 +572,14 @@ function filterCreatures() {
     }
 }
 function getFilterTypeFromValue(value) {
+    // switch(value){ case "equals": return FilterType.EQUALS; case "contains": return FilterType.CONTAINS; case "lessThan": return FilterType.LESS_THAN; case "lessThanEquals": return FilterType.LESS_THAN_EQUALS; case "greaterThan": return FilterType.GREATER_THAN; case "greaterThanEquals": return FilterType.GREATER_THAN_EQUALS; default: return null; }
     switch (value) {
-        case "equals": return FilterType.EQUALS;
-        case "contains": return FilterType.CONTAINS;
-        case "lessThan": return FilterType.LESS_THAN;
-        case "lessThanEquals": return FilterType.LESS_THAN_EQUALS;
-        case "greaterThan": return FilterType.GREATER_THAN;
-        case "greaterThanEquals": return FilterType.GREATER_THAN_EQUALS;
+        case 0: return FilterType.EQUALS;
+        case 1: return FilterType.CONTAINS;
+        case 2: return FilterType.LESS_THAN;
+        case 3: return FilterType.LESS_THAN_EQUALS;
+        case 4: return FilterType.GREATER_THAN;
+        case 5: return FilterType.GREATER_THAN_EQUALS;
         default: return null;
     }
 }
@@ -600,7 +640,7 @@ function openChooseTypeMenu(button) {
         function onSelectStat() {
             closeFloatingWindow();
             button.value = String(i);
-            button.textContent = statValue.displayName;
+            button.textContent = statList[i].displayName;
         }
         row.addEventListener("click", onSelectStat);
         row.addEventListener("keydown", (keyEvent) => {
