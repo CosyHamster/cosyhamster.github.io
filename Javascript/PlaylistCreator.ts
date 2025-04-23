@@ -1270,12 +1270,6 @@ function setCurrentFileName(name: string) {
     curDoc.title = name;
   }
 }
-function updateSeekButtonTexts() {
-  curDoc.querySelectorAll('button').forEach(element => {
-    const secondsSkipAmount = precisionRound(10 * Number(PLAY_RATE.value), 3);
-    element.textContent = `${element.textContent[0]}${secondsSkipAmount} Seconds`;
-  });
-}
 function precisionRound(number: number, precision: number) {
   const factor = Math.pow(10, precision);
   return Math.round(number * factor) / factor;
@@ -1285,6 +1279,7 @@ function currentHowlExists(){ return currentSongIndex !== null && sounds[current
 function changeStatus(status: string) { STATUS_TEXT.textContent = status; }
 function onlyFiles(dataTransfer: DataTransfer) { return dataTransfer.types.length == 1 && dataTransfer.types[0] === 'Files' }
 function isValidExtension(extension: string) { return codecsMixin(extension); }
+//@ts-ignore
 function setAttributes(element: HTMLElement, attrs: { [key: string]: string }) { for (const key in attrs) element.setAttribute(key, attrs[key]); }
 // @ts-ignore
 function sleep(ms: number): Promise<void> { return new Promise(resolve => setTimeout(resolve, ms)); }

@@ -69,6 +69,9 @@ abstract class StatValue{
     getDisplayValue(creature: Creature): string{
         return String(this.getValue(creature));
     }
+    preferredInputAttributes(): { [key: string]: string } {
+        return {type: "text", placeholder: "Enter text or number"}
+    }
     abstract getValue(creature: Creature): unknown;
     abstract sort(creature1: Creature, creature2: Creature): number;
     abstract filter(creature: Creature, filterType: FilterType, testVal: string): boolean;
@@ -82,6 +85,9 @@ class AbilityBooleanValue extends StatValue{
         super(keyName.toLowerCase());
     }
 
+    override preferredInputAttributes(): { [key: string]: string } {
+        return {type: "text", placeholder: "Enter true or false"}
+    }
     override getDisplayValue(creature: Creature): string {
         return this.getValue(creature) ? "Yes" : "No";
     }
@@ -98,9 +104,12 @@ class AbilityBooleanValue extends StatValue{
         return (this.getValue(creature1) ? -1 : 1) * (sortAscending ? -1 : 1);
     }
     override filter(creature: Creature, filterType: FilterType, testVal: string): boolean {
+        testVal = testVal.toLowerCase();
         switch(filterType){
-            case FilterType.EQUALS: return this.getDisplayValue(creature).toLowerCase() == testVal.toLowerCase();
-            case FilterType.CONTAINS: return this.getDisplayValue(creature).toLowerCase().includes(testVal.toLowerCase());
+            case FilterType.EQUALS:
+                const inputTrue = testVal == "yes" || testVal == "true"
+                return this.getValue(creature) == inputTrue;
+            case FilterType.CONTAINS: return this.getDisplayValue(creature).toLowerCase().includes(testVal);
             default: return false;
         }
     }
@@ -113,6 +122,9 @@ abstract class NumberStatValue extends StatValue {
         super(keyName);
     }
 
+    override preferredInputAttributes(): { [key: string]: string } {
+        return {type: "text", placeholder: "Enter a number or N/A"}
+    }
     abstract override getValue(creature: Creature): number;
     override getDisplayValue(creature: Creature): string {
         const value = this.getValue(creature);
@@ -182,6 +194,9 @@ abstract class StringStatValue extends StatValue {
         super(keyName);
     }
 
+    override preferredInputAttributes(): { [key: string]: string } {
+        return {type: "text", placeholder: "Enter text"}
+    }
     abstract override getValue(creature: Creature): string;
     override sort(creature1: Creature, creature2: Creature): number {
         const creature1Val = this.getValue(creature1);
@@ -235,6 +250,9 @@ abstract class DateStatValue extends StatValue {
         super(keyName);
     }
 
+    override preferredInputAttributes(): { [key: string]: string } {
+        return {type: "date", placeholder: "Enter a date"}
+    }
     abstract override getDisplayValue(creature: Creature): string;
     abstract override getValue(creature: Creature): number;
     override sort(creature1: Creature, creature2: Creature): number {
@@ -244,9 +262,9 @@ abstract class DateStatValue extends StatValue {
     }
 
     override filter(creature: Creature, filterType: FilterType, testVal: string): boolean {
-        const date = this.getDateStringAsNumber(testVal);
+        const date = new Date(testVal+"T00:00").getTime();//this.getDateStringAsNumber(testVal);
         switch(filterType){
-            case FilterType.EQUALS: return this.getDisplayValue(creature).toLowerCase() == testVal.toLowerCase();
+            case FilterType.EQUALS: return this.getValue(creature) == date;
             case FilterType.CONTAINS: return this.getDisplayValue(creature).toLowerCase().includes(testVal.toLowerCase());
             case FilterType.LESS_THAN: return this.getValue(creature) < date;
             case FilterType.LESS_THAN_EQUALS: return this.getValue(creature) <= date;
@@ -561,18 +579,21 @@ function createFilter(): HTMLDivElement{
     const div = document.createElement("div");
     const button = document.createElement("button"); //div.querySelector("button[name='statTypeSelect']")
     button.name = "statTypeSelect";
+    button.type = "button"
     button.value = "-1";
     button.style.width = "28ch";
     button.textContent = "SELECT STAT TYPE";
     button.title = "Select a stat to filter!"
-    button.addEventListener("click", () => {
-        openChooseTypeMenu(button);
-    })
     const deleteFilterButton = document.createElement("button");
     deleteFilterButton.name = "deleteFilter";
+    deleteFilterButton.type = "button"
     deleteFilterButton.textContent = "Delete";
     deleteFilterButton.addEventListener("click", () => {
-        deleteFilterButton.closest("div").remove();
+        const containerElement = deleteFilterButton.closest("div");
+        const nextElementSibling = containerElement.nextElementSibling;
+
+        containerElement.remove();
+        if(nextElementSibling != null && nextElementSibling.id == "floatingWindow") closeFloatingWindow();
     })
     const select = document.createElement("select");
     select.name = "equalityType";
@@ -584,6 +605,9 @@ function createFilter(): HTMLDivElement{
     textInput.name = "statFilterInput"
     textInput.style.width = "20ch";
     textInput.placeholder = "Enter text or number";
+    button.addEventListener("click", () => {
+        openChooseTypeMenu(button, textInput);
+    })
     const reverseLabel = document.createElement("label");
     reverseLabel.setAttribute("data-labelType", "reverse");
     reverseLabel.title = "Show the creatures that don't match this filter!"
@@ -621,7 +645,7 @@ function updateFilterChanges(){
         const filterType = getFilterTypeFromValue(div.querySelector("select").selectedIndex); // const filterType = getFilterTypeFromValue(div.querySelector("select").value);
         if(filterType == null) continue;
 
-        const inputtedText: string = (div.querySelector("input[type='text']") as HTMLInputElement).value;
+        const inputtedText: string = (div.querySelector("input[name='statFilterInput']") as HTMLInputElement).value;
         const reverseFilter = (div.querySelector("label[data-labelType='reverse']").querySelector("input[type='checkbox']") as HTMLInputElement).checked;
         activeFilters.push(new Filter(statList[statTypeIndex], filterType, inputtedText, reverseFilter))
     }
@@ -703,7 +727,7 @@ function updateHeaderCellArrow(headerCell: HTMLTableCellElement){
     }
 }
 
-function openChooseTypeMenu(button: HTMLButtonElement){
+function openChooseTypeMenu(button: HTMLButtonElement, textInput: HTMLInputElement){
     if(statList.length == 0) return; //uninitialized
 
     button.parentElement.after(FLOATING_WINDOW);
@@ -719,8 +743,10 @@ function openChooseTypeMenu(button: HTMLButtonElement){
         row.setAttribute("tabindex", "0");
         function onSelectStat(){
             closeFloatingWindow();
+            const selectedStat = statList[i];
             button.value = String(i);
-            button.textContent = statList[i].displayName;
+            button.textContent = selectedStat.displayName;
+            setAttributes(textInput, selectedStat.preferredInputAttributes())
         }
         row.addEventListener("click", onSelectStat)
         row.addEventListener("keydown", (keyEvent) => {
@@ -858,6 +884,9 @@ function onFrame(_: DOMHighResTimeStamp){
 
 //@ts-ignore
 function sleep(ms: number): Promise<void> { return new Promise(resolve => setTimeout(resolve, ms)); }
+//@ts-ignore
+function setAttributes(element: HTMLElement, attrs: { [key: string]: string }) { for (const key in attrs) element.setAttribute(key, attrs[key]); }
+
 
 function onFinishedLoadingData(){
     updateCreatureStatsTable().then(() => {

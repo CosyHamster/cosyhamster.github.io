@@ -262,12 +262,16 @@ function createNewPlayer(index){
     muteLabel.setAttribute('for', `${index}Mute`);
     muteLabel.innerHTML = "Mute";
 
+    /** @type HTMLButtonElement */
     const seekBack = document.createElement('button');
+    seekBack.type = 'button';
     seekBack.innerHTML = '-10 Seconds';
     seekBack.setAttribute('id', `${index}seekBackward`);
     seekBack.className = 'audioSpecificSeekButton'
     registerClickEvent(seekBack, () => seek(`${index}seekBackward`) );
+    /** @type HTMLButtonElement */
     const seekForward = document.createElement('button');
+    seekForward.type = 'button';
     seekForward.innerHTML = '+10 Seconds';
     seekForward.setAttribute('id', `${index}seekForward`);
     seekForward.className = 'audioSpecificSeekButton'
@@ -688,12 +692,14 @@ function addNewFadeController(){
         syncWithSound0Button,
         syncWithSound0Label
     ]);
-    
+
+    /** @type HTMLButtonElement */
     let fadeSoundButton = document.createElement('button');
     let currentIndex = fadeControllerQuantity;
     registerClickEvent(fadeSoundButton, () => fadeAudio(parseInt(`${currentIndex}`)) );
     fadeSoundButton.setAttribute('soundIndex', fadeControllerQuantity);
     fadeSoundButton.setAttribute('id', `fadeSoundButton${fadeControllerQuantity}`);
+    fadeSoundButton.type = "button";
     fadeSoundButton.innerHTML = `Fade Audio #${fadeControllerQuantity+1}`;
 
     cellWithButtons.insertBefore(fadeSoundButton, cellWithButtons.children[cellWithButtons.children.length-2]);

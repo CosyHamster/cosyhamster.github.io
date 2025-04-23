@@ -1131,12 +1131,6 @@ function setCurrentFileName(name) {
         curDoc.title = name;
     }
 }
-function updateSeekButtonTexts() {
-    curDoc.querySelectorAll('button').forEach(element => {
-        const secondsSkipAmount = precisionRound(10 * Number(PLAY_RATE.value), 3);
-        element.textContent = `${element.textContent[0]}${secondsSkipAmount} Seconds`;
-    });
-}
 function precisionRound(number, precision) {
     const factor = Math.pow(10, precision);
     return Math.round(number * factor) / factor;
@@ -1145,6 +1139,7 @@ function currentHowlExists() { return currentSongIndex !== null && sounds[curren
 function changeStatus(status) { STATUS_TEXT.textContent = status; }
 function onlyFiles(dataTransfer) { return dataTransfer.types.length == 1 && dataTransfer.types[0] === 'Files'; }
 function isValidExtension(extension) { return codecsMixin(extension); }
+//@ts-ignore
 function setAttributes(element, attrs) { for (const key in attrs)
     element.setAttribute(key, attrs[key]); }
 // @ts-ignore

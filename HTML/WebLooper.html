@@ -32,9 +32,9 @@
             <tbody>
                 <tr>
                     <td>
-                        <button id="playButton">Play All</button>
-                        <button id="seekBackward">-10 Seconds</button>
-                        <button id="seekForward">+10 Seconds</button>
+                        <button id="playButton" type="button">Play All</button>
+                        <button id="seekBackward" type="button">-10 Seconds</button>
+                        <button id="seekForward" type="button">+10 Seconds</button>
                         
                         <input style="margin-left:0px" type="checkbox" id="1playAfter0"><label for="1playAfter0">Playlist Mode (Audio #1 plays, then Audio #2 loops)</label>
                         <div>More audio players will be created as more files are added. If there are no file players, Javascript may be disabled. Try enabling Javascript and refreshing.</div>
@@ -43,7 +43,7 @@
             </tbody>
         </table>
 
-        <button id="FadingControlOpenDialog">Fade Control</button>
+        <button id="FadingControlOpenDialog" type="button">Fade Control</button>
         <dialog id="FadeControlDialog" style="position: sticky; top: 50vh; z-index: 1">
             <label style="margin-right:1ch;" for='fallBehindLeeway' title='Determines how much synced sounds can go ahead / behind of sound #1 (in seconds). Try increasing this value if audio is stuttery or fading is not working.'>Displacement Leeway:</label><input type="number" id='fallBehindLeeway' inputmode="numeric" value=0 min=0 step=0.01 title='Determines how much synced sounds can go ahead / behind of sound #1 (in seconds). Try increasing this value if audio is stuttery or fading is not working.'/>
             
@@ -51,8 +51,8 @@
                 <tbody>
                     <tr>
                         <td>
-                            <button id="fadeAllButton">Fade All</button>
-                            <button id="PlaylistModeCloseDialog">Close</button>
+                            <button id="fadeAllButton" type="button">Fade All</button>
+                            <button id="PlaylistModeCloseDialog" type="button">Close</button>
                         </td>
                     </tr>
                 </tbody>
