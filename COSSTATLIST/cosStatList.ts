@@ -69,8 +69,11 @@ abstract class StatValue{
     getDisplayValue(creature: Creature): string{
         return String(this.getValue(creature));
     }
+    static preferredInputAttributes(): { [key: string]: string } {
+        return {type: "text", placeholder: "Enter text"}
+    }
     preferredInputAttributes(): { [key: string]: string } {
-        return {type: "text", placeholder: "Enter text or number"}
+        return StatValue.preferredInputAttributes();
     }
     abstract getValue(creature: Creature): unknown;
     abstract sort(creature1: Creature, creature2: Creature): number;
@@ -85,8 +88,11 @@ class AbilityBooleanValue extends StatValue{
         super(keyName.toLowerCase());
     }
 
-    override preferredInputAttributes(): { [key: string]: string } {
+    static override preferredInputAttributes(): { [key: string]: string } {
         return {type: "text", placeholder: "Enter true or false"}
+    }
+    override preferredInputAttributes(): { [key: string]: string } {
+        return AbilityBooleanValue.preferredInputAttributes();
     }
     override getDisplayValue(creature: Creature): string {
         return this.getValue(creature) ? "Yes" : "No";
@@ -107,7 +113,7 @@ class AbilityBooleanValue extends StatValue{
         testVal = testVal.toLowerCase();
         switch(filterType){
             case FilterType.EQUALS:
-                const inputTrue = testVal == "yes" || testVal == "true"
+                const inputTrue = testVal == "yes" || testVal == "true" || testVal == "t" || testVal == "";
                 return this.getValue(creature) == inputTrue;
             case FilterType.CONTAINS: return this.getDisplayValue(creature).toLowerCase().includes(testVal);
             default: return false;
@@ -122,8 +128,11 @@ abstract class NumberStatValue extends StatValue {
         super(keyName);
     }
 
-    override preferredInputAttributes(): { [key: string]: string } {
+    static override preferredInputAttributes(): { [key: string]: string } {
         return {type: "text", placeholder: "Enter a number or N/A"}
+    }
+    override preferredInputAttributes(): { [key: string]: string } {
+        return NumberStatValue.preferredInputAttributes();
     }
     abstract override getValue(creature: Creature): number;
     override getDisplayValue(creature: Creature): string {
@@ -194,8 +203,11 @@ abstract class StringStatValue extends StatValue {
         super(keyName);
     }
 
-    override preferredInputAttributes(): { [key: string]: string } {
+    static override preferredInputAttributes(): { [key: string]: string } {
         return {type: "text", placeholder: "Enter text"}
+    }
+    override preferredInputAttributes(): { [key: string]: string } {
+        return StringStatValue.preferredInputAttributes();
     }
     abstract override getValue(creature: Creature): string;
     override sort(creature1: Creature, creature2: Creature): number {
@@ -250,8 +262,11 @@ abstract class DateStatValue extends StatValue {
         super(keyName);
     }
 
-    override preferredInputAttributes(): { [key: string]: string } {
+    static override preferredInputAttributes(): { [key: string]: string } {
         return {type: "date", placeholder: "Enter a date"}
+    }
+    override preferredInputAttributes(): { [key: string]: string } {
+        return DateStatValue.preferredInputAttributes();
     }
     abstract override getDisplayValue(creature: Creature): string;
     abstract override getValue(creature: Creature): number;
@@ -275,7 +290,7 @@ abstract class DateStatValue extends StatValue {
     }
 
     getDateStringAsNumber(date: string){
-        const dateComponents = date.split("/", 3).map((comp: string) => parseInt(comp));
+        const dateComponents = date.split("/", 3).map(comp => parseInt(comp));
         return new Date(dateComponents[2], dateComponents[0]-1, dateComponents[1]).getTime();
     }
 }
@@ -535,6 +550,7 @@ async function updateCreatureStatsTable(){
             addStatValueToCreatureRows(statValue);
         }
     }
+    findAndUpdateHeaderCellArrow();
 
     if(sortDirty){
         // ensureTableBodyRemoved();  //THIS IS MORE EXPENSIVE BC ONLY DOM MODIFICATION PAST THIS POINT IS REPLACECHILDREN
@@ -598,15 +614,15 @@ function createFilter(): HTMLDivElement{
     const select = document.createElement("select");
     select.name = "equalityType";
     select.title = "Choose what this stat should be!"
+    select.addEventListener('change', () => updateFilterInput(div), true);
     select.append(createOption("equals", "EQUALS"), createOption("contains", "CONTAINS"), createOption("lessThan", "<"), createOption("lessThanEquals", "≤"), createOption("greaterThan", ">"), createOption("greaterThanEquals", "≥"));
     const textInput = document.createElement("input");
     textInput.autocomplete = "off";
-    textInput.type = "text";
     textInput.name = "statFilterInput"
     textInput.style.width = "20ch";
-    textInput.placeholder = "Enter text or number";
+    setAttributes(textInput, StatValue.preferredInputAttributes())
     button.addEventListener("click", () => {
-        openChooseTypeMenu(button, textInput);
+        openChooseTypeMenu(button, div);
     })
     const reverseLabel = document.createElement("label");
     reverseLabel.setAttribute("data-labelType", "reverse");
@@ -635,21 +651,29 @@ function updateFilterChanges(){
     var filterContainingDivs = FILTER_CONTAINING_DIV.children;
     activeFilters = [];
 
-    for(const div of filterContainingDivs){
-        if(!(div instanceof HTMLDivElement) || div.id == "floatingWindow") continue;
-        if(!(div.querySelector("label[data-labelType='active']").querySelector("input[type='checkbox']") as HTMLInputElement).checked) continue;
+    for(const filterContainer of filterContainingDivs){
+        if(!(filterContainer instanceof HTMLDivElement) || filterContainer.id == "floatingWindow") continue;
+        if(!(filterContainer.querySelector("label[data-labelType='active']").querySelector("input[type='checkbox']") as HTMLInputElement).checked) continue;
 
-        const statTypeIndex = Number((div.querySelector("button[name='statTypeSelect']") as HTMLButtonElement).value);
+        const statTypeIndex = Number((filterContainer.querySelector("button[name='statTypeSelect']") as HTMLButtonElement).value);
         if(Number.isNaN(statTypeIndex) || statTypeIndex == -1) continue;
 
-        const filterType = getFilterTypeFromValue(div.querySelector("select").selectedIndex); // const filterType = getFilterTypeFromValue(div.querySelector("select").value);
+        const filterType = getFilterTypeFromValue(filterContainer.querySelector("select").selectedIndex); // const filterType = getFilterTypeFromValue(filterContainer.querySelector("select").value);
         if(filterType == null) continue;
 
-        const inputtedText: string = (div.querySelector("input[name='statFilterInput']") as HTMLInputElement).value;
-        const reverseFilter = (div.querySelector("label[data-labelType='reverse']").querySelector("input[type='checkbox']") as HTMLInputElement).checked;
+        const inputtedText: string = (filterContainer.querySelector("input[name='statFilterInput']") as HTMLInputElement).value;
+        const reverseFilter = (filterContainer.querySelector("label[data-labelType='reverse']").querySelector("input[type='checkbox']") as HTMLInputElement).checked;
         activeFilters.push(new Filter(statList[statTypeIndex], filterType, inputtedText, reverseFilter))
     }
     updateCreatureStatsTable();
+}
+
+function updateFilterInput(filterContainer: HTMLDivElement){
+    const preferredInputAttributes =
+        (getFilterTypeFromValue(filterContainer.querySelector("select").selectedIndex) == FilterType.CONTAINS) ? StatValue.preferredInputAttributes()
+            : statList[Number((filterContainer.querySelector("button[name='statTypeSelect']") as HTMLButtonElement).value)].preferredInputAttributes();
+
+    setAttributes((filterContainer.querySelector("input[name='statFilterInput']") as HTMLInputElement), preferredInputAttributes);
 }
 
 function filterCreatures(){
@@ -727,7 +751,7 @@ function updateHeaderCellArrow(headerCell: HTMLTableCellElement){
     }
 }
 
-function openChooseTypeMenu(button: HTMLButtonElement, textInput: HTMLInputElement){
+function openChooseTypeMenu(button: HTMLButtonElement, filterContainer: HTMLDivElement){
     if(statList.length == 0) return; //uninitialized
 
     button.parentElement.after(FLOATING_WINDOW);
@@ -746,7 +770,7 @@ function openChooseTypeMenu(button: HTMLButtonElement, textInput: HTMLInputEleme
             const selectedStat = statList[i];
             button.value = String(i);
             button.textContent = selectedStat.displayName;
-            setAttributes(textInput, selectedStat.preferredInputAttributes())
+            updateFilterInput(filterContainer);
         }
         row.addEventListener("click", onSelectStat)
         row.addEventListener("keydown", (keyEvent) => {
@@ -1053,13 +1077,17 @@ STAT_LIST_TABLE.addEventListener("keydown", (keyEvent) => {
             goToNeighboringRow(true);
         } else if(keyEvent.key == "ArrowUp"){
             goToNeighboringRow(false);
-        } else if(keyEvent.key == "Enter" || (keyEvent.ctrlKey && keyEvent.key == 'c')){
+        } else {
+            const shouldCopy = keyEvent.ctrlKey && keyEvent.key == 'c';
+            const shouldSelect = keyEvent.key == "Enter" || shouldCopy;
+            if(!shouldSelect) return;
+
             const selection = window.getSelection();
             const range = document.createRange();
             range.selectNode(target);
             selection.removeAllRanges();
             selection.addRange(range);
-            navigator.clipboard.writeText(target.textContent);
+            if(shouldCopy) navigator.clipboard.writeText(target.textContent);
         }
     }
-})
+});

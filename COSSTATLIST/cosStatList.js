@@ -45,8 +45,11 @@ class StatValue {
     getDisplayValue(creature) {
         return String(this.getValue(creature));
     }
+    static preferredInputAttributes() {
+        return { type: "text", placeholder: "Enter text" };
+    }
     preferredInputAttributes() {
-        return { type: "text", placeholder: "Enter text or number" };
+        return StatValue.preferredInputAttributes();
     }
     constructor(keyName) {
         this.canBeDisabled = true;
@@ -57,8 +60,11 @@ class AbilityBooleanValue extends StatValue {
     constructor(keyName) {
         super(keyName.toLowerCase());
     }
-    preferredInputAttributes() {
+    static preferredInputAttributes() {
         return { type: "text", placeholder: "Enter true or false" };
+    }
+    preferredInputAttributes() {
+        return AbilityBooleanValue.preferredInputAttributes();
     }
     getDisplayValue(creature) {
         return this.getValue(creature) ? "Yes" : "No";
@@ -80,7 +86,7 @@ class AbilityBooleanValue extends StatValue {
         testVal = testVal.toLowerCase();
         switch (filterType) {
             case FilterType.EQUALS:
-                const inputTrue = testVal == "yes" || testVal == "true";
+                const inputTrue = testVal == "yes" || testVal == "true" || testVal == "t" || testVal == "";
                 return this.getValue(creature) == inputTrue;
             case FilterType.CONTAINS: return this.getDisplayValue(creature).toLowerCase().includes(testVal);
             default: return false;
@@ -91,8 +97,11 @@ class NumberStatValue extends StatValue {
     constructor(keyName) {
         super(keyName);
     }
-    preferredInputAttributes() {
+    static preferredInputAttributes() {
         return { type: "text", placeholder: "Enter a number or N/A" };
+    }
+    preferredInputAttributes() {
+        return NumberStatValue.preferredInputAttributes();
     }
     getDisplayValue(creature) {
         const value = this.getValue(creature);
@@ -159,8 +168,11 @@ class StringStatValue extends StatValue {
     constructor(keyName) {
         super(keyName);
     }
-    preferredInputAttributes() {
+    static preferredInputAttributes() {
         return { type: "text", placeholder: "Enter text" };
+    }
+    preferredInputAttributes() {
+        return StringStatValue.preferredInputAttributes();
     }
     sort(creature1, creature2) {
         const creature1Val = this.getValue(creature1);
@@ -210,8 +222,11 @@ class DateStatValue extends StatValue {
     constructor(keyName) {
         super(keyName);
     }
-    preferredInputAttributes() {
+    static preferredInputAttributes() {
         return { type: "date", placeholder: "Enter a date" };
+    }
+    preferredInputAttributes() {
+        return DateStatValue.preferredInputAttributes();
     }
     sort(creature1, creature2) {
         const creature1Value = this.getValue(creature1);
@@ -464,6 +479,7 @@ async function updateCreatureStatsTable() {
             addStatValueToCreatureRows(statValue);
         }
     }
+    findAndUpdateHeaderCellArrow();
     if (sortDirty) {
         // ensureTableBodyRemoved();  //THIS IS MORE EXPENSIVE BC ONLY DOM MODIFICATION PAST THIS POINT IS REPLACECHILDREN
         const wasAscending = sortAscending;
@@ -526,15 +542,15 @@ function createFilter() {
     const select = document.createElement("select");
     select.name = "equalityType";
     select.title = "Choose what this stat should be!";
+    select.addEventListener('change', () => updateFilterInput(div), true);
     select.append(createOption("equals", "EQUALS"), createOption("contains", "CONTAINS"), createOption("lessThan", "<"), createOption("lessThanEquals", "≤"), createOption("greaterThan", ">"), createOption("greaterThanEquals", "≥"));
     const textInput = document.createElement("input");
     textInput.autocomplete = "off";
-    textInput.type = "text";
     textInput.name = "statFilterInput";
     textInput.style.width = "20ch";
-    textInput.placeholder = "Enter text or number";
+    setAttributes(textInput, StatValue.preferredInputAttributes());
     button.addEventListener("click", () => {
-        openChooseTypeMenu(button, textInput);
+        openChooseTypeMenu(button, div);
     });
     const reverseLabel = document.createElement("label");
     reverseLabel.setAttribute("data-labelType", "reverse");
@@ -559,22 +575,27 @@ function createFilter() {
 function updateFilterChanges() {
     var filterContainingDivs = FILTER_CONTAINING_DIV.children;
     activeFilters = [];
-    for (const div of filterContainingDivs) {
-        if (!(div instanceof HTMLDivElement) || div.id == "floatingWindow")
+    for (const filterContainer of filterContainingDivs) {
+        if (!(filterContainer instanceof HTMLDivElement) || filterContainer.id == "floatingWindow")
             continue;
-        if (!div.querySelector("label[data-labelType='active']").querySelector("input[type='checkbox']").checked)
+        if (!filterContainer.querySelector("label[data-labelType='active']").querySelector("input[type='checkbox']").checked)
             continue;
-        const statTypeIndex = Number(div.querySelector("button[name='statTypeSelect']").value);
+        const statTypeIndex = Number(filterContainer.querySelector("button[name='statTypeSelect']").value);
         if (Number.isNaN(statTypeIndex) || statTypeIndex == -1)
             continue;
-        const filterType = getFilterTypeFromValue(div.querySelector("select").selectedIndex); // const filterType = getFilterTypeFromValue(div.querySelector("select").value);
+        const filterType = getFilterTypeFromValue(filterContainer.querySelector("select").selectedIndex); // const filterType = getFilterTypeFromValue(filterContainer.querySelector("select").value);
         if (filterType == null)
             continue;
-        const inputtedText = div.querySelector("input[name='statFilterInput']").value;
-        const reverseFilter = div.querySelector("label[data-labelType='reverse']").querySelector("input[type='checkbox']").checked;
+        const inputtedText = filterContainer.querySelector("input[name='statFilterInput']").value;
+        const reverseFilter = filterContainer.querySelector("label[data-labelType='reverse']").querySelector("input[type='checkbox']").checked;
         activeFilters.push(new Filter(statList[statTypeIndex], filterType, inputtedText, reverseFilter));
     }
     updateCreatureStatsTable();
+}
+function updateFilterInput(filterContainer) {
+    const preferredInputAttributes = (getFilterTypeFromValue(filterContainer.querySelector("select").selectedIndex) == FilterType.CONTAINS) ? StatValue.preferredInputAttributes()
+        : statList[Number(filterContainer.querySelector("button[name='statTypeSelect']").value)].preferredInputAttributes();
+    setAttributes(filterContainer.querySelector("input[name='statFilterInput']"), preferredInputAttributes);
 }
 function filterCreatures() {
     for (const creature of creatureList) {
@@ -648,7 +669,7 @@ function updateHeaderCellArrow(headerCell) {
         headerCell.classList.add("headerCellDescending");
     }
 }
-function openChooseTypeMenu(button, textInput) {
+function openChooseTypeMenu(button, filterContainer) {
     if (statList.length == 0)
         return; //uninitialized
     button.parentElement.after(FLOATING_WINDOW);
@@ -666,7 +687,7 @@ function openChooseTypeMenu(button, textInput) {
             const selectedStat = statList[i];
             button.value = String(i);
             button.textContent = selectedStat.displayName;
-            setAttributes(textInput, selectedStat.preferredInputAttributes());
+            updateFilterInput(filterContainer);
         }
         row.addEventListener("click", onSelectStat);
         row.addEventListener("keydown", (keyEvent) => {
@@ -960,13 +981,18 @@ STAT_LIST_TABLE.addEventListener("keydown", (keyEvent) => {
         else if (keyEvent.key == "ArrowUp") {
             goToNeighboringRow(false);
         }
-        else if (keyEvent.key == "Enter" || (keyEvent.ctrlKey && keyEvent.key == 'c')) {
+        else {
+            const shouldCopy = keyEvent.ctrlKey && keyEvent.key == 'c';
+            const shouldSelect = keyEvent.key == "Enter" || shouldCopy;
+            if (!shouldSelect)
+                return;
             const selection = window.getSelection();
             const range = document.createRange();
             range.selectNode(target);
             selection.removeAllRanges();
             selection.addRange(range);
-            navigator.clipboard.writeText(target.textContent);
+            if (shouldCopy)
+                navigator.clipboard.writeText(target.textContent);
         }
     }
 });
