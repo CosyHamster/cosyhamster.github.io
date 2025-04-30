@@ -776,7 +776,7 @@ var currentSongIndex: number | null = null;
   registerChangeEvent(UPLOAD_DIRECTORY_BUTTON, () => importFiles(UPLOAD_DIRECTORY_BUTTON.files));
   registerInputEvent(PLAY_RATE_RANGE, () => { onPlayRateUpdate(parseFloat(PLAY_RATE_RANGE.value)) });
   registerInputEvent(PRELOAD_DIST_ELEMENT, () => { PRELOAD_DIST_ELEMENT.labels[0].textContent = `Value: ${PRELOAD_DIST_ELEMENT.value}` });
-  registerInputEvent(PLAY_PAN, () => onPanningUpdate);
+  registerInputEvent(PLAY_PAN, onPanningUpdate);
   registerInputEvent(VOLUME_CHANGER, onVolumeUpdate);
   initializeTableEvents();
   
@@ -1672,7 +1672,7 @@ function initContextMenu() {
         pointerEvent.preventDefault();
 
         return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, [
-          { text: (VOLUME_CHANGER.max != "1") ? "INCREASE VOLUME LIMIT" : "DECREASE VOLUME LIMIT", action: () => {
+          { text: (VOLUME_CHANGER.max == "1") ? "INCREASE VOLUME LIMIT" : "DECREASE VOLUME LIMIT", action: () => {
             if(VOLUME_CHANGER.max == "1"){
               VOLUME_CHANGER.max = "10";
             } else {
