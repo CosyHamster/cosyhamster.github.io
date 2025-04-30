@@ -162,8 +162,6 @@ class SongLoader{
         return;
       }
 
-
-
       if(!this.finishedLoadingAbortController){
         this.finishedLoadingAbortController = new AbortController();
       } else {
@@ -778,8 +776,8 @@ var currentSongIndex: number | null = null;
   registerChangeEvent(UPLOAD_DIRECTORY_BUTTON, () => importFiles(UPLOAD_DIRECTORY_BUTTON.files));
   registerInputEvent(PLAY_RATE_RANGE, () => { onPlayRateUpdate(parseFloat(PLAY_RATE_RANGE.value)) });
   registerInputEvent(PRELOAD_DIST_ELEMENT, () => { PRELOAD_DIST_ELEMENT.labels[0].textContent = `Value: ${PRELOAD_DIST_ELEMENT.value}` });
-  registerInputEvent(PLAY_PAN, () => { if(currentHowlExists()) sounds[currentSongIndex].howl.stereo(Number(PLAY_PAN.value)); PLAY_PAN.labels[0].textContent = `${Math.floor(Number(PLAY_PAN.value) * 100)}%`; });
-  registerInputEvent(VOLUME_CHANGER, () => { if (currentHowlExists()) sounds[currentSongIndex].howl.volume(Number(VOLUME_CHANGER.value)); VOLUME_CHANGER.labels[0].textContent = `${Math.floor(Number(VOLUME_CHANGER.value) * 100)}%`; });
+  registerInputEvent(PLAY_PAN, () => onPanningUpdate);
+  registerInputEvent(VOLUME_CHANGER, onVolumeUpdate);
   initializeTableEvents();
   
   ERROR_POPUP.addEventListener("close", onCloseErrorPopup);
@@ -1080,6 +1078,18 @@ function onPlayRateUpdate(newRate: number) {
   }
 
   sounds[currentSongIndex].howl.rate(newRate);
+}
+
+function onPanningUpdate(){
+  if(currentHowlExists())
+    sounds[currentSongIndex].howl.stereo(Number(PLAY_PAN.value));
+  PLAY_PAN.labels[0].textContent = `${Math.floor(Number(PLAY_PAN.value) * 100)}%`;
+}
+
+function onVolumeUpdate(){
+  if(currentHowlExists())
+    sounds[currentSongIndex].howl.volume(Number(VOLUME_CHANGER.value));
+  VOLUME_CHANGER.labels[0].textContent = `${Math.floor(Number(VOLUME_CHANGER.value) * 100)}%`;
 }
 
 function updateSeekDurationDisplay() {
@@ -1657,6 +1667,21 @@ function initContextMenu() {
           options.push({ text: "Toggle PIP (WIP)", action: () => TOGGLE_PIP_BUTTON.dispatchEvent(new MouseEvent('click')) });
 
         return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, options, true);
+      }
+      case "volumeBoost": {
+        pointerEvent.preventDefault();
+
+        return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, [
+          { text: (VOLUME_CHANGER.max != "1") ? "INCREASE VOLUME LIMIT" : "DECREASE VOLUME LIMIT", action: () => {
+            if(VOLUME_CHANGER.max == "1"){
+              VOLUME_CHANGER.max = "10";
+            } else {
+              VOLUME_CHANGER.max = "1";
+              VOLUME_CHANGER.value = "1";
+              onVolumeUpdate();
+            }
+          }}
+        ], false);
       }
       default: {
         // return spawnContextMenu(pointerEvent.clientX, pointerEvent.clientY, [], true);

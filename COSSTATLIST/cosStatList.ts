@@ -603,13 +603,13 @@ function updateRowColors(statTableBody: HTMLTableSectionElement){
 
 function createFilter(): HTMLDivElement{
     const div = document.createElement("div");
-    const button = document.createElement("button"); //div.querySelector("button[name='statTypeSelect']")
-    button.name = "statTypeSelect";
-    button.type = "button"
-    button.value = "-1";
-    button.style.width = "28ch";
-    button.textContent = "SELECT STAT TYPE";
-    button.title = "Select a stat to filter!"
+    const selectStatButton = document.createElement("button"); //div.querySelector("button[name='statTypeSelect']")
+    selectStatButton.name = "statTypeSelect";
+    selectStatButton.type = "button"
+    selectStatButton.value = "-1";
+    selectStatButton.style.width = "28ch";
+    selectStatButton.textContent = "SELECT STAT TYPE";
+    selectStatButton.title = "Select a stat to filter!"
     const deleteFilterButton = document.createElement("button");
     deleteFilterButton.name = "deleteFilter";
     deleteFilterButton.type = "button"
@@ -631,8 +631,8 @@ function createFilter(): HTMLDivElement{
     textInput.name = "statFilterInput"
     textInput.style.width = "20ch";
     setAttributes(textInput, StatValue.preferredInputAttributes())
-    button.addEventListener("click", () => {
-        openChooseTypeMenu(button, div);
+    selectStatButton.addEventListener("click", () => {
+        openChooseTypeMenu(selectStatButton, div);
     })
     const reverseLabel = document.createElement("label");
     reverseLabel.setAttribute("data-labelType", "reverse");
@@ -653,7 +653,7 @@ function createFilter(): HTMLDivElement{
 
     reverseLabel.append(reverseCheckbox, "Reverse");
     activeLabel.append(activeCheckbox, "Active");
-    div.append(button, select, textInput, reverseLabel, activeLabel, deleteFilterButton);
+    div.append(selectStatButton, select, textInput, reverseLabel, activeLabel, deleteFilterButton);
     return div;
 }
 
@@ -792,6 +792,7 @@ function openChooseTypeMenu(button: HTMLButtonElement, filterContainer: HTMLDivE
 
     FLOATING_WINDOW_TABLE.querySelector("tbody").replaceChildren(...rows);
     FLOATING_WINDOW.style.display = "block";
+    FLOATING_WINDOW.focus();
 }
 
 function chooseTypeSearchBarUpdate(){
@@ -815,6 +816,7 @@ function openConfigureTypesMenu(){
     FLOATING_WINDOW_SEARCH_BAR.oninput = configureTypesSearchBarUpdate; 
 
     const rows: HTMLTableRowElement[] = [];
+
     const selectAllRow = document.createElement("tr");
     const cell = document.createElement("td");
     const selectAllCheckbox = document.createElement("input");
@@ -877,6 +879,7 @@ function openConfigureTypesMenu(){
             }
             updateCreatureStatsTable();
         });
+
         const label = document.createElement("label");
         label.setAttribute("style", "display: block; width: 100%;");
         label.append(checkbox, statValue.displayName);
@@ -888,6 +891,7 @@ function openConfigureTypesMenu(){
 
     FLOATING_WINDOW_TABLE.querySelector("tbody").replaceChildren(...rows);
     FLOATING_WINDOW.style.display = "block";
+    FLOATING_WINDOW.focus();
 }
 
 function configureTypesSearchBarUpdate(){
@@ -993,9 +997,16 @@ function onFinishedLoadingData(){
 
 window.addEventListener("keydown", (keyEvent) => {
     if(keyEvent.key == "Escape"){
-        closeFloatingWindow()
+        closeFloatingWindow();
+    } else {
+        const target = keyEvent.target;
+        if(keyEvent.key == "Enter" && target instanceof HTMLInputElement && target.type == "checkbox"){
+            keyEvent.preventDefault();
+            target.checked = !target.checked;
+            target.dispatchEvent(new Event('change'));
+        }
     }
-}, true)
+});
 
 STAT_LIST_TABLE.addEventListener("click", (mouseEvent) => {
     if(STAT_LIST_TABLE.hasAttribute("disabled")) return;

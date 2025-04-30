@@ -62,7 +62,7 @@
             if (!self.ctx) {
                 setupAudioContext();
             }
-            if (typeof vol !== 'undefined' && vol >= 0 && vol <= 1) {
+            if (typeof vol !== 'undefined' && vol >= 0 && vol < 1000) {
                 self._volume = vol;
                 // Don't update any of the nodes if we are muted.
                 if (self._muted) {
@@ -1058,7 +1058,7 @@
             }
             // Update the volume or return the current volume.
             var sound;
-            if (typeof vol !== 'undefined' && vol >= 0 && vol <= 1) {
+            if (typeof vol !== 'undefined' && vol >= 0 && vol < 1000) {
                 // If the sound hasn't loaded, add it to the load queue to change volume when capable.
                 if (self._state !== 'loaded' || self._playLock) {
                     self._queue.push({

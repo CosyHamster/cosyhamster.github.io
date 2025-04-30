@@ -532,13 +532,13 @@ function updateRowColors(statTableBody) {
 }
 function createFilter() {
     const div = document.createElement("div");
-    const button = document.createElement("button"); //div.querySelector("button[name='statTypeSelect']")
-    button.name = "statTypeSelect";
-    button.type = "button";
-    button.value = "-1";
-    button.style.width = "28ch";
-    button.textContent = "SELECT STAT TYPE";
-    button.title = "Select a stat to filter!";
+    const selectStatButton = document.createElement("button"); //div.querySelector("button[name='statTypeSelect']")
+    selectStatButton.name = "statTypeSelect";
+    selectStatButton.type = "button";
+    selectStatButton.value = "-1";
+    selectStatButton.style.width = "28ch";
+    selectStatButton.textContent = "SELECT STAT TYPE";
+    selectStatButton.title = "Select a stat to filter!";
     const deleteFilterButton = document.createElement("button");
     deleteFilterButton.name = "deleteFilter";
     deleteFilterButton.type = "button";
@@ -560,8 +560,8 @@ function createFilter() {
     textInput.name = "statFilterInput";
     textInput.style.width = "20ch";
     setAttributes(textInput, StatValue.preferredInputAttributes());
-    button.addEventListener("click", () => {
-        openChooseTypeMenu(button, div);
+    selectStatButton.addEventListener("click", () => {
+        openChooseTypeMenu(selectStatButton, div);
     });
     const reverseLabel = document.createElement("label");
     reverseLabel.setAttribute("data-labelType", "reverse");
@@ -580,7 +580,7 @@ function createFilter() {
     activeCheckbox.checked = true;
     reverseLabel.append(reverseCheckbox, "Reverse");
     activeLabel.append(activeCheckbox, "Active");
-    div.append(button, select, textInput, reverseLabel, activeLabel, deleteFilterButton);
+    div.append(selectStatButton, select, textInput, reverseLabel, activeLabel, deleteFilterButton);
     return div;
 }
 function updateFilterChanges() {
@@ -710,6 +710,7 @@ function openChooseTypeMenu(button, filterContainer) {
     }
     FLOATING_WINDOW_TABLE.querySelector("tbody").replaceChildren(...rows);
     FLOATING_WINDOW.style.display = "block";
+    FLOATING_WINDOW.focus();
 }
 function chooseTypeSearchBarUpdate() {
     const searchTerm = FLOATING_WINDOW_SEARCH_BAR.value.toLowerCase();
@@ -800,6 +801,7 @@ function openConfigureTypesMenu() {
     }
     FLOATING_WINDOW_TABLE.querySelector("tbody").replaceChildren(...rows);
     FLOATING_WINDOW.style.display = "block";
+    FLOATING_WINDOW.focus();
 }
 function configureTypesSearchBarUpdate() {
     const searchTerm = FLOATING_WINDOW_SEARCH_BAR.value.toLowerCase();
@@ -892,7 +894,15 @@ window.addEventListener("keydown", (keyEvent) => {
     if (keyEvent.key == "Escape") {
         closeFloatingWindow();
     }
-}, true);
+    else {
+        const target = keyEvent.target;
+        if (keyEvent.key == "Enter" && target instanceof HTMLInputElement && target.type == "checkbox") {
+            keyEvent.preventDefault();
+            target.checked = !target.checked;
+            target.dispatchEvent(new Event('change'));
+        }
+    }
+});
 STAT_LIST_TABLE.addEventListener("click", (mouseEvent) => {
     if (STAT_LIST_TABLE.hasAttribute("disabled"))
         return;
