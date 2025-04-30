@@ -619,7 +619,7 @@ function createFilter(): HTMLDivElement{
         const nextElementSibling = containerElement.nextElementSibling;
 
         containerElement.remove();
-        if(nextElementSibling != null && nextElementSibling.id == "floatingWindow") closeFloatingWindow();
+        if(nextElementSibling?.id === "floatingWindow") closeFloatingWindow();
     })
     const select = document.createElement("select");
     select.name = "equalityType";
@@ -946,7 +946,7 @@ function onFinishedLoadingData(){
             nameCell.style.position = "sticky";
             nameCell.style.left = "0px";
         }
-    })
+    }).finally(() => STAT_LIST_TABLE.style.display = "");
 }
 
 (async () => { //START

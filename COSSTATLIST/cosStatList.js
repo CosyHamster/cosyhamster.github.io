@@ -547,7 +547,7 @@ function createFilter() {
         const containerElement = deleteFilterButton.closest("div");
         const nextElementSibling = containerElement.nextElementSibling;
         containerElement.remove();
-        if (nextElementSibling != null && nextElementSibling.id == "floatingWindow")
+        if (nextElementSibling?.id === "floatingWindow")
             closeFloatingWindow();
     });
     const select = document.createElement("select");
@@ -850,7 +850,7 @@ function onFinishedLoadingData() {
             nameCell.style.position = "sticky";
             nameCell.style.left = "0px";
         }
-    });
+    }).finally(() => STAT_LIST_TABLE.style.display = "");
 }
 (async () => {
     document.getElementById("loadingText").innerText = "LOADING TABLE...";
