@@ -1203,7 +1203,7 @@ async function startPlayingSpecificSong(index: number){ //called by HTML element
   changeStatus(StatusTexts.DOWNLOADING);
   let song = sounds[index];
   song.loadSong().then(succeeded => {
-    if(succeeded) startPlayingSong(song);
+    if(succeeded && currentSongIndex === index) startPlayingSong(song);
   })
   refreshPreloadedSongs();
 }
@@ -1212,7 +1212,6 @@ function startPlayingSong(song: Song) {
   setCurrentFileName(song.file.name);
   reapplySoundAttributes(song.howl);
   if (Number(PLAY_RATE.value) != 0) {
-    if(song.isUnloaded()) song.howl.load();
     song.howl.play();
     PLAY_BUTTON.checked = PLAYING;
   }
