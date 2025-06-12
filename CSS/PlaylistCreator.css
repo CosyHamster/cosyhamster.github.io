@@ -16,12 +16,12 @@
     display: inline-block;
     box-sizing: border-box;
     width: 0;
-    height: 9.86666668cqw;
+    height: 3em;
     border-color: transparent transparent transparent #000;
     transition: 100ms all ease;
     cursor: pointer;
     border-style: double;
-    border-width: 0 0 0 8cqw; /* 0px 0 0px 60px */
+    border-width: 0 0 0 3em; /* 0px 0 0px 60px */
     margin: auto;
 }
 .playpause input[type=checkbox] {
@@ -29,9 +29,44 @@
     display: none;
 }
 .playpause input[type=checkbox]:not(:checked) + div {
+    /*border-style: solid;*/
+    /*border-width: 4.933333334cqw 0 4.93333334cqw 8cqw; !* 37px 0 37px 60px *!*/
     border-style: solid;
-    border-width: 4.933333334cqw 0 4.93333334cqw 8cqw; /* 37px 0 37px 60px */
+    /*border-width: 1.5em 0 1.5em 2.5em;!* 37px 0 37px 60px *!*/
+    border-width: 6.3cqw 0 6.3cqw 10.5cqw;
 }
+
+label[for="playpause"]{
+    width: 100%;
+    height: 100%;
+    display: block;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+label[for="playpause"]:has(input){
+    background-image: url("../Icons/play-button-arrowhead-svgrepo-com.svg");
+    /*https://www.svgrepo.com/svg/164900/play-button-arrowhead*/
+}
+label[for="playpause"]:has(input:checked){
+    background-image: url("../Icons/pause-alt-svgrepo-com.svg");
+    /*https://www.svgrepo.com/svg/507380/pause-alt*/
+}
+
+label[for="repeatButton"]{
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+label[for="repeatButton"]:has(input){
+    background-image: url("../Icons/RepeatIcon.svg");
+    /*https://www.svgrepo.com/svg/523665/repeat;*/
+}
+label[for="repeatButton"]:has(input:checked){
+    background-image: url("../Icons/Repeat1Icon.svg");
+    /*https://www.svgrepo.com/svg/523664/repeat-one;*/
+}
+
 .smallplaypause div{
     border-width: 0 0 0 2.5em;/* 0px 0 0px 60px */
 }
@@ -212,38 +247,56 @@ dialog::backdrop{
     }
 }
 
-.pullsOpen div{
-    transform: translate(0, 50%);
+.pullsOpen div {
     position: absolute;
     width: 100%;
     height: 100%;
     bottom: 100%;
-    background: linear-gradient(0deg, #0000 50%, white 50%);
-    transition-duration: 200ms;
+    background: white;
+    transition: all 200ms ease;
     @media (prefers-reduced-motion) {
         transition-duration: 50ms;
     }
     visibility: hidden;
     opacity: 0;
-    z-index: 2;
+    z-index: 4;
+}
+.pullsOpen {
+    visibility: visible;position: absolute;width: 100%;height: 100%;background-color: rgba(255, 165, 0, 0.2);
 }
 .pullsOpen:is(:hover, :focus-within) div{
     width: 100%;
-    height: 40vw;
+    height: 200px;
+    @media(max-height: calc(3em + 200px)){
+        height: calc(100vh - 3em);
+    }
     visibility: visible;
     opacity: 1;
 }
+@media(max-width: 650px){
+    #planPanPullsOpen:is(:hover, :focus-within) div{
+        width: 200%;
+    }
+    #playRatePullsOpen:is(:hover, :focus-within) div{
+        width: 200%;
+        transform: translate(-25%, 0);
+    }
+    #volumePullsOpen:is(:hover, :focus-within) div{
+        width: 200%;
+        transform: translate(-50%, 0);
+    }
+}
+
+
 .shuffle + label svg {
-    float: right;
-    width: 50%;
-    height: 50%;
+    width: 100%;
+    height: 100%;
     fill: #000;
 }
 .shuffle:checked + label svg { fill: #ff0000; }
 .repeatButton + label img{
-    float: left;
-    width: 50%;
-    height: 50%;
+    width: 100%;
+    height: 100%;
     /* display: inline-block; */
 }
 .playingStatus{
@@ -268,18 +321,16 @@ dialog::backdrop{
 .fileSizeLabel{
     position: absolute;
     transform: translate(-100%, 0);
-    /*left: calc(100% - 3px);*/
-    left: 100%;
+    left: calc(100% - 10px);
+    /*left: 100%;*/
 }
 .songNumber{
     flex: 0 1 auto;
 }
 .largerSize{ max-width: 90%; }
 progress {
-    margin-top: 1em;
     width: 50vw;
     height: 1em;
-    transition: 0.3s;
 }
 input[type=file]{
     width:90px;
@@ -298,15 +349,21 @@ dt::after {
 }
 
 #Playlist_Viewer {
+    width:100%;
+    margin-bottom: 6em;
+    border: 1px solid black;
+    table-layout: fixed;
     user-select: none;
+    z-index: -2;
 }
 .mainTable {
-    position: absolute;
-    border: 1px solid black;
-    width: calc(100% - 20px);
-    top: max(var(--moveDown), 5ch);
-    transform: translate(0%, 0%);
-    z-index: -2;
+    background-color: #fbfbfb;
+    position: fixed;
+    width: calc(100%);
+    left: 0px;
+    top: 100vh;
+    transform: translate(0%, -100%);
+    z-index: 1;
 }
 table{
     border-spacing: 1px;

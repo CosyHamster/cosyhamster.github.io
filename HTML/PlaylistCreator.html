@@ -11,8 +11,6 @@
         <script defer src="../Javascript/PlaylistCreator.js"></script>
         <!-- <script defer src="../howler.js"></script> -->
         <!-- <script src="../ServiceWorker.js"></script> -->
-        <link rel="preload" as="image" imagesrcset="../Icons/RepeatIcon.svg" href="../CSS/PlaylistCreator.css">
-        <link rel="preload" as="image" imagesrcset="../Icons/Repeat1Icon.svg" href="../CSS/PlaylistCreator.css">
         <link rel="stylesheet" href="../CSS/PlaylistCreator.css">
         <!-- <link rel="stylesheet" id="compactModeStyleLink" href="../CSS/CompactMode.css" disabled> -->
         <link rel="stylesheet" href="../CSS/background.css">
@@ -20,7 +18,7 @@
     <body>
         <div id="loadingGray"></div>
         <div id="dragOverDisplay"><div style="position: fixed; top: 50vh; left: 50vw; transform: translate(-50%, -50%);" class="text" ><b>Drop Here to add Music</b></div></div>
-        <div style="z-index: -2; background-color: lightgrey; width: max-content; margin-top: 20px; left: -9999px; position: absolute; pointer-events: none;" id="hoveredTimeDisplay"><div style="margin-left:1ch; margin-right:1ch; color: black;" class="prevent-select text"></div></div>
+        <div style="z-index: 2; background-color: lightgrey; width: max-content; margin-top: -20px; left: -9999px; position: fixed; pointer-events: none;" id="hoveredTimeDisplay"><div style="margin-left:1ch; margin-right:1ch; color: black; z-index: 2" class="prevent-select text"></div></div>
 
         <input accept="audio/*" type="file" style="display: none;" id="0input" multiple>
         <input accept="audio/*" type="file" style="display: none;" id="inputDirectory" multiple webkitdirectory>
@@ -30,92 +28,93 @@
             <img tabindex="0" class="clickableButton" id="settingsButton" data-onRightClick="quickSettings" width=20 height=20 style="margin-left: auto;" src="../Icons/SettingsIcon.svg" alt="Settings"/> <!--https://en.m.wikipedia.org/wiki/File:Ic_settings_48px.svg-->
         </div>
 
-        <table class="mainTable" style="--moveDown: 30vh;">
+        <table class="mainTable">
             <tbody>
                 <tr>
-                    <td style="white-space: nowrap; height: 10ch;" colspan="5" class="tableBorder">
+                    <td style="white-space: nowrap;" class="tableBorder">
                         <div style="height: 100%; margin-left: auto; margin-right: auto; text-align: center;">
-                            <div class="fileStatus" id="0status"></div>
-                            <div id="firstDurationLabel" style="margin-right: 1ch;" class="text">00:00</div>
+                            <div class="fileStatus" style="color: black;" id="0status"></div>
+                            <div id="firstDurationLabel" style="margin-right: 1ch; color: black;" class="text">00:00</div>
                             <progress value="0" max="100" id="progress-bar" style="accent-color:white; z-index: 0;"></progress>
-                            <div id="secondDurationLabel" style="margin-left: 1ch;" class="text">00:00</div>
+                            <div id="secondDurationLabel" style="margin-left: 1ch; color: black;" class="text">00:00</div>
                         </div>
                     </td>
                 </tr>
                 <tr>
-                    <td id="skipBack" tabindex="0" class="cell clickableButton tableBorder" style="width: 20%">
-                        <img class="playBackIcon" width="30" height="30" style="width:50%; height:50%;" src="../Icons/SkipIcon.svg" alt="Previous Song"/>
-                    </td>
-                    <td id="seekBack" tabindex="0" seekDirection=-1 class="cell clickableButton tableBorder" style="width: 20%">
-                        <img class="playBackIcon" width="60" height="30" style="width:100%; height:100%" src="../Icons/SeekIcon.svg" alt="Seek Backwards"/>
-                    </td>
-                    <td tabindex="0" class="cell clickableButton tableBorder" style="width: 20%">
-                        <label for="playpause" class="clickableButton">
-                            <div class="playpause">
-                                <input type="checkbox" class="playpause" id="playpause" />
-                                <div></div>
+                    <td>
+                        <div style="display: flex; height: 3em; flex-direction: row;">
+                            <div id="modifiers" style="display: flex; flex-basis: 20%;">
+                                <label for="repeatButton" style="width: calc(100% / 2); max-width: 225px; height: 100%;" tabindex="0" class="clickableButton tableBorder">
+                                    <input type="checkbox" style="display: none;" id="repeatButton" class="repeatButton" title="Activate to repeat the current song indefinitely">
+                                    <!--<img class="clickableButton repeatIcon" enabledVersion="true" alt="Loop Song Enabled" src="../Icons/Repeat1Icon.svg"/>-->
+                                </label>
+                                <input type="checkbox" style="visibility: hidden; position: absolute;" class="shuffle" id="shuffleButton" title="Activate to play the songs in a random order.">
+                                <!-- https://commons.wikimedia.org/wiki/File:Shuffle_(50683)_-_The_Noun_Project.svg -->
+                                <label for="shuffleButton" style="width: calc(100% / 2); max-width: 225px; height: 100%;" tabindex="0"><svg class="clickableButton tableBorder" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" x="0px" y="0px" viewBox="0 0 100 100" width="50%" height="50%" xml:space="preserve"><path d="M83.745,69.516l-8.181,5.666V67.08c0,0-9.253,0-10.93,0c-15.551,0-29.989-27.566-41.66-27.566H8.069v-6.542h14.906  c18.125,0,29.063,27.65,41.66,27.65c1.76,0,10.93,0,10.93,0V52.52l8.181,5.666l8.186,5.665L83.745,69.516z"/><path d="M50.619,45.877c0.375,0.396,0.749,0.794,1.123,1.19c4.344-4.354,8.521-7.69,12.894-7.69c1.76,0,10.93,0,10.93,0v8.103  l8.181-5.666l8.186-5.666l-8.186-5.666l-8.181-5.665v8.102c0,0-9.253,0-10.93,0c-6.048,0-11.926,4.172-17.539,9.269  C48.298,43.419,49.472,44.659,50.619,45.877z"/><path d="M37.986,54.719c-0.633-0.626-1.276-1.261-1.923-1.894c-4.649,4.337-9.037,7.661-13.088,7.661H8.069v6.541h14.906  c6.979,0,12.889-4.103,18.243-9.145C40.123,56.824,39.044,55.763,37.986,54.719z"/></svg></label>
                             </div>
-                        </label>
-                    </td>
-                    <td id="seekForward" tabindex="0" seekDirection=1 class="cell clickableButton tableBorder" style="width: 20%">
-                        <img class="playBackIcon" width="60" height="30" style="width:100%; height:100%; transform: scaleX(-1);" src="../Icons/SeekIcon.svg" alt="Seek Forwards"/>
-                    </td>
-                    <td id="skipForward" tabindex="0" class="cell clickableButton tableBorder" style="width: 20%">
-                        <img class="playBackIcon" width="30" height="30" style="width:50%; height:50%; transform: scaleX(-1);" src="../Icons/SkipIcon.svg" alt="Next Song"/>
-                    </td>
-                </tr>
-                <tr>
-                    <td style="width: 20%" class="tableBorder">
-                        <input type="checkbox" style="visibility: hidden; position: absolute;" id="repeatButton" class="repeatButton" title="Activate to repeat the current song indefinitely">
-                        <label for="repeatButton" tabindex="0"><img id="repeatButtonImg" class="clickableButton repeatIcon" enabledVersion="false" alt="Loop Song Toggle" src="../Icons/RepeatIcon.svg"/><!--<img class="clickableButton repeatIcon" enabledVersion="true" alt="Loop Song Enabled" src="../Icons/Repeat1Icon.svg"/>--></label> <!-- (was remixed) https://www.svgrepo.com/svg/523665/repeat; https://www.svgrepo.com/svg/523664/repeat-one; -->
-                        <input type="checkbox" style="visibility: hidden; position: absolute;" class="shuffle" id="shuffleButton" title="Activate to play the songs in a random order.">
-                        <label for="shuffleButton" tabindex="0"><svg class="clickableButton" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" x="0px" y="0px" viewBox="0 0 100 100" width="50%" height="50%" xml:space="preserve"><path d="M83.745,69.516l-8.181,5.666V67.08c0,0-9.253,0-10.93,0c-15.551,0-29.989-27.566-41.66-27.566H8.069v-6.542h14.906  c18.125,0,29.063,27.65,41.66,27.65c1.76,0,10.93,0,10.93,0V52.52l8.181,5.666l8.186,5.665L83.745,69.516z"/><path d="M50.619,45.877c0.375,0.396,0.749,0.794,1.123,1.19c4.344-4.354,8.521-7.69,12.894-7.69c1.76,0,10.93,0,10.93,0v8.103  l8.181-5.666l8.186-5.666l-8.186-5.666l-8.181-5.665v8.102c0,0-9.253,0-10.93,0c-6.048,0-11.926,4.172-17.539,9.269  C48.298,43.419,49.472,44.659,50.619,45.877z"/><path d="M37.986,54.719c-0.633-0.626-1.276-1.261-1.923-1.894c-4.649,4.337-9.037,7.661-13.088,7.661H8.069v6.541h14.906  c6.979,0,12.889-4.103,18.243-9.145C40.123,56.824,39.044,55.763,37.986,54.719z"/></svg></label> <!-- https://commons.wikimedia.org/wiki/File:Shuffle_(50683)_-_The_Noun_Project.svg -->
-                    </td>
-                    <td style="position: relative; width: 20%" class="tableBorder" tabindex="0">
-                    </td>
-                    <td style="position: relative; width: 20%" class="tableBorder">
-                        <img class="playBackIcon" src="../Icons/HeadphonesIcon.svg" alt="Pan Changer" style="width:100%; height:100%; position: absolute; left:50%; transform: translate(-50%, -50%)"> <!--https://www.svgrepo.com/svg/103147/headphone-->
-                        <div tabindex="0" class="pullsOpen" style="visibility: visible; position: absolute; width: 100%; height: 100%; bottom: 50%; transform: translate(0, 50%);">
-                            <div>
-                                <input tabindex="0" type="range" id="0playPan" max=1 min=-1 value=0 step=0.01 list='commonPanValues' style="writing-mode: vertical-lr; direction: rtl; width: 100%; height: 100%; max-height: 50%; top: calc(25% - 2px); left: 50%; transform: translate(-50%, -50%); position: absolute;" />
-                                <label for="0playPan" style="color: black;">0%</label>
-                            </div>
-                        </div>
-                    </td>
-                    <td style="position: relative; width: 20%" class="tableBorder">
-                        <img class="playBackIcon" src="../Icons/PlaybackSpeedIcon.svg" alt="Playback Speed Changer" style="width:100%; height:100%; position: absolute; left:50%; transform: translate(-50%, -50%);"><!--https://www.svgrepo.com/svg/76295/download-speed-->
-                        <div tabindex="0" class="pullsOpen" style="visibility: visible; position: absolute; width: 100%; height: 100%; bottom: 50%; transform: translate(0, 50%);">
-                            <div>
-                                <input type="range" id="0playRateSlider" list='commonVolumesAndRates' max=2 min=0 value=1 step=0.01 style="writing-mode: vertical-lr; direction: rtl; position: absolute; width: 100%; height: calc(100% - 38.98px); max-height: calc(50% - 19.49px); top: calc(25% + 9.745px); left: 50%; transform: translate(-50%, -50%);" />
-                                <input type="number" style="width: calc(100% - 7.61px)" class="playRate" id="0playRate" value="1" step="0.01" min="0" inputmode="numeric">
-                            </div>
-                        </div>
-                    </td>
-                    <td class="clickableButton tableBorder" style="position: relative; width: 20%">
-                        <input style="display: none;" class="muteCheckbox" type="checkbox" id="0Mute">
-                        <label for="0Mute" style="cursor: pointer;">
-                            <!-- <img  src="../Icons/SpeakerIcon.svg" alt="Volume Changer & Mute Button"/> -->
-                            <svg style="width:50%; height:50%; position: relative; left:50%; transform: translate(-50%, 0%)" xmlns="http://www.w3.org/2000/svg" version="1.0" width="500" height="500" viewBox="0 0 75 75"><path d="M39.389,13.769 L22.235,28.606 L6,28.606 L6,47.699 L21.989,47.699 L39.389,62.75 L39.389,13.769z" style="stroke-width:5;stroke-linejoin:round;"/><path d="M48,27.6a19.5,19.5 0 0 1 0,21.4M55.1,20.5a30,30 0 0 1 0,35.6M61.6,14a38.8,38.8 0 0 1 0,48.6" style="fill: none;stroke-width:5;stroke-linecap:round"/></svg>
-                            <div tabindex="0" class="pullsOpen" style="visibility: visible; position: absolute; width: 100%; height: 100%; bottom: 50%; transform: translate(0, 50%);">
-                                <div data-onRightClick="volumeBoost">
-                                    <input type="range" id="0playVolume" list='commonVolumesAndRates' max=1 min=0 value=1 step=0.01 style="writing-mode: vertical-lr; direction: rtl; width: 100%; height: 100%; max-height: 50%; top: calc(25% - 2px); left: 50%; transform: translate(-50%, -50%); position: absolute;" />
-                                    <label for="0playVolume" style="color: black;">100%</label>
+                            <div id="controls" style="display: flex; flex-basis: 60%;">
+                                <div id="skipBack" tabindex="0" class="cell clickableButton tableBorder" style="width: calc(100% / 5); max-width: 270px;">
+                                    <img class="playBackIcon" width="30" height="30" style="width:50%; height:100%;" src="../Icons/SkipIcon.svg" alt="Previous Song"/>
+                                </div>
+                                <div id="seekBack" tabindex="0" class="cell clickableButton tableBorder" style="width: calc(100% / 5); max-width: 270px;">
+                                    <img class="playBackIcon" width="60" height="30" style="width:100%; height:100%" src="../Icons/SeekIcon.svg" alt="Seek Backwards"/>
+                                </div>
+                                <div tabindex="0" class="cell clickableButton tableBorder" style="width: calc(100% / 5); max-width: 270px;">
+                                    <label for="playpause" class="clickableButton">
+                                        <input type="checkbox" id="playpause" style="display: none"/>
+                                    </label>
+                                </div>
+                                <div id="seekForward" tabindex="0" class="cell clickableButton tableBorder" style="width: calc(100% / 5); max-width: 270px;">
+                                    <img class="playBackIcon" width="60" height="30" style="width:100%; height:100%; transform: scaleX(-1);" src="../Icons/SeekIcon.svg" alt="Seek Forwards"/>
+                                </div>
+                                <div id="skipForward" tabindex="0" class="cell clickableButton tableBorder" style="width: calc(100% / 5); max-width: 270px;">
+                                    <img class="playBackIcon" width="30" height="30" style="width:50%; height:100%; transform: scaleX(-1);" src="../Icons/SkipIcon.svg" alt="Next Song"/>
                                 </div>
                             </div>
-                        </label>
+                            <div id="modifiers1" style="display: flex; justify-content: flex-end; flex-basis: 20%;">
+                                <div style="position: relative; width: calc(100% / 3); max-width: 150px;" class="tableBorder">
+                                    <img class="playBackIcon" src="../Icons/HeadphonesIcon.svg" alt="Pan Changer" style="width:100%; height:100%; position: absolute; left:50%; transform: translate(-50%, 0%)"> <!--https://www.svgrepo.com/svg/103147/headphone-->
+                                    <div tabindex="0" id="planPanPullsOpen" class="pullsOpen" style="visibility: visible; position: absolute;">
+                                        <div>
+                                            <label for="0playPan" style="color: black; position: absolute;">0%</label>
+                                            <input tabindex="0" type="range" id="0playPan" max=1 min=-1 value=0 step=0.01 list='commonPanValues' style="writing-mode: vertical-lr; direction: rtl; width: 100%; height: 100%; position: relative;" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="position: relative; width: calc(100% / 3); max-width: 150px;" class="tableBorder">
+                                    <img class="playBackIcon" src="../Icons/PlaybackSpeedIcon.svg" alt="Playback Speed Changer" style="width:100%; height:100%; position: absolute; left:50%; transform: translate(-50%, 0%);"><!--https://www.svgrepo.com/svg/76295/download-speed-->
+                                    <div tabindex="0" id="playRatePullsOpen" class="pullsOpen" style="visibility: visible; position: absolute;">
+                                        <div style="display: flex; flex-direction: column;">
+                                            <input type="number" style="width: calc(100% - 7.6px)" class="playRate" id="0playRate" value="1" step="0.01" min="0" inputmode="numeric">
+                                            <input type="range" id="0playRateSlider" list='commonVolumesAndRates' max=2 min=0 value=1 step=0.01 style="writing-mode: vertical-lr; direction: rtl; width: 100%; height: 100%; flex-grow: 1" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="position: relative; width: calc(100% / 3); max-width: 150px;" class="clickableButton tableBorder">
+                                    <input style="display: none;" class="muteCheckbox" type="checkbox" id="0Mute">
+                                    <label for="0Mute" style="cursor: pointer;">
+                                        <!-- <img  src="../Icons/SpeakerIcon.svg" alt="Volume Changer & Mute Button"/> -->
+                                        <svg style="width:100%; height:100%; position: absolute; left:50%; transform: translate(-50%, 0%)" xmlns="http://www.w3.org/2000/svg" version="1.0" width="500" height="500" viewBox="0 0 75 75"><path d="M39.389,13.769 L22.235,28.606 L6,28.606 L6,47.699 L21.989,47.699 L39.389,62.75 L39.389,13.769z" style="stroke-width:5;stroke-linejoin:round;"/><path d="M48,27.6a19.5,19.5 0 0 1 0,21.4M55.1,20.5a30,30 0 0 1 0,35.6M61.6,14a38.8,38.8 0 0 1 0,48.6" style="fill: none;stroke-width:5;stroke-linecap:round"/></svg>
+                                        <div tabindex="0" id="volumePullsOpen" class="pullsOpen" data-onRightClick="volumeBoost"style="visibility: visible; position: absolute;">
+                                            <div >
+                                                <label for="0playVolume" style="color: black; position: absolute;">100%</label>
+                                                <input type="range" id="0playVolume" list='commonVolumesAndRates' max=1 min=0 value=1 step=0.01 style="writing-mode: vertical-lr; direction: rtl; width: 100%; height: 100%; position: relative;" />
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
                     </td>
                 </tr>
-                <tr>
-                    <td colspan=5>
-                        <table tabindex="0" style="width:100%; border: 1px; table-layout: fixed;" id="Playlist_Viewer">
-                            <tbody>
-                                <tr>
-                                    <th>Playlist</th>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </td>
-                </tr>
+            </tbody>
+        </table>
+
+        <table tabindex="0" id="Playlist_Viewer">
+            <tbody>
+            <tr>
+                <th>Playlist</th>
+            </tr>
             </tbody>
         </table>
 

@@ -113,9 +113,10 @@ class SongTableRow {
     const songNumberElement: HTMLDivElement = this.tableRow.firstElementChild.querySelector(".songNumber");
     songNumberElement.textContent = `${songNumber}. `;
   }
-  updateFileInfoDisplay(duration: number){
+  updateFileInfoDisplay(bytes: number, duration: number){
+    const megabytes: string = getInMegabytes(bytes);
     const formattedDuration: string = new Time(duration).toString();
-    this.setFileDisplay(formattedDuration, `${duration} seconds`);
+    this.setFileDisplay(formattedDuration, `${megabytes} MB`);
   }
   updateFileSizeDisplay(bytes: number){
     const megabytes: string = getInMegabytes(bytes);
@@ -439,7 +440,7 @@ class Song {
   updateFileInfoDisplay(){
     if(SHOW_LENGTHS.checked){
       if(this.duration !== null){
-        this.currentRow.updateFileInfoDisplay(this.duration);
+        this.currentRow.updateFileInfoDisplay(this.file.size, this.duration);
       } else {
         // this.currentRow.setFileDisplay(":??", "Loading.");
       }
@@ -688,12 +689,12 @@ var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(),
   SEEK_BACK = document.getElementById('seekBack') as HTMLTableCellElement,
   // SEEK_FORWARD = document.getElementById('seekForward') as HTMLTableCellElement,
   REPEAT_BUTTON = document.getElementById('repeatButton') as HTMLInputElement,
-  REPEAT_BUTTON_IMAGE = document.getElementById("repeatButtonImg") as HTMLImageElement,
   SHUFFLE_BUTTON = document.getElementById('shuffleButton') as HTMLInputElement,
   MUTE_BUTTON = document.getElementById('0Mute') as HTMLInputElement,
   PLAY_BUTTON = document.getElementById('playpause') as HTMLInputElement,
   STATUS_TEXT = document.getElementById('0status') as HTMLDivElement,
   CURRENT_FILE_NAME = document.getElementById('currentFileName') as HTMLElement,
+  POSITION_OF_SONG_DISPLAY = document.getElementById('firstDurationLabel') as HTMLElement,
   DURATION_OF_SONG_DISPLAY = document.getElementById('secondDurationLabel') as HTMLElement,
   DROPPING_FILE_OVERLAY = document.getElementById("dragOverDisplay") as HTMLDivElement;
 
@@ -764,8 +765,6 @@ var currentSongIndex: number | null = null;
   registerChangeEvent(REPEAT_BUTTON, () => {
       const checked = REPEAT_BUTTON.checked;
       if(currentHowlExists()) sounds[currentSongIndex].howl.loop(checked);
-      if (checked) REPEAT_BUTTON_IMAGE.src = "../Icons/Repeat1Icon.svg";
-      else REPEAT_BUTTON_IMAGE.src = "../Icons/RepeatIcon.svg";
   });
   registerKeyDownEvent(SHUFFLE_BUTTON.labels[0], () => SHUFFLE_BUTTON.click());
   registerChangeEvent(SHUFFLE_BUTTON, () => handleShuffleButton(SHUFFLE_BUTTON.checked));
@@ -869,7 +868,6 @@ function toggleCompactMode() {
     });
     curDoc.head.appendChild(COMPACT_MODE_LINK_ELEMENT);
   }
-  updateTranslationOfMainTable();
 }
 
 function onFrameStepped() {
@@ -894,7 +892,6 @@ function onFrameStepped() {
   const timeToSet: number = (currentTime / songDuration) * 100;
   if (Number.isFinite(timeToSet)) PROGRESS_BAR.value = timeToSet;
   updateCurrentTimeDisplay(currentTime, songDuration);
-  updateRowColor(PLAYLIST_VIEWER_TABLE.rows[currentSongIndex+1]);
 }
 
 function onLatePlayStart() {
@@ -906,6 +903,7 @@ function cannotUpdateProgress(isProcessing: boolean) {
   if (useObjectURLS) PROGRESS_BAR.value = 0;
 
   if (DURATION_OF_SONG_DISPLAY.textContent != "00:00") DURATION_OF_SONG_DISPLAY.textContent = "00:00";
+  if (POSITION_OF_SONG_DISPLAY.textContent != "00:00") POSITION_OF_SONG_DISPLAY.textContent = "00:00";
   if (HOVERED_TIME_DISPLAY.style.left != '-9999px') HOVERED_TIME_DISPLAY.style.left = '-9999px';
 }
 function reapplySoundAttributes(howl: Howl) {
@@ -917,24 +915,23 @@ function reapplySoundAttributes(howl: Howl) {
 function updateCurrentTimeDisplay(currentTime: number, songDurationInSeconds: number) {
   const songDurationFormatted = new Time(songDurationInSeconds).toString()
   if (DURATION_OF_SONG_DISPLAY.textContent != songDurationFormatted) DURATION_OF_SONG_DISPLAY.textContent = songDurationFormatted;
-  if (HOVERED_TIME_DISPLAY.hasAttribute('inUse')) return;
+  // if (HOVERED_TIME_DISPLAY.hasAttribute('inUse')) return;
 
-  const progressBarDomRect: DOMRect = PROGRESS_BAR.getBoundingClientRect();
-  if (progressBarDomRect.top + 50 < 0) return; //return if you scrolled away from the progress bar (+50 to include the hoveredTimeDisplay)
+  // const progressBarDomRect = PROGRESS_BAR.getBoundingClientRect();
+  // const hoveredTimeDisplayRect = HOVERED_TIME_DISPLAY.getBoundingClientRect();
+  // const beginningOfProgressBar = (progressBarDomRect.left - hoveredTimeDisplayRect.width / 2)+curWin.scrollX;
+  POSITION_OF_SONG_DISPLAY.textContent = new Time(currentTime).toString();
+  // if (HOVERED_TIME_DISPLAY.children[0].textContent != currentTimeString) HOVERED_TIME_DISPLAY.children[0].textContent = currentTimeString;
 
-  var hoveredTimeDisplayWidth = HOVERED_TIME_DISPLAY.getBoundingClientRect();
-  const beginningOfProgressBar = (progressBarDomRect.left - hoveredTimeDisplayWidth.width / 2)+curWin.scrollX;
-  const currentTimeString = new Time(currentTime).toString();
-  if (HOVERED_TIME_DISPLAY.children[0].textContent != currentTimeString) HOVERED_TIME_DISPLAY.children[0].textContent = currentTimeString;
-
-  const pixelsAcrossProgressBar = (progressBarDomRect.width * currentTime / songDurationInSeconds) - 1;
-  HOVERED_TIME_DISPLAY.style.top = `${progressBarDomRect.top + curWin.scrollY}px`;
-  HOVERED_TIME_DISPLAY.style.left = `${beginningOfProgressBar+pixelsAcrossProgressBar}px`;
+  // const pixelsAcrossProgressBar = (progressBarDomRect.width * currentTime / songDurationInSeconds) - 1;
+  // HOVERED_TIME_DISPLAY.style.top = `${progressBarDomRect.top}px`;
+  // HOVERED_TIME_DISPLAY.style.left = `${beginningOfProgressBar+pixelsAcrossProgressBar}px`;
 }
 
 function progressBarSeek(mouse: PointerEvent, hoverType: ProgressBarSeekAction): void {
   if (currentSongIndex === null || !sounds[currentSongIndex].isInExistence() || (mouse?.pointerType == "touch" && hoverType !== ProgressBarSeekAction.SEEK_TO) || hoverType === ProgressBarSeekAction.STOP_DISPLAYING){
-    HOVERED_TIME_DISPLAY.toggleAttribute('inUse', false);
+    // HOVERED_TIME_DISPLAY.toggleAttribute('inUse', false);
+    HOVERED_TIME_DISPLAY.style.left = '-9999px';
     return;
   }
 
@@ -949,7 +946,10 @@ function progressBarSeek(mouse: PointerEvent, hoverType: ProgressBarSeekAction):
       return;
     }
     case (ProgressBarSeekAction.DISPLAY_TIME): {
-      HOVERED_TIME_DISPLAY.toggleAttribute('inUse', true);
+      // HOVERED_TIME_DISPLAY.toggleAttribute('inUse', true);
+
+      const progressBarDomRect = PROGRESS_BAR.getBoundingClientRect();
+      HOVERED_TIME_DISPLAY.style.top = `${progressBarDomRect.top}px`;
       HOVERED_TIME_DISPLAY.style.left = `${(mouse.x - HOVERED_TIME_DISPLAY.getBoundingClientRect().width / 2) + 1}px`;
       HOVERED_TIME_DISPLAY.firstChild.textContent = new Time(seekToTime).toString();
       return;
@@ -958,9 +958,9 @@ function progressBarSeek(mouse: PointerEvent, hoverType: ProgressBarSeekAction):
 }
 
 /**
- * @param {string} error The exception.
- * @param {string} shortMessage A user-readable error message, if the type of error is known.
- * @param {string} errorCategory The category the error is contained in.
+ * @param error The exception.
+ * @param shortMessage A user-readable error message. If the error type is known, it will help to write this value out manually to better explain the error to the user.
+ * @param errorCategory The category the error is contained in.
 */
 function displayError(error: Error, shortMessage: string, errorCategory: string) {
   let insertAfter;
@@ -975,7 +975,7 @@ function displayError(error: Error, shortMessage: string, errorCategory: string)
   const songTitle = curDoc.createElement('dt');
   songTitle.textContent = errorCategory;
   const songError = curDoc.createElement('dd');
-  songError.textContent = error.name.concat(": ", shortMessage);
+  songError.textContent = error.name.concat(": ", shortMessage ?? error.message);
   songError.title = error.message;
 
   if (insertAfter) {
@@ -989,7 +989,7 @@ function displayError(error: Error, shortMessage: string, errorCategory: string)
 }
 
 function seek(seekDirection: number) { //controls audio seeking, seekDuration: usually +1 || -1
-  if (sounds[currentSongIndex].isUnloaded()) return;
+  if(currentSongIndex === null || sounds[currentSongIndex].isUnloaded()) return;
   const seekDuration = parseFloat(SEEK_DURATION_NUMBER_INPUT.value) * seekDirection;
   const numToAdd = (SEEK_DISTANCE_PROPORTIONAL_CHECKBOX.checked) ? seekDuration * parseFloat(PLAY_RATE.value) : seekDuration;
   const currentTime = sounds[currentSongIndex].howl.seek();
@@ -1035,7 +1035,6 @@ async function importFiles(element: DataTransfer | ArrayLike<File>) {
 
       songTableRows.push(songRow.tableRow); //index (2nd parameter) is used to number the checkboxes
       sounds.push(song);
-      updateTranslationOfMainTable();
     }
 
     addRowsInPlaylistTable(songTableRows);
@@ -1191,6 +1190,7 @@ async function startPlayingSpecificSong(index: number){ //called by HTML element
   Howler.stop();
 
   currentSongIndex = index;
+  updateRowColor(sounds[index].currentRow.tableRow)
   const soundName = sounds[index].file.name;
   const fileExtension = getFileExtension(soundName);
   if (SKIP_UNPLAYABLE_CHECKBOX.checked && !isValidExtension(fileExtension)) {
@@ -1238,9 +1238,8 @@ function isIndexInRangeOfCurrent(index: number) {
   return withinRange || inRangeWrappedToBegin || inRangeWrappedToEnd;
 }
 
-function jumpSong(amount?: number) { // amount can be negative or positive ;)
-  amount = amount ?? 1 //if no value inputted, assume u want to jump ahead one song
-
+function jumpSong(amount: number = 1) { // amount can be negative or positive ;)
+  if(currentSongIndex === null) return;
   currentSongIndex = (currentSongIndex+(sounds.length+amount))%sounds.length;
   // currentSongIndex += amount
   // if (currentSongIndex > sounds.length - 1) currentSongIndex %= sounds.length;
@@ -1342,7 +1341,7 @@ function setRowActive(row: HTMLTableRowElement){
 function updateRowColor(row: HTMLTableRowElement){
   if(row.hasAttribute("data-selected")){
     row.style.backgroundColor = RowColors.SELECTING;
-  } else if(row.rowIndex-1 === currentSongIndex){
+  } else if(currentSongIndex !== null && sounds[currentSongIndex]?.currentRow?.tableRow == row){
     setRowActive(row);
   } else {
     row.style.backgroundColor = RowColors.NONE;
@@ -1492,7 +1491,6 @@ function deleteSelectedSongs() {
   }
   deselectAll();
   updateSongNumberings();
-  updateTranslationOfMainTable();
   refreshPreloadedSongs();
 }
 function moveSelectedSongs(toIndex: number) {
@@ -1562,9 +1560,6 @@ function startPlayingFromKeyboard(keyboardEvent: KeyboardEvent) {
 }
 function tryFindTableRowInParents(element: Element): HTMLTableRowElement | null {
   return element.closest('tr');
-}
-function updateTranslationOfMainTable(){//COMPACT_MODE_TOGGLE.checked
-  MAIN_TABLE.style.setProperty("--moveDown", `calc(30vh - ${sounds.length*((/*COMPACT_MODE_TOGGLE.checked ? 22 : */52))}px)`);
 }
 function updateSongNumberings() {
   for(const song of sounds){

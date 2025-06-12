@@ -7,7 +7,7 @@ body {
   pointer-events: visible;
   -webkit-user-select: none;
 }
-::-webkit-scrollbar { width: 1em; }
+::-webkit-scrollbar { width: 16px; }
 /* Track */
 ::-webkit-scrollbar-track { background: #999; }
 /* Handle */
