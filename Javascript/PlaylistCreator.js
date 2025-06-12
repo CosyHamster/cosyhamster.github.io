@@ -979,6 +979,8 @@ function handleShuffleButton(enable) {
         for (let i = 0; i < sounds.length; i++) {
             sounds[i].updateFileInfoDisplay();
         }
+        if (currentSongIndex !== null)
+            updateRowColor(sounds[currentSongIndex].currentRow.tableRow);
         return;
     }
     let tempArray = sounds, foundCurrentPlayingSong = false;
@@ -999,6 +1001,8 @@ function handleShuffleButton(enable) {
     for (let i = 0; i < tempArray.length; i++)
         sounds[tempArray[i].nativeIndex] = tempArray[i];
     refreshSongNames();
+    if (currentSongIndex !== null)
+        updateRowColor(sounds[currentSongIndex].currentRow.tableRow);
     tempArray = null;
 }
 function shuffle() {
@@ -1193,13 +1197,16 @@ function setRowActive(row) {
     previouslyActiveRow = row;
 }
 function updateRowColor(row) {
+    let setColor = false;
+    if (currentSongIndex !== null && sounds[currentSongIndex]?.currentRow?.tableRow == row) {
+        setRowActive(row);
+        setColor = true;
+    }
     if (row.hasAttribute("data-selected")) {
         row.style.backgroundColor = RowColors.SELECTING;
+        setColor = true;
     }
-    else if (currentSongIndex !== null && sounds[currentSongIndex]?.currentRow?.tableRow == row) {
-        setRowActive(row);
-    }
-    else {
+    if (!setColor) {
         row.style.backgroundColor = RowColors.NONE;
     }
 }

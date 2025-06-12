@@ -1108,6 +1108,8 @@ function handleShuffleButton(enable: boolean) {
     for (let i = 0; i < sounds.length; i++) {
       sounds[i].updateFileInfoDisplay();
     }
+    if(currentSongIndex !== null)
+      updateRowColor(sounds[currentSongIndex].currentRow.tableRow)
     return;
   }
 
@@ -1131,6 +1133,8 @@ function handleShuffleButton(enable: boolean) {
   }
   for (let i = 0; i < tempArray.length; i++) sounds[tempArray[i].nativeIndex] = tempArray[i];
   refreshSongNames();
+  if(currentSongIndex !== null)
+    updateRowColor(sounds[currentSongIndex].currentRow.tableRow)
   tempArray = null;
 }
 
@@ -1339,11 +1343,18 @@ function setRowActive(row: HTMLTableRowElement){
 }
 
 function updateRowColor(row: HTMLTableRowElement){
+  let setColor = false;
+  if(currentSongIndex !== null && sounds[currentSongIndex]?.currentRow?.tableRow == row){
+    setRowActive(row);
+    setColor = true;
+  }
+
   if(row.hasAttribute("data-selected")){
     row.style.backgroundColor = RowColors.SELECTING;
-  } else if(currentSongIndex !== null && sounds[currentSongIndex]?.currentRow?.tableRow == row){
-    setRowActive(row);
-  } else {
+    setColor = true;
+  }
+
+  if(!setColor){
     row.style.backgroundColor = RowColors.NONE;
   }
 }
