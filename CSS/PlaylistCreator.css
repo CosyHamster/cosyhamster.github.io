@@ -336,9 +336,25 @@ dialog::backdrop{
 }
 .largerSize{ max-width: 90%; }
 progress {
+    accent-color: white;
     width: 50vw;
-    height: 1em;
+    height: .5em;
+    border: solid #858585 1px;
+    border-radius: 15px;
+    appearance: none;
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);;
 }
+progress::-webkit-progress-bar {
+    background-color: #3b3b3b;
+    border-radius: 15px;
+}
+progress::-webkit-progress-value {
+    background-color: white;
+    border-radius: 2px;
+}
+
 input[type=file]{
     width:90px;
     color:transparent;
