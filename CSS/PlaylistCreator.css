@@ -37,6 +37,9 @@
 }
 
 label[for="playpause"]{
+    position: relative;
+    transform: translateY(-50%);
+    top: 50%;
     width: 100%;
     height: 100%;
     display: block;
@@ -46,7 +49,6 @@ label[for="playpause"]{
 }
 label[for="playpause"]:has(input:not(:checked)){
     height: 90%;
-    margin-top: 4%;
     background-image: url("../Icons/play-button-arrowhead-svgrepo-com.svg");
     /*https://www.svgrepo.com/svg/164900/play-button-arrowhead*/
 }
@@ -113,7 +115,7 @@ label[for="repeatButton"]:has(input:checked){
     pointer-events: all;
 }
 
-[id="rightClickContextMenu"]{
+#rightClickContextMenu{
     width: max-content;
     height: 0;
     background-color: white;
@@ -128,10 +130,10 @@ label[for="repeatButton"]:has(input:checked){
         transition-property: opacity, height;
     }
 }
-[id="rightClickContextMenu"]:not([open]){
+#rightClickContextMenu:not([open]){
     pointer-events: none;
 }
-[id="rightClickContextMenu"][open]{
+#rightClickContextMenu[open]{
     opacity: 1;
 }
 .contextOption{

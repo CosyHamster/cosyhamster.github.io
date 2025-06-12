@@ -59,7 +59,7 @@
                                 <div id="seekBack" tabindex="0" class="cell clickableButton tableBorder" style="width: calc(100% / 5); max-width: 270px;">
                                     <img class="playBackIcon" width="60" height="30" style="width:100%; height:100%" src="../Icons/SeekIcon.svg" alt="Seek Backwards"/>
                                 </div>
-                                <div tabindex="0" class="cell clickableButton tableBorder" style="width: calc(100% / 5); max-width: 270px; display: flex; flex-wrap: wrap;">
+                                <div tabindex="0" class="cell clickableButton tableBorder" style="width: calc(100% / 5); max-width: 270px;">
                                     <label for="playpause" class="clickableButton">
                                         <input type="checkbox" id="playpause" style="display: none"/>
                                     </label>
@@ -95,7 +95,7 @@
                                     <label for="0Mute" style="cursor: pointer;">
                                         <!-- <img  src="../Icons/SpeakerIcon.svg" alt="Volume Changer & Mute Button"/> -->
                                         <svg style="width:100%; height:100%; position: absolute; left:50%; transform: translate(-50%, 0%)" xmlns="http://www.w3.org/2000/svg" version="1.0" width="500" height="500" viewBox="0 0 75 75"><path d="M39.389,13.769 L22.235,28.606 L6,28.606 L6,47.699 L21.989,47.699 L39.389,62.75 L39.389,13.769z" style="stroke-width:5;stroke-linejoin:round;"/><path d="M48,27.6a19.5,19.5 0 0 1 0,21.4M55.1,20.5a30,30 0 0 1 0,35.6M61.6,14a38.8,38.8 0 0 1 0,48.6" style="fill: none;stroke-width:5;stroke-linecap:round"/></svg>
-                                        <div tabindex="0" id="volumePullsOpen" class="pullsOpen" data-onRightClick="volumeBoost"style="visibility: visible; position: absolute;">
+                                        <div tabindex="0" id="volumePullsOpen" class="pullsOpen" data-onRightClick="volumeBoost" style="visibility: visible; position: absolute;">
                                             <div >
                                                 <label for="0playVolume" style="color: black; position: absolute;">100%</label>
                                                 <input type="range" id="0playVolume" list='commonVolumesAndRates' max=1 min=0 value=1 step=0.01 style="writing-mode: vertical-lr; direction: rtl; width: 100%; height: 100%; position: relative;" />
@@ -148,7 +148,7 @@
                     <label><input type="checkbox" id="skipUnplayable" checked>Skip files that are unsupported</label>
                 </div>
                 <div>
-                    <label><input type="checkbox" id="showLengths" checked>Display Song Durations</label>
+                    <label><input type="checkbox" id="showLengths" checked>Display song durations</label>
                 </div>
                 <div>
                     <label><input type="checkbox" id="reorderFiles">Allow reordering files</label>
