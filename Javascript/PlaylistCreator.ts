@@ -180,7 +180,8 @@ class SongLoader{
       }
 
       const onProgress = (progressEvent: ProgressEvent<FileReader>) => {
-        if (sounds[currentSongIndex].file == this.song.file) PROGRESS_BAR.value = (100 * progressEvent.loaded) / progressEvent.total;
+        if (sounds[currentSongIndex].file == this.song.file)
+          setProgressBarPercentage((100 * progressEvent.loaded) / progressEvent.total);
 
         if(SHOW_LENGTHS.checked){
           this.song.currentRow.setFileDisplay(
@@ -890,7 +891,7 @@ function onFrameStepped() {
   let currentTime = sounds[currentSongIndex].howl.seek();
 
   const timeToSet: number = (currentTime / songDuration) * 100;
-  if (Number.isFinite(timeToSet)) PROGRESS_BAR.value = timeToSet;
+  if (Number.isFinite(timeToSet)) setProgressBarPercentage(timeToSet);
   updateCurrentTimeDisplay(currentTime, songDuration);
 }
 
@@ -900,7 +901,7 @@ function onLatePlayStart() {
 }
 function cannotUpdateProgress(isProcessing: boolean) {
   if (isProcessing) changeStatus(StatusTexts.LOADING);
-  if (useObjectURLS) PROGRESS_BAR.value = 0;
+  if (useObjectURLS) setProgressBarPercentage(0);
 
   if (DURATION_OF_SONG_DISPLAY.textContent != "00:00") DURATION_OF_SONG_DISPLAY.textContent = "00:00";
   if (POSITION_OF_SONG_DISPLAY.textContent != "00:00") POSITION_OF_SONG_DISPLAY.textContent = "00:00";
@@ -1181,12 +1182,21 @@ function quitPlayingMusic(){
   filePlayingCheckboxes[currentSongIndex].checked = false;
   PLAY_BUTTON.checked = false;
   currentSongIndex = null;
-  PROGRESS_BAR.value = 0;
+  setProgressBarPercentage(0);
   for (let i = 0; i < sounds.length; i++) sounds[i].unload();
   Howler.stop();
   changeStatus(StatusTexts.STOPPED);
   updateRowColor(currentRow);
   return;
+}
+
+/**
+ * @param percent A number from 0 to 100
+ */
+function setProgressBarPercentage(percent: number){
+  PROGRESS_BAR.value = percent;
+  PROGRESS_BAR.style.setProperty("--percentage", String(percent)+'%');
+  // PROGRESS_BAR.style.setProperty("--percentageRev", String((-percent)+100)+'%');
 }
 
 async function startPlayingSpecificSong(index: number){ //called by HTML element
@@ -1484,7 +1494,7 @@ function deleteSelectedSongs() {
     const index = selectedRows[i].rowIndex - 1;
     if (index === currentSongIndex) {
       quitPlayingMusic(); //stop playing
-      PROGRESS_BAR.value = 0;
+      setProgressBarPercentage(0);
     } else if (currentSongIndex !== null && currentSongIndex > index){
       --currentSongIndex;
     }

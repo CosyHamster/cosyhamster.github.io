@@ -144,7 +144,7 @@ class SongLoader {
             }
             const onProgress = (progressEvent) => {
                 if (sounds[currentSongIndex].file == this.song.file)
-                    PROGRESS_BAR.value = (100 * progressEvent.loaded) / progressEvent.total;
+                    setProgressBarPercentage((100 * progressEvent.loaded) / progressEvent.total);
                 if (SHOW_LENGTHS.checked) {
                     this.song.currentRow.setFileDisplay(`${Math.round(100 * progressEvent.loaded / progressEvent.total)} %`, `${progressEvent.loaded} bytes / ${progressEvent.total} bytes`);
                 }
@@ -781,7 +781,7 @@ function onFrameStepped() {
     let currentTime = sounds[currentSongIndex].howl.seek();
     const timeToSet = (currentTime / songDuration) * 100;
     if (Number.isFinite(timeToSet))
-        PROGRESS_BAR.value = timeToSet;
+        setProgressBarPercentage(timeToSet);
     updateCurrentTimeDisplay(currentTime, songDuration);
 }
 function onLatePlayStart() {
@@ -792,7 +792,7 @@ function cannotUpdateProgress(isProcessing) {
     if (isProcessing)
         changeStatus(StatusTexts.LOADING);
     if (useObjectURLS)
-        PROGRESS_BAR.value = 0;
+        setProgressBarPercentage(0);
     if (DURATION_OF_SONG_DISPLAY.textContent != "00:00")
         DURATION_OF_SONG_DISPLAY.textContent = "00:00";
     if (POSITION_OF_SONG_DISPLAY.textContent != "00:00")
@@ -1044,13 +1044,21 @@ function quitPlayingMusic() {
     filePlayingCheckboxes[currentSongIndex].checked = false;
     PLAY_BUTTON.checked = false;
     currentSongIndex = null;
-    PROGRESS_BAR.value = 0;
+    setProgressBarPercentage(0);
     for (let i = 0; i < sounds.length; i++)
         sounds[i].unload();
     Howler.stop();
     changeStatus(StatusTexts.STOPPED);
     updateRowColor(currentRow);
     return;
+}
+/**
+ * @param percent A number from 0 to 100
+ */
+function setProgressBarPercentage(percent) {
+    PROGRESS_BAR.value = percent;
+    PROGRESS_BAR.style.setProperty("--percentage", String(percent) + '%');
+    // PROGRESS_BAR.style.setProperty("--percentageRev", String((-percent)+100)+'%');
 }
 async function startPlayingSpecificSong(index) {
     if (sounds[index].isInExistence())
@@ -1344,7 +1352,7 @@ function deleteSelectedSongs() {
         const index = selectedRows[i].rowIndex - 1;
         if (index === currentSongIndex) {
             quitPlayingMusic(); //stop playing
-            PROGRESS_BAR.value = 0;
+            setProgressBarPercentage(0);
         }
         else if (currentSongIndex !== null && currentSongIndex > index) {
             --currentSongIndex;
