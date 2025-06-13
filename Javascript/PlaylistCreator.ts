@@ -279,9 +279,9 @@ class SongLoader{
 }
 
 async function updateAllFileInfos(){
-  if(SHOW_LENGTHS.checked){
-    loadAndDisplaySongLengths();
-  }
+  // if(SHOW_LENGTHS.checked){
+  //   loadAndDisplaySongLengths();
+  // }
 
   for(const song of sounds){
     song.updateFileInfoDisplay();
@@ -299,11 +299,15 @@ async function loadAndDisplaySongLengths(){
 
   if(!loadSongs) return;
   for(const song of queuedSongs){
-    if(!SHOW_LENGTHS.checked){ queuedSongs.clear(); return; }
-    queuedSongs.delete(song);
+    if(!SHOW_LENGTHS.checked){
+      queuedSongs.clear();
+      return;
+    }
 
-    if(song.currentRow.isRemoved()) continue;
-    if(song.duration !== null) {
+    queuedSongs.delete(song);
+    if(song.currentRow.isRemoved())
+      continue;
+    if(song.durationLoaded()) {
       song.updateFileInfoDisplay();
       continue;
     }
@@ -330,6 +334,30 @@ async function loadAndDisplaySongLengths(){
       audio.src = song.fileURL;
     });
   }
+}
+
+async function loadSongDuration(song: Song){
+  await new Promise<void>((resolve) => {
+    const audio = curDoc.createElement('audio');
+    const abortController = new AbortController();
+    audio.addEventListener("durationchange", () => {
+      abortController.abort();
+      song.duration = audio.duration;
+      song.onDurationLoaded();
+      resolve();
+    }, {passive: true, once: true, signal: abortController.signal});
+    audio.addEventListener("error", () => {
+      abortController.abort();
+      resolve();
+    }, {passive: true, once: true, signal: abortController.signal});
+    audio.addEventListener("abort", () => {
+      abortController.abort();
+      resolve();
+    }, {passive: true, once: true, signal: abortController.signal});
+
+    audio.preload = "metadata";
+    audio.src = song.fileURL;
+  });
 }
 
 class Song {
@@ -438,17 +466,18 @@ class Song {
     return this.howl != null;
   }
 
+  durationLoaded(){
+    return this.duration !== null;
+  }
+
   updateFileInfoDisplay(){
-    if(SHOW_LENGTHS.checked){
-      if(this.duration !== null){
-        this.currentRow.updateFileInfoDisplay(this.file.size, this.duration);
-      } else {
-        // this.currentRow.setFileDisplay(":??", "Loading.");
-      }
+    if(SHOW_LENGTHS.checked && this.durationLoaded()){
+      this.currentRow.updateFileInfoDisplay(this.file.size, this.duration);
     } else {
       this.currentRow.updateFileSizeDisplay(this.file.size);
     }
   }
+
   onDurationLoaded(){
     this.updateFileInfoDisplay();
   }
@@ -492,14 +521,14 @@ class RequestAnimationFrameEventRegistrar extends RegistrableEvent {
   static raf: ((callback: FrameRequestCallback) => number) = (window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame).bind(window)
   constructor() {
     super();
-    RequestAnimationFrameEventRegistrar.raf((timestamp) => this.handleRAFCall(timestamp))
+    RequestAnimationFrameEventRegistrar.raf((timestamp) => this.handleRAFCall(timestamp));
   }
   handleRAFCall(timestamp: DOMHighResTimeStamp) {
-    this.callAllRegisteredFunctions(timestamp)
-    RequestAnimationFrameEventRegistrar.raf((timestamp) => this.handleRAFCall(timestamp))
+    this.callAllRegisteredFunctions(timestamp);
+    RequestAnimationFrameEventRegistrar.raf((timestamp) => this.handleRAFCall(timestamp));
   }
   override register(func: (timestamp: DOMHighResTimeStamp) => void) {
-    this.registeredCallbacks.push(func)
+    this.registeredCallbacks.push(func);
   }
 
   createNewListener(): void {
@@ -717,6 +746,7 @@ var currentSongIndex: number | null = null;
   });
   KEY_DOWN_EVENT.register((keyboardEvent) => { if(keyboardEvent.key == "Escape") deselectAll()});
   REQUEST_ANIMATION_FRAME_EVENT.register(onFrameStepped);
+  updateSongInfos();
   makeDocumentDroppable();
   // curDoc.addEventListener('touchend', (touchEvent: TouchEvent) => {
   //   if(touchEvent.touches == 1) {
@@ -869,6 +899,30 @@ function toggleCompactMode() {
     });
     curDoc.head.appendChild(COMPACT_MODE_LINK_ELEMENT);
   }
+}
+
+async function updateSongInfos() {
+  if(PLAYLIST_VIEWER_TABLE.rows.length < 2 || !SHOW_LENGTHS.checked) {
+    requestAnimationFrame(updateSongInfos);
+    return;
+  }
+
+  const firstRow = PLAYLIST_VIEWER_TABLE.rows[1];
+  const heightAway = firstRow.getBoundingClientRect().top;
+  const heightOfEachRow = firstRow.getBoundingClientRect().height;
+  const rowsAway = Math.floor(Math.max(-heightAway/heightOfEachRow, 0));
+
+  for(let i = 0; i < innerHeight/heightOfEachRow; i++){
+    const rowIndex = i+rowsAway+1;
+    if(rowIndex >= PLAYLIST_VIEWER_TABLE.rows.length) break;
+
+    const song = sounds[rowIndex-1];
+    if(!song.durationLoaded()){
+      await loadSongDuration(song);
+      break;
+    }
+  }
+  requestAnimationFrame(updateSongInfos);
 }
 
 function onFrameStepped() {
