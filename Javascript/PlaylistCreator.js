@@ -1293,7 +1293,7 @@ function stopHighlightingRow() {
     }
 }
 function onSingleClick(mouseEvent) {
-    if (mouseEvent instanceof PointerEvent && mouseEvent.pointerType != "click") {
+    if (mouseEvent instanceof PointerEvent && mouseEvent.pointerType != "mouse") {
         deselectAll();
         return;
     }
@@ -1553,8 +1553,8 @@ function onRowRightClick(mouseEvent) {
     const row = findValidTableRow(mouseEvent.target);
     if (row == null)
         return;
-    if (mouseEvent instanceof PointerEvent && mouseEvent.pointerType != "click") {
-        console.log(`mouseEvent.pointerType != "click"`);
+    if (mouseEvent instanceof PointerEvent && mouseEvent.pointerType != "mouse") {
+        console.log(`mouseEvent.pointerType != "mouse"`);
     }
     if (!selectedRows.includes(row)) {
         deselectAll();
