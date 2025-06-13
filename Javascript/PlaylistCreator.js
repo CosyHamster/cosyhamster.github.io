@@ -790,9 +790,9 @@ async function updateSongInfos() {
     const firstRow = PLAYLIST_VIEWER_TABLE.rows[1];
     const heightAway = firstRow.getBoundingClientRect().top;
     const heightOfEachRow = firstRow.getBoundingClientRect().height;
-    const rowsAway = Math.floor(Math.max(-heightAway / heightOfEachRow, 0));
+    const rowsAway = Math.floor(Math.max(-heightAway / heightOfEachRow, 0)) + 1;
     for (let i = 0; i < innerHeight / heightOfEachRow; i++) {
-        const rowIndex = i + rowsAway + 1;
+        const rowIndex = i + rowsAway;
         if (rowIndex >= PLAYLIST_VIEWER_TABLE.rows.length)
             break;
         const song = sounds[rowIndex - 1];
@@ -1293,6 +1293,10 @@ function stopHighlightingRow() {
     }
 }
 function onSingleClick(mouseEvent) {
+    if (mouseEvent instanceof PointerEvent && mouseEvent.pointerType != "click") {
+        deselectAll();
+        return;
+    }
     let row = findValidTableRow(mouseEvent.target);
     if (row == null)
         return;
@@ -1350,9 +1354,7 @@ function scrollRowIntoView(row) {
 }
 function selectRow(row) {
     row = findValidTableRow(row);
-    if (!row)
-        return;
-    if (row.hasAttribute("data-selected"))
+    if (!row || row.hasAttribute("data-selected"))
         return;
     row.toggleAttribute("data-selected", true);
     updateRowColor(row);
@@ -1366,7 +1368,7 @@ function onDoubleClick(mouseEvent) {
         playRow(row);
 }
 /**
- * @param removeIndex {number} (-1) = won't remove any elems from array
+ * @param removeIndex {number} the row index from selectedRows array to remove.
  * @param removeFromArray Whether to remove the index from the array.
  */
 function deselectRow(removeIndex, removeFromArray = true) {
@@ -1551,6 +1553,9 @@ function onRowRightClick(mouseEvent) {
     const row = findValidTableRow(mouseEvent.target);
     if (row == null)
         return;
+    if (mouseEvent instanceof PointerEvent && mouseEvent.pointerType != "click") {
+        console.log(`mouseEvent.pointerType != "click"`);
+    }
     if (!selectedRows.includes(row)) {
         deselectAll();
         selectRow(row);

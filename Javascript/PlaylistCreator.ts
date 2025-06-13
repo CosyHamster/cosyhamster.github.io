@@ -910,10 +910,10 @@ async function updateSongInfos() {
   const firstRow = PLAYLIST_VIEWER_TABLE.rows[1];
   const heightAway = firstRow.getBoundingClientRect().top;
   const heightOfEachRow = firstRow.getBoundingClientRect().height;
-  const rowsAway = Math.floor(Math.max(-heightAway/heightOfEachRow, 0));
+  const rowsAway = Math.floor(Math.max(-heightAway/heightOfEachRow, 0))+1;
 
   for(let i = 0; i < innerHeight/heightOfEachRow; i++){
-    const rowIndex = i+rowsAway+1;
+    const rowIndex = i+rowsAway;
     if(rowIndex >= PLAYLIST_VIEWER_TABLE.rows.length) break;
 
     const song = sounds[rowIndex-1];
@@ -1454,7 +1454,12 @@ function stopHighlightingRow() {
     hoveredRowInDragAndDrop.style.borderTopColor = "";
   }
 }
-function onSingleClick(mouseEvent: MouseEvent) {
+function onSingleClick(mouseEvent: MouseEvent | PointerEvent) {
+  if(mouseEvent instanceof PointerEvent && mouseEvent.pointerType != "click") {
+    deselectAll();
+    return;
+  }
+
   let row = findValidTableRow(mouseEvent.target as Element)
   if(row == null) return;
 
@@ -1509,8 +1514,8 @@ function scrollRowIntoView(row: HTMLTableRowElement){
 }
 function selectRow(row: HTMLTableRowElement) {
   row = findValidTableRow(row);
-  if(!row) return;
-  if(row.hasAttribute("data-selected")) return;
+  if(!row || row.hasAttribute("data-selected")) return;
+
   row.toggleAttribute("data-selected", true);
   updateRowColor(row);
   selectedRows.push(row);
@@ -1522,7 +1527,7 @@ function onDoubleClick(mouseEvent: MouseEvent) {
   if(row) playRow(row);
 }
 /**
- * @param removeIndex {number} (-1) = won't remove any elems from array
+ * @param removeIndex {number} the row index from selectedRows array to remove.
  * @param removeFromArray Whether to remove the index from the array.
  */
 function deselectRow(removeIndex: number, removeFromArray: boolean = true) {
@@ -1701,9 +1706,13 @@ function onRightClickFileDisplay(mouseEvent: MouseEvent) {
   mouseEvent.stopPropagation();
   return spawnContextMenu(mouseEvent.clientX, mouseEvent.clientY, [{ text: (SHOW_LENGTHS.checked) ? "Show File Sizes" : "Show Sound Lengths", action: () => SHOW_LENGTHS.dispatchEvent(new MouseEvent('click')) }], false);
 }
-function onRowRightClick(mouseEvent: MouseEvent) {
+function onRowRightClick(mouseEvent: MouseEvent | PointerEvent) {
     const row = findValidTableRow(mouseEvent.target as Element);
     if(row == null) return;
+
+    if(mouseEvent instanceof PointerEvent && mouseEvent.pointerType != "click") {
+      console.log(`mouseEvent.pointerType != "click"`);
+    }
 
     if (!selectedRows.includes(row)) {
       deselectAll();
