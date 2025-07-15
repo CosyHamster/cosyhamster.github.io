@@ -286,7 +286,6 @@ dialog::backdrop{
     }
     #playRatePullsOpen:is(:hover, :focus-within) div{
         width: 200%;
-        transform: translate(-25%, 0);
     }
     #volumePullsOpen:is(:hover, :focus-within) div{
         width: 200%;
@@ -355,9 +354,9 @@ progress {
     height: .5em;
     border: solid #858585 1px;
     border-radius: 15px;
-    -moz-appearance: progressbar;
-    -webkit-appearance: none;
     appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: progressbar;
     position: relative;
     top: 50%;
     transform: translateY(-50%);

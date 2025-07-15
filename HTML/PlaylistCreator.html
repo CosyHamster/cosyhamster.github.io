@@ -43,7 +43,7 @@
                 <tr>
                     <td>
                         <div style="display: flex; height: 3em; flex-direction: row;">
-                            <div id="modifiers" style="display: flex; flex-basis: 20%;">
+                            <div id="modifiers" style="display: flex; justify-content: flex-start; flex-basis: 20%;">
                                 <label for="repeatButton" style="width: calc(100% / 2); max-width: 225px; height: 100%;" tabindex="0" class="clickableButton tableBorder">
                                     <input type="checkbox" style="display: none;" id="repeatButton" class="repeatButton" title="Activate to repeat the current song indefinitely">
                                     <!--<img class="clickableButton repeatIcon" enabledVersion="true" alt="Loop Song Enabled" src="../Icons/Repeat1Icon.svg"/>-->
@@ -52,7 +52,7 @@
                                 <!-- https://commons.wikimedia.org/wiki/File:Shuffle_(50683)_-_The_Noun_Project.svg -->
                                 <label for="shuffleButton" style="width: calc(100% / 2); max-width: 225px; height: 100%;" tabindex="0"><svg class="clickableButton tableBorder" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" x="0px" y="0px" viewBox="0 0 100 100" width="50%" height="50%" xml:space="preserve"><path d="M83.745,69.516l-8.181,5.666V67.08c0,0-9.253,0-10.93,0c-15.551,0-29.989-27.566-41.66-27.566H8.069v-6.542h14.906  c18.125,0,29.063,27.65,41.66,27.65c1.76,0,10.93,0,10.93,0V52.52l8.181,5.666l8.186,5.665L83.745,69.516z"/><path d="M50.619,45.877c0.375,0.396,0.749,0.794,1.123,1.19c4.344-4.354,8.521-7.69,12.894-7.69c1.76,0,10.93,0,10.93,0v8.103  l8.181-5.666l8.186-5.666l-8.186-5.666l-8.181-5.665v8.102c0,0-9.253,0-10.93,0c-6.048,0-11.926,4.172-17.539,9.269  C48.298,43.419,49.472,44.659,50.619,45.877z"/><path d="M37.986,54.719c-0.633-0.626-1.276-1.261-1.923-1.894c-4.649,4.337-9.037,7.661-13.088,7.661H8.069v6.541h14.906  c6.979,0,12.889-4.103,18.243-9.145C40.123,56.824,39.044,55.763,37.986,54.719z"/></svg></label>
                             </div>
-                            <div id="controls" style="display: flex; flex-basis: 60%;">
+                            <div id="controls" style="display: flex; justify-content: center; flex-basis: 60%;">
                                 <div id="skipBack" tabindex="0" class="cell clickableButton tableBorder" style="width: calc(100% / 5); max-width: 270px;">
                                     <img class="playBackIcon" width="30" height="30" style="width:50%; height:100%;" src="../Icons/SkipIcon.svg" alt="Previous Song"/>
                                 </div>
@@ -83,7 +83,7 @@
                                 </div>
                                 <div style="position: relative; width: calc(100% / 3); max-width: 150px;" class="tableBorder">
                                     <img class="playBackIcon" src="../Icons/PlaybackSpeedIcon.svg" alt="Playback Speed Changer" style="width:100%; height:100%; position: absolute; left:50%; transform: translate(-50%, 0%);"><!--https://www.svgrepo.com/svg/76295/download-speed-->
-                                    <div tabindex="0" id="playRatePullsOpen" class="pullsOpen" style="visibility: visible; position: absolute;">
+                                    <div tabindex="0" id="playRatePullsOpen" class="pullsOpen" style="position: absolute; justify-content: center; display: flex; visibility: visible;">
                                         <div style="display: flex; flex-direction: column;">
                                             <input type="number" style="width: calc(100% - 7.6px)" class="playRate" id="0playRate" value="1" step="0.01" min="0" inputmode="numeric">
                                             <input type="range" id="0playRateSlider" list='commonVolumesAndRates' max=2 min=0 value=1 step=0.01 style="writing-mode: vertical-lr; direction: rtl; width: 100%; height: 100%; flex-grow: 1" />
