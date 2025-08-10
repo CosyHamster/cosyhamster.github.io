@@ -1380,7 +1380,10 @@ function initializeRowEvents(row: HTMLTableRowElement) {
   row.setAttribute('draggable', (REORDER_FILES_CHECKBOX.checked).toString());
   row.addEventListener('dragstart', (event: DragEvent) => {
     if (onlyFiles(event.dataTransfer)) return;
-    if (selectedRows.length == 0) selectRow(row);
+    if (!selectedRows.includes(row)) {
+      deselectAll();
+      selectRow(row);
+    }
 
     event.dataTransfer.clearData();
     for(const selectedRow of selectedRows){

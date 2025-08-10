@@ -8,6 +8,18 @@
   },
   {
     "type": "string",
+    "displayName": "Legacy Name",
+    "keyName": "legacyName",
+    "keyed": true
+  },
+  {
+    "type": "string",
+    "displayName": "Lore Name",
+    "keyName": "loreName",
+    "keyed": true
+  },
+  {
+    "type": "string",
     "displayName": "Class",
     "keyName": "class",
     "keyed": true

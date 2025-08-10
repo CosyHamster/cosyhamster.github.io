@@ -25,15 +25,6 @@ else {
     /* cspell: disable-next-line */
     ON_MOBILE = (/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series([46])0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(userAgent) || /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br([ev])w|bumb|bw-([nu])|c55\/|capi|ccwa|cdm-|cell|chtm|cldc|cmd-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc-s|devi|dica|dmob|do([cp])o|ds(12|-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly([-_])|g1 u|g560|gene|gf-5|g-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd-([mpt])|hei-|hi(pt|ta)|hp( i|ip)|hs-c|ht(c([- _agpst])|tp)|hu(aw|tc)|i-(20|go|ma)|i230|iac([ \-\/])|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja([tv])a|jbro|jemu|jigs|kddi|keji|kgt([ \/])|klon|kpt |kwc-|kyo([ck])|le(no|xi)|lg( g|\/([klu])|50|54|-[a-w])|libw|lynx|m1-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t([- ov])|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30([02])|n50([025])|n7(0([01])|10)|ne(([cm])-|on|tf|wf|wg|wt)|nok([6i])|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan([adt])|pdxg|pg(13|-([1-8]|c))|phil|pire|pl(ay|uc)|pn-2|po(ck|rt|se)|prox|psio|pt-g|qa-a|qc(07|12|21|32|60|-[2-7]|i-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h-|oo|p-)|sdk\/|se(c([-01])|47|mc|nd|ri)|sgh-|shar|sie([-m])|sk-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h-|v-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl-|tdg-|tel([im])|tim-|t-mo|to(pl|sh)|ts(70|m-|m3|m5)|tx-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c([- ])|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas-|your|zeto|zte-/i.test(userAgent.substring(0, 4)));
 }
-var FilterType;
-(function (FilterType) {
-    FilterType[FilterType["EQUALS"] = 0] = "EQUALS";
-    FilterType[FilterType["CONTAINS"] = 1] = "CONTAINS";
-    FilterType[FilterType["LESS_THAN"] = 2] = "LESS_THAN";
-    FilterType[FilterType["LESS_THAN_EQUALS"] = 3] = "LESS_THAN_EQUALS";
-    FilterType[FilterType["GREATER_THAN"] = 4] = "GREATER_THAN";
-    FilterType[FilterType["GREATER_THAN_EQUALS"] = 5] = "GREATER_THAN_EQUALS";
-})(FilterType || (FilterType = {}));
 class Filter {
     constructor(statType, filterType, inputtedText, reverseFilter) {
         this.statType = statType;
@@ -96,10 +87,10 @@ class AbilityBooleanValue extends StatValue {
     filter(creature, filterType, testVal) {
         testVal = testVal.toLowerCase();
         switch (filterType) {
-            case FilterType.EQUALS:
+            case 0 /* FilterType.EQUALS */:
                 const inputTrue = testVal == "yes" || testVal == "true" || testVal == "t" || testVal == "";
                 return this.getValue(creature) == inputTrue;
-            case FilterType.CONTAINS: return this.getDisplayValue(creature).toLowerCase().includes(testVal);
+            case 1 /* FilterType.CONTAINS */: return this.getDisplayValue(creature).toLowerCase().includes(testVal);
             default: return false;
         }
     }
@@ -139,12 +130,12 @@ class NumberStatValue extends StatValue {
     // }).bind(this);
     filter(creature, filterType, testVal) {
         switch (filterType) {
-            case FilterType.EQUALS: return this.getDisplayValue(creature).toLowerCase() == testVal.toLowerCase();
-            case FilterType.CONTAINS: return this.getDisplayValue(creature).toLowerCase().includes(testVal.toLowerCase());
-            case FilterType.LESS_THAN: return this.getValue(creature) < parseFloat(testVal);
-            case FilterType.LESS_THAN_EQUALS: return this.getValue(creature) <= parseFloat(testVal);
-            case FilterType.GREATER_THAN: return this.getValue(creature) > parseFloat(testVal);
-            case FilterType.GREATER_THAN_EQUALS: return this.getValue(creature) >= parseFloat(testVal);
+            case 0 /* FilterType.EQUALS */: return this.getDisplayValue(creature).toLowerCase() == testVal.toLowerCase();
+            case 1 /* FilterType.CONTAINS */: return this.getDisplayValue(creature).toLowerCase().includes(testVal.toLowerCase());
+            case 2 /* FilterType.LESS_THAN */: return this.getValue(creature) < parseFloat(testVal);
+            case 3 /* FilterType.LESS_THAN_EQUALS */: return this.getValue(creature) <= parseFloat(testVal);
+            case 4 /* FilterType.GREATER_THAN */: return this.getValue(creature) > parseFloat(testVal);
+            case 5 /* FilterType.GREATER_THAN_EQUALS */: return this.getValue(creature) >= parseFloat(testVal);
             default: return false;
         }
     }
@@ -196,8 +187,8 @@ class StringStatValue extends StatValue {
     }
     filter(creature, filterType, testVal) {
         switch (filterType) {
-            case FilterType.EQUALS: return this.getValue(creature).toLowerCase() == testVal.toLowerCase();
-            case FilterType.CONTAINS: return this.getValue(creature).toLowerCase().includes(testVal.toLowerCase());
+            case 0 /* FilterType.EQUALS */: return this.getValue(creature).toLowerCase() == testVal.toLowerCase();
+            case 1 /* FilterType.CONTAINS */: return this.getValue(creature).toLowerCase().includes(testVal.toLowerCase());
             default: return false;
         }
     }
@@ -247,12 +238,12 @@ class DateStatValue extends StatValue {
     filter(creature, filterType, testVal) {
         const date = new Date(testVal + "T00:00").getTime(); //this.getDateStringAsNumber(testVal);
         switch (filterType) {
-            case FilterType.EQUALS: return this.getValue(creature) == date;
-            case FilterType.CONTAINS: return this.getDisplayValue(creature).toLowerCase().includes(testVal.toLowerCase());
-            case FilterType.LESS_THAN: return this.getValue(creature) < date;
-            case FilterType.LESS_THAN_EQUALS: return this.getValue(creature) <= date;
-            case FilterType.GREATER_THAN: return this.getValue(creature) > date;
-            case FilterType.GREATER_THAN_EQUALS: return this.getValue(creature) >= date;
+            case 0 /* FilterType.EQUALS */: return this.getValue(creature) == date;
+            case 1 /* FilterType.CONTAINS */: return this.getDisplayValue(creature).toLowerCase().includes(testVal.toLowerCase());
+            case 2 /* FilterType.LESS_THAN */: return this.getValue(creature) < date;
+            case 3 /* FilterType.LESS_THAN_EQUALS */: return this.getValue(creature) <= date;
+            case 4 /* FilterType.GREATER_THAN */: return this.getValue(creature) > date;
+            case 5 /* FilterType.GREATER_THAN_EQUALS */: return this.getValue(creature) >= date;
             default: return false;
         }
     }
@@ -604,7 +595,7 @@ function updateFilterChanges() {
     updateCreatureStatsTable();
 }
 function updateFilterInput(filterContainer) {
-    const preferredInputAttributes = (getFilterTypeFromValue(filterContainer.querySelector("select").selectedIndex) == FilterType.CONTAINS) ? StatValue.preferredInputAttributes()
+    const preferredInputAttributes = (getFilterTypeFromValue(filterContainer.querySelector("select").selectedIndex) == 1 /* FilterType.CONTAINS */) ? StatValue.preferredInputAttributes()
         : statList[Number(filterContainer.querySelector("button[name='statTypeSelect']").value)].preferredInputAttributes();
     setAttributes(filterContainer.querySelector("input[name='statFilterInput']"), preferredInputAttributes);
 }
@@ -630,12 +621,12 @@ function filterCreatures() {
 function getFilterTypeFromValue(value) {
     // switch(value){ case "equals": return FilterType.EQUALS; case "contains": return FilterType.CONTAINS; case "lessThan": return FilterType.LESS_THAN; case "lessThanEquals": return FilterType.LESS_THAN_EQUALS; case "greaterThan": return FilterType.GREATER_THAN; case "greaterThanEquals": return FilterType.GREATER_THAN_EQUALS; default: return null; }
     switch (value) {
-        case 0: return FilterType.EQUALS;
-        case 1: return FilterType.CONTAINS;
-        case 2: return FilterType.LESS_THAN;
-        case 3: return FilterType.LESS_THAN_EQUALS;
-        case 4: return FilterType.GREATER_THAN;
-        case 5: return FilterType.GREATER_THAN_EQUALS;
+        case 0: return 0 /* FilterType.EQUALS */;
+        case 1: return 1 /* FilterType.CONTAINS */;
+        case 2: return 2 /* FilterType.LESS_THAN */;
+        case 3: return 3 /* FilterType.LESS_THAN_EQUALS */;
+        case 4: return 4 /* FilterType.GREATER_THAN */;
+        case 5: return 5 /* FilterType.GREATER_THAN_EQUALS */;
         default: return null;
     }
 }

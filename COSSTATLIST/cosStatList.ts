@@ -37,7 +37,7 @@ type Creature = {[key: string]: unknown} & {
     tableRow: HTMLTableRowElement
 }
 
-enum FilterType{
+const enum FilterType{
     EQUALS,
     CONTAINS,
     LESS_THAN,

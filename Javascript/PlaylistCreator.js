@@ -1223,8 +1223,10 @@ function initializeRowEvents(row) {
     row.addEventListener('dragstart', (event) => {
         if (onlyFiles(event.dataTransfer))
             return;
-        if (selectedRows.length == 0)
+        if (!selectedRows.includes(row)) {
+            deselectAll();
             selectRow(row);
+        }
         event.dataTransfer.clearData();
         for (const selectedRow of selectedRows) {
             event.dataTransfer.items.add(sounds[selectedRow.rowIndex - 1].file);
