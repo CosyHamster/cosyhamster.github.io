@@ -1637,6 +1637,18 @@ function deselectAll() {
   selectedRows = [];
   hideMobilePlaylistOptions();
 }
+function selectInterval() {
+  sortSelectedRows();
+  if(selectedRows.length < 2) return;
+  const startRowIndex = selectedRows[0].rowIndex+1;
+  const endRowIndex = selectedRows.at(-1).rowIndex;
+  const rows = PLAYLIST_VIEWER_TABLE.rows;
+  for (let i = startRowIndex; i < endRowIndex; i++){
+    selectRow(rows[i]);
+  }
+
+  updateMobilePlaylistOptions();
+}
 function selectAll() {
   const rows = PLAYLIST_VIEWER_TABLE.rows;
   if(rows.length <= 1) return;
@@ -1840,6 +1852,9 @@ function spawnRowContextMenu(clientX: number, clientY: number, showDefaultOption
     contextOptions.push({ text: (currentSongIndex != selectedRows[0].rowIndex - 1) ? "Play" : "Stop", action: () => playRow(selectedRows[0]) });
 
   contextOptions.push({ text: "Delete", action: deleteSelectedSongs });
+
+  if(selectedRows.length >= 2)
+    contextOptions.push({ text: "Select Interval", action: selectInterval });
 
   if(selectedRows.length !== PLAYLIST_VIEWER_TABLE.rows.length-1)
     contextOptions.push({ text: "Select All", action: selectAll });
