@@ -1,8 +1,13 @@
+html {
+    --mainTableControlsHeight: 3em;
+}
+
 .muteCheckbox + label svg{
     transition-duration: 200ms;
     fill: black;
     stroke: black;
 }
+
 .muteCheckbox:checked + label svg{
     fill: red;
     stroke: red;
@@ -274,8 +279,8 @@ dialog::backdrop{
 .pullsOpen:is(:hover, :focus-within) div{
     width: 100%;
     height: 200px;
-    @media(max-height: calc(3em + 200px)){
-        height: calc(100vh - 3em);
+    @media(max-height: calc(200px + 3em)){ /* i cant use var(--mainTableControlsHeight) here */
+        height: calc(100dvh - var(--mainTableControlsHeight));
     }
     visibility: visible;
     opacity: 1;
@@ -389,7 +394,7 @@ dt::after {
 
 #Playlist_Viewer {
     width:100%;
-    margin-bottom: 6em;
+    margin-bottom: calc(var(--mainTableControlsHeight) + 3em); /* + 3em for the progress bar section of the main controls */
     border: 1px solid black;
     table-layout: fixed;
     user-select: none;
@@ -400,7 +405,7 @@ dt::after {
     position: fixed;
     width: calc(100%);
     left: 0px;
-    top: 100vh;
+    top: 100dvh;
     transform: translate(0%, -100%);
     z-index: 1;
 }

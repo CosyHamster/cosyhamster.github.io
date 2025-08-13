@@ -1309,9 +1309,6 @@ function isIndexInRangeOfCurrent(index: number) {
 function jumpSong(amount: number = 1) { // amount can be negative or positive ;)
   if(currentSongIndex === null) return;
   currentSongIndex = (currentSongIndex+(sounds.length+amount))%sounds.length;
-  // currentSongIndex += amount
-  // if (currentSongIndex > sounds.length - 1) currentSongIndex %= sounds.length;
-  // else if (currentSongIndex < 0) currentSongIndex = Math.max(currentSongIndex + sounds.length, 0) //IDK a real solution to this
 
   const playButtonToActivate = filePlayingCheckboxes[currentSongIndex];
   playButtonToActivate.dispatchEvent(new MouseEvent('click'));
