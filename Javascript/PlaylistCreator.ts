@@ -1381,7 +1381,7 @@ function initializeTouchTableEvents(){
   PLAYLIST_VIEWER_TABLE.addEventListener('touchstart', function(event) {
     longTapping = false;
     // @ts-ignore
-    longTapTimer = setTimeout(onLongTap, 350, event);
+    longTapTimer = setTimeout(onLongTap, 425, event);
   }, {passive: true});
 
   PLAYLIST_VIEWER_TABLE.addEventListener('touchmove', function(event) {
