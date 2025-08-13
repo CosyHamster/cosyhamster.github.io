@@ -699,7 +699,6 @@ var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(),
   SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional') as HTMLInputElement,
   SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable') as HTMLInputElement,
   SHOW_LENGTHS = document.getElementById('showLengths') as HTMLInputElement,
-  REORDER_FILES_CHECKBOX = document.getElementById('reorderFiles') as HTMLInputElement,
   TOGGLE_PIP_BUTTON = document.getElementById('enterPIP') as HTMLButtonElement,
   UPLOAD_BUTTON = document.getElementById('0input') as HTMLInputElement,
   UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory') as HTMLInputElement,
@@ -710,6 +709,7 @@ var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(),
   DIALOGS = [SETTINGS_POPUP, ERROR_POPUP, DEPRECATED_POPUP],
   ERROR_LIST = document.getElementById('errorList') as HTMLDListElement,
   CONTEXT_MENU = document.getElementById('rightClickContextMenu') as HTMLDivElement,
+  MOBILE_PLAYLIST_OPTIONS= document.getElementById('mobilePlaylistOptions') as HTMLDivElement,
   // LOADING_GRAY = document.getElementById('loadingGray') as HTMLDivElement,
   PROGRESS_BAR = document.getElementById('progress-bar') as HTMLProgressElement,
   HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay') as HTMLDivElement,
@@ -783,13 +783,6 @@ var currentSongIndex: number | null = null;
   registerChangeEvent(PLAY_BUTTON, () => pauseOrUnpauseCurrentSong(!PLAY_BUTTON.checked));
   registerChangeEvent(COMPACT_MODE_TOGGLE, toggleCompactMode);
   registerChangeEvent(SHOW_LENGTHS, updateAllFileInfos);
-  registerChangeEvent(REORDER_FILES_CHECKBOX, () => {
-    const checked: boolean = REORDER_FILES_CHECKBOX.checked;
-    const rows: HTMLCollectionOf<HTMLTableRowElement> = PLAYLIST_VIEWER_TABLE.rows;
-    for(let i = PLAYLIST_VIEWER_TABLE.rows.length-1; i > 0; i--){ //purposely exclude last index. that is the header for the table
-      rows[i].draggable = checked;
-    }
-  });
   registerKeyDownEvent(MUTE_BUTTON.parentElement, () => MUTE_BUTTON.click());
   registerChangeEvent(MUTE_BUTTON, () => { if(currentHowlExists()) sounds[currentSongIndex].howl.mute(MUTE_BUTTON.checked); });
   registerKeyDownEvent(REPEAT_BUTTON.labels[0], () => REPEAT_BUTTON.click());
@@ -823,7 +816,6 @@ var currentSongIndex: number | null = null;
   }
 
   if(SITE_DEPRECATED) DEPRECATED_POPUP.showModal();
-  REORDER_FILES_CHECKBOX.dispatchEvent(new MouseEvent('click'));//.checked = !ON_MOBILE;
   SEEK_DISTANCE_PROPORTIONAL_CHECKBOX.checked = true;
   SKIP_UNPLAYABLE_CHECKBOX.checked = true;
   //END
@@ -1359,12 +1351,21 @@ function sleep(ms: number): Promise<void> { return new Promise(resolve => setTim
 function getInMegabytes(bytes: number): string { return (bytes / 1_048_576).toFixed(2); }
 function getFileExtension(fileName: string): string { return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase(); }
 
+/*               LONG TAP CUSTOM EVENT                */
+
+
+
+
+
+
 /*            TABLE INTERACTION FUNCTIONS             */
 
+var longTapTimer: (number | null) = null;
+var longTapping = false;
 function initializeTableEvents(){
   PLAYLIST_VIEWER_TABLE.addEventListener("keyup", (keyEvent) => {
     if(keyEvent.key == "Tab"){
-      if(selectedRows.length == 0 && PLAYLIST_VIEWER_TABLE.rows[1]) selectRow(PLAYLIST_VIEWER_TABLE.rows[1]);
+      if(selectedRows.length == 0 && PLAYLIST_VIEWER_TABLE.rows.length > 1) selectRow(PLAYLIST_VIEWER_TABLE.rows[1]);
       if(selectedRows[0]) scrollRowIntoView(selectedRows[0]);
     }
   });
@@ -1372,9 +1373,90 @@ function initializeTableEvents(){
   PLAYLIST_VIEWER_TABLE.addEventListener('click', onSingleClick, { passive: true });
   PLAYLIST_VIEWER_TABLE.addEventListener('dblclick', onDoubleClick, { passive: true });
   PLAYLIST_VIEWER_TABLE.addEventListener("contextmenu", onRowRightClick);
+
+  initializeTouchTableEvents();
 }
+
+function initializeTouchTableEvents(){
+  PLAYLIST_VIEWER_TABLE.addEventListener('touchstart', function(event) {
+    longTapping = false;
+    // @ts-ignore
+    longTapTimer = setTimeout(onLongTap, 350, event);
+  }, {passive: true});
+
+  PLAYLIST_VIEWER_TABLE.addEventListener('touchmove', function(event) {
+    if(longTapTimer !== null){
+      clearTimeout(longTapTimer);
+      longTapTimer = null;
+    }
+  }, {passive: true});
+
+  PLAYLIST_VIEWER_TABLE.addEventListener('touchend', function(event) {
+    if(longTapTimer !== null){
+      clearTimeout(longTapTimer);
+      longTapTimer = null;
+    }
+    if(longTapping)
+      event.preventDefault(); //prevent default click events from running
+    longTapping = false;
+  }, {passive: false});
+
+  document.getElementById("mobileDeselectRows").addEventListener("click", deselectAll);
+  document.getElementById("trashSelectedRows").addEventListener("click", deleteSelectedSongs);
+  document.getElementById("moreOptionsSelectedRows").addEventListener("click", spawnRowContextMenuMobile);
+}
+
+function onSelectRowMobile(row: HTMLTableRowElement){
+  if(isSelected(row)){
+    deselectRow(selectedRows.indexOf(row));
+    updateMobilePlaylistOptions();
+  } else {
+    selectRow(row);
+    showMobilePlaylistOptions();
+  }
+}
+
+function onLongTap(event: TouchEvent) {
+  longTapTimer = null;
+  longTapping = true;
+  if("vibrate" in navigator)
+    navigator.vibrate(5);
+  const target = event.target;
+  if (target instanceof Element) {
+    const row = findValidTableRow(target)
+    if (row) {
+      onSelectRowMobile(row)
+    }
+  }
+}
+
+function spawnRowContextMenuMobile(mouseEvent: MouseEvent | PointerEvent){
+  if(!contextMenuOpen()){
+    mouseEvent.stopPropagation();
+    spawnRowContextMenu(mouseEvent.clientX, 30, false);
+  }
+}
+
+function showMobilePlaylistOptions(){
+  MOBILE_PLAYLIST_OPTIONS.querySelector("#mobileSelectStatus").textContent = String(selectedRows.length) + " selected";
+  MOBILE_PLAYLIST_OPTIONS.toggleAttribute("data-active", true);
+}
+function updateMobilePlaylistOptions(){
+  if(selectedRows.length === 0){
+    hideMobilePlaylistOptions();
+  } else {
+    MOBILE_PLAYLIST_OPTIONS.querySelector("#mobileSelectStatus").textContent = String(selectedRows.length) + " selected";
+  }
+}
+function hideMobilePlaylistOptions(){
+  MOBILE_PLAYLIST_OPTIONS.toggleAttribute("data-active", false);
+}
+
+
+
 function initializeRowEvents(row: HTMLTableRowElement) {
-  row.setAttribute('draggable', (REORDER_FILES_CHECKBOX.checked).toString());
+  if(ON_MOBILE) return; //none of these work on mobile. ill need a polyfill or something
+  row.setAttribute('draggable', "true");
   row.addEventListener('dragstart', (event: DragEvent) => {
     if (onlyFiles(event.dataTransfer)) return;
     if (!selectedRows.includes(row)) {
@@ -1426,7 +1508,6 @@ function updateRowColor(row: HTMLTableRowElement){
 function whileDraggingRows(event: DragEvent): void  {
   if (onlyFiles(event.dataTransfer)) return;
   stopHighlightingRow();
-
   
   let hoveredElement = findValidTableRow(event.target as Element);
   if(!hoveredElement){
@@ -1447,6 +1528,7 @@ function onDropRow(event: DragEvent) {
   }
   moveSelectedSongs((row as HTMLTableRowElement).rowIndex - 1);
   event.stopPropagation();
+  event.preventDefault();
 }
 function stopHighlightingRow() {
   if (hoveredRowInDragAndDrop != null) {
@@ -1455,16 +1537,22 @@ function stopHighlightingRow() {
   }
 }
 function onSingleClick(mouseEvent: MouseEvent | PointerEvent) {
-  if(mouseEvent instanceof PointerEvent && mouseEvent.pointerType != "mouse") {
-    deselectAll();
-    return;
-  }
-
   let row = findValidTableRow(mouseEvent.target as Element)
   if(row == null) return;
 
+  if(mouseEvent instanceof PointerEvent && mouseEvent.pointerType != "mouse") {
+    if(selectedRows.length !== 0){
+      onSelectRowMobile(row);
+    }
+    return;
+  }
+
   if (mouseEvent.ctrlKey) {
-    if (row.hasAttribute("data-selected")) return deselectRow(selectedRows.indexOf(row as HTMLTableRowElement));
+    if (isSelected(row)){
+      deselectRow(selectedRows.indexOf(row as HTMLTableRowElement));
+      updateMobilePlaylistOptions();
+      return;
+    }
   } else if (mouseEvent.shiftKey && selectedRows.length != 0) {
     sortSelectedRows();
     let startingIndex = selectedRows[selectedRows.length - 1].rowIndex;
@@ -1475,11 +1563,13 @@ function onSingleClick(mouseEvent: MouseEvent | PointerEvent) {
       startingIndex = selectedRows[0].rowIndex;
       for (let i = startingIndex - 1; i > endingIndex; i--) selectRow(PLAYLIST_VIEWER_TABLE.rows[i]);
     }
+    updateMobilePlaylistOptions();
   } else {
     deselectAll();
   }
 
   selectRow(row as HTMLTableRowElement);
+  updateMobilePlaylistOptions();
 }
 // function onRightClick(pointerEvent){
 //   let row = pointerEvent.target;
@@ -1503,6 +1593,8 @@ function onSingleClick(mouseEvent: MouseEvent | PointerEvent) {
 
 //   spawnContextMenu(clientX, clientY, contextOptions, true);
 // }
+
+function isSelected(row: HTMLTableRowElement){ return row.hasAttribute("data-selected"); }
 function scrollRowIntoView(row: HTMLTableRowElement){
   //@ts-ignore
   if(row.scrollIntoViewIfNeeded){
@@ -1514,7 +1606,7 @@ function scrollRowIntoView(row: HTMLTableRowElement){
 }
 function selectRow(row: HTMLTableRowElement) {
   row = findValidTableRow(row);
-  if(!row || row.hasAttribute("data-selected")) return;
+  if(!row || isSelected(row)) return;
 
   row.toggleAttribute("data-selected", true);
   updateRowColor(row);
@@ -1522,6 +1614,10 @@ function selectRow(row: HTMLTableRowElement) {
   scrollRowIntoView(row);
 }
 function onDoubleClick(mouseEvent: MouseEvent) {
+  if(selectedRows.length > 1) {
+    return;
+  }
+
   deselectAll();
   let row: HTMLTableRowElement | null = findValidTableRow(mouseEvent.target as Element);
   if(row) playRow(row);
@@ -1539,6 +1635,20 @@ function deselectRow(removeIndex: number, removeFromArray: boolean = true) {
 function deselectAll() {
   for (let i = 0; i < selectedRows.length; i++) deselectRow(i, false);
   selectedRows = [];
+  hideMobilePlaylistOptions();
+}
+function selectAll() {
+  const rows = PLAYLIST_VIEWER_TABLE.rows;
+  if(rows.length <= 1) return;
+
+  for (let i = 1; i < rows.length; i++){
+    const row = rows[i];
+    row.toggleAttribute("data-selected", true);
+    updateRowColor(row);
+  }
+
+  selectedRows = Array.prototype.slice.call(rows, 1);
+  updateMobilePlaylistOptions();
 }
 function playRow(row: HTMLTableRowElement) {
   row = findValidTableRow(row);
@@ -1707,25 +1817,34 @@ function onRightClickFileDisplay(mouseEvent: MouseEvent) {
   return spawnContextMenu(mouseEvent.clientX, mouseEvent.clientY, [{ text: (SHOW_LENGTHS.checked) ? "Show File Sizes" : "Show Sound Lengths", action: () => SHOW_LENGTHS.dispatchEvent(new MouseEvent('click')) }], false);
 }
 function onRowRightClick(mouseEvent: MouseEvent | PointerEvent) {
-    const row = findValidTableRow(mouseEvent.target as Element);
-    if(row == null) return;
-
-    if(mouseEvent instanceof PointerEvent && mouseEvent.pointerType != "mouse") {
-      console.log(`mouseEvent.pointerType != "mouse"`);
-    }
-
-    if (!selectedRows.includes(row)) {
-      deselectAll();
-      selectRow(row);
-    }
-
-    const contextOptions: ContextMenuOption[] = [];
-    if (selectedRows.length == 1) contextOptions.push({ text: (currentSongIndex != selectedRows[0].rowIndex - 1) ? "Play" : "Stop", action: () => playRow(selectedRows[0]) });
-    contextOptions.push({ text: "Delete", action: deleteSelectedSongs });
-
+  if(mouseEvent instanceof PointerEvent && mouseEvent.pointerType != "mouse") {
     mouseEvent.preventDefault();
-    mouseEvent.stopPropagation();
-    return spawnContextMenu(mouseEvent.clientX, mouseEvent.clientY, contextOptions, true);
+    return;
+  }
+
+  const row = findValidTableRow(mouseEvent.target as Element);
+  if(row == null) return;
+
+  if (!selectedRows.includes(row)) {
+    deselectAll();
+    selectRow(row);
+  }
+
+  mouseEvent.preventDefault();
+  mouseEvent.stopPropagation();
+  spawnRowContextMenu(mouseEvent.clientX, mouseEvent.clientY, true);
+}
+function spawnRowContextMenu(clientX: number, clientY: number, showDefaultOptions: boolean){
+  const contextOptions: ContextMenuOption[] = [];
+  if (selectedRows.length == 1)
+    contextOptions.push({ text: (currentSongIndex != selectedRows[0].rowIndex - 1) ? "Play" : "Stop", action: () => playRow(selectedRows[0]) });
+
+  contextOptions.push({ text: "Delete", action: deleteSelectedSongs });
+
+  if(selectedRows.length !== PLAYLIST_VIEWER_TABLE.rows.length-1)
+    contextOptions.push({ text: "Select All", action: selectAll });
+
+  spawnContextMenu(clientX, clientY, contextOptions, showDefaultOptions);
 }
 function initContextMenu() {
   curDoc.addEventListener('contextmenu', (pointerEvent) => {
@@ -1773,16 +1892,15 @@ function initContextMenu() {
   });
 }
 
-function spawnContextMenu(clientX: number, clientY: number, contextOptions: ContextMenuOption[], allowDefaultOptions: Boolean) {
+function spawnContextMenu(clientX: number, clientY: number, contextOptions: ContextMenuOption[], showDefaultOptions: boolean) {
   let childElement: HTMLElement;
   while ((childElement = CONTEXT_MENU.lastChild as HTMLElement) != null) {
     CONTEXT_MENU.removeChild(childElement);
   }
 
-  if (allowDefaultOptions) {
+  if (showDefaultOptions) {
     contextOptions = contextOptions.concat([
-      { text: COMPACT_MODE_TOGGLE.checked ? "Disable Compact Mode" : "Enable Compact Mode", action: () => { COMPACT_MODE_TOGGLE.dispatchEvent(new MouseEvent('click')); } },
-      { text: REORDER_FILES_CHECKBOX.checked ? "Disable Song Reordering" : "Enable Song Reordering", action: () => { REORDER_FILES_CHECKBOX.dispatchEvent(new MouseEvent('click')); } }
+      { text: COMPACT_MODE_TOGGLE.checked ? "Disable Compact Mode" : "Enable Compact Mode", action: () => { COMPACT_MODE_TOGGLE.dispatchEvent(new MouseEvent('click')); } }
     ]);
   }
 
@@ -1828,4 +1946,5 @@ function spawnContextMenu(clientX: number, clientY: number, contextOptions: Cont
   if(contextButtons[0]) contextButtons[0].focus({focusVisible: true});
 }
 
+function contextMenuOpen(){ return CONTEXT_MENU.hasAttribute('open'); }
 function closeContextMenu() { CONTEXT_MENU.toggleAttribute('open', false); CONTEXT_MENU.style.height = '0'; }

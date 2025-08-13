@@ -602,7 +602,7 @@ var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(), K
     SELECTING: "lightblue",
     NONE: ""
 }, PAUSED = false, PLAYING = true, MAIN_TABLE = document.body.querySelector(".mainTable"), PLAYLIST_VIEWER_TABLE = document.getElementById("Playlist_Viewer"), PRELOAD_DIST_ELEMENT = document.getElementById('preloadDistance'), PRELOAD_TYPE_SELECTOR = document.getElementById("preloadType"), COMPACT_MODE_LINK_ELEMENT = null, //document.getElementById('compactModeStyleLink'),
-COMPACT_MODE_TOGGLE = document.getElementById('compactMode'), SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration'), SEEK_DURATION_DISPLAY = document.getElementById("seekDurationDisplay"), SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional'), SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable'), SHOW_LENGTHS = document.getElementById('showLengths'), REORDER_FILES_CHECKBOX = document.getElementById('reorderFiles'), TOGGLE_PIP_BUTTON = document.getElementById('enterPIP'), UPLOAD_BUTTON = document.getElementById('0input'), UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory'), PLAY_RATE_RANGE = document.getElementById('0playRateSlider'), SETTINGS_POPUP = document.getElementById('settingsPage'), ERROR_POPUP = document.getElementById('errorPopup'), DEPRECATED_POPUP = document.getElementById('deprecatedPopup'), DIALOGS = [SETTINGS_POPUP, ERROR_POPUP, DEPRECATED_POPUP], ERROR_LIST = document.getElementById('errorList'), CONTEXT_MENU = document.getElementById('rightClickContextMenu'), 
+COMPACT_MODE_TOGGLE = document.getElementById('compactMode'), SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration'), SEEK_DURATION_DISPLAY = document.getElementById("seekDurationDisplay"), SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional'), SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable'), SHOW_LENGTHS = document.getElementById('showLengths'), TOGGLE_PIP_BUTTON = document.getElementById('enterPIP'), UPLOAD_BUTTON = document.getElementById('0input'), UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory'), PLAY_RATE_RANGE = document.getElementById('0playRateSlider'), SETTINGS_POPUP = document.getElementById('settingsPage'), ERROR_POPUP = document.getElementById('errorPopup'), DEPRECATED_POPUP = document.getElementById('deprecatedPopup'), DIALOGS = [SETTINGS_POPUP, ERROR_POPUP, DEPRECATED_POPUP], ERROR_LIST = document.getElementById('errorList'), CONTEXT_MENU = document.getElementById('rightClickContextMenu'), MOBILE_PLAYLIST_OPTIONS = document.getElementById('mobilePlaylistOptions'), 
 // LOADING_GRAY = document.getElementById('loadingGray') as HTMLDivElement,
 PROGRESS_BAR = document.getElementById('progress-bar'), HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay'), VOLUME_CHANGER = document.getElementById('0playVolume'), PLAY_RATE = document.getElementById('0playRate'), PLAY_PAN = document.getElementById('0playPan'), SEEK_BACK = document.getElementById('seekBack'), 
 // SEEK_FORWARD = document.getElementById('seekForward') as HTMLTableCellElement,
@@ -662,13 +662,6 @@ var currentSongIndex = null;
     registerChangeEvent(PLAY_BUTTON, () => pauseOrUnpauseCurrentSong(!PLAY_BUTTON.checked));
     registerChangeEvent(COMPACT_MODE_TOGGLE, toggleCompactMode);
     registerChangeEvent(SHOW_LENGTHS, updateAllFileInfos);
-    registerChangeEvent(REORDER_FILES_CHECKBOX, () => {
-        const checked = REORDER_FILES_CHECKBOX.checked;
-        const rows = PLAYLIST_VIEWER_TABLE.rows;
-        for (let i = PLAYLIST_VIEWER_TABLE.rows.length - 1; i > 0; i--) { //purposely exclude last index. that is the header for the table
-            rows[i].draggable = checked;
-        }
-    });
     registerKeyDownEvent(MUTE_BUTTON.parentElement, () => MUTE_BUTTON.click());
     registerChangeEvent(MUTE_BUTTON, () => { if (currentHowlExists())
         sounds[currentSongIndex].howl.mute(MUTE_BUTTON.checked); });
@@ -705,7 +698,6 @@ var currentSongIndex = null;
     }
     if (SITE_DEPRECATED)
         DEPRECATED_POPUP.showModal();
-    REORDER_FILES_CHECKBOX.dispatchEvent(new MouseEvent('click')); //.checked = !ON_MOBILE;
     SEEK_DISTANCE_PROPORTIONAL_CHECKBOX.checked = true;
     SKIP_UNPLAYABLE_CHECKBOX.checked = true;
     //END
@@ -1200,11 +1192,14 @@ function setAttributes(element, attrs) { for (const key in attrs)
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 function getInMegabytes(bytes) { return (bytes / 1048576).toFixed(2); }
 function getFileExtension(fileName) { return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase(); }
+/*               LONG TAP CUSTOM EVENT                */
 /*            TABLE INTERACTION FUNCTIONS             */
+var longTapTimer = null;
+var longTapping = false;
 function initializeTableEvents() {
     PLAYLIST_VIEWER_TABLE.addEventListener("keyup", (keyEvent) => {
         if (keyEvent.key == "Tab") {
-            if (selectedRows.length == 0 && PLAYLIST_VIEWER_TABLE.rows[1])
+            if (selectedRows.length == 0 && PLAYLIST_VIEWER_TABLE.rows.length > 1)
                 selectRow(PLAYLIST_VIEWER_TABLE.rows[1]);
             if (selectedRows[0])
                 scrollRowIntoView(selectedRows[0]);
@@ -1214,9 +1209,81 @@ function initializeTableEvents() {
     PLAYLIST_VIEWER_TABLE.addEventListener('click', onSingleClick, { passive: true });
     PLAYLIST_VIEWER_TABLE.addEventListener('dblclick', onDoubleClick, { passive: true });
     PLAYLIST_VIEWER_TABLE.addEventListener("contextmenu", onRowRightClick);
+    initializeTouchTableEvents();
+}
+function initializeTouchTableEvents() {
+    PLAYLIST_VIEWER_TABLE.addEventListener('touchstart', function (event) {
+        longTapping = false;
+        // @ts-ignore
+        longTapTimer = setTimeout(onLongTap, 350, event);
+    }, { passive: true });
+    PLAYLIST_VIEWER_TABLE.addEventListener('touchmove', function (event) {
+        if (longTapTimer !== null) {
+            clearTimeout(longTapTimer);
+            longTapTimer = null;
+        }
+    }, { passive: true });
+    PLAYLIST_VIEWER_TABLE.addEventListener('touchend', function (event) {
+        if (longTapTimer !== null) {
+            clearTimeout(longTapTimer);
+            longTapTimer = null;
+        }
+        if (longTapping)
+            event.preventDefault(); //prevent default click events from running
+        longTapping = false;
+    }, { passive: false });
+    document.getElementById("mobileDeselectRows").addEventListener("click", deselectAll);
+    document.getElementById("trashSelectedRows").addEventListener("click", deleteSelectedSongs);
+    document.getElementById("moreOptionsSelectedRows").addEventListener("click", spawnRowContextMenuMobile);
+}
+function onSelectRowMobile(row) {
+    if (isSelected(row)) {
+        deselectRow(selectedRows.indexOf(row));
+        updateMobilePlaylistOptions();
+    }
+    else {
+        selectRow(row);
+        showMobilePlaylistOptions();
+    }
+}
+function onLongTap(event) {
+    longTapTimer = null;
+    longTapping = true;
+    if ("vibrate" in navigator)
+        navigator.vibrate(5);
+    const target = event.target;
+    if (target instanceof Element) {
+        const row = findValidTableRow(target);
+        if (row) {
+            onSelectRowMobile(row);
+        }
+    }
+}
+function spawnRowContextMenuMobile(mouseEvent) {
+    if (!contextMenuOpen()) {
+        mouseEvent.stopPropagation();
+        spawnRowContextMenu(mouseEvent.clientX, 30, false);
+    }
+}
+function showMobilePlaylistOptions() {
+    MOBILE_PLAYLIST_OPTIONS.querySelector("#mobileSelectStatus").textContent = String(selectedRows.length) + " selected";
+    MOBILE_PLAYLIST_OPTIONS.toggleAttribute("data-active", true);
+}
+function updateMobilePlaylistOptions() {
+    if (selectedRows.length === 0) {
+        hideMobilePlaylistOptions();
+    }
+    else {
+        MOBILE_PLAYLIST_OPTIONS.querySelector("#mobileSelectStatus").textContent = String(selectedRows.length) + " selected";
+    }
+}
+function hideMobilePlaylistOptions() {
+    MOBILE_PLAYLIST_OPTIONS.toggleAttribute("data-active", false);
 }
 function initializeRowEvents(row) {
-    row.setAttribute('draggable', (REORDER_FILES_CHECKBOX.checked).toString());
+    if (ON_MOBILE)
+        return; //none of these work on mobile. ill need a polyfill or something
+    row.setAttribute('draggable', "true");
     row.addEventListener('dragstart', (event) => {
         if (onlyFiles(event.dataTransfer))
             return;
@@ -1284,6 +1351,7 @@ function onDropRow(event) {
     }
     moveSelectedSongs(row.rowIndex - 1);
     event.stopPropagation();
+    event.preventDefault();
 }
 function stopHighlightingRow() {
     if (hoveredRowInDragAndDrop != null) {
@@ -1292,16 +1360,21 @@ function stopHighlightingRow() {
     }
 }
 function onSingleClick(mouseEvent) {
-    if (mouseEvent instanceof PointerEvent && mouseEvent.pointerType != "mouse") {
-        deselectAll();
-        return;
-    }
     let row = findValidTableRow(mouseEvent.target);
     if (row == null)
         return;
+    if (mouseEvent instanceof PointerEvent && mouseEvent.pointerType != "mouse") {
+        if (selectedRows.length !== 0) {
+            onSelectRowMobile(row);
+        }
+        return;
+    }
     if (mouseEvent.ctrlKey) {
-        if (row.hasAttribute("data-selected"))
-            return deselectRow(selectedRows.indexOf(row));
+        if (isSelected(row)) {
+            deselectRow(selectedRows.indexOf(row));
+            updateMobilePlaylistOptions();
+            return;
+        }
     }
     else if (mouseEvent.shiftKey && selectedRows.length != 0) {
         sortSelectedRows();
@@ -1316,11 +1389,13 @@ function onSingleClick(mouseEvent) {
             for (let i = startingIndex - 1; i > endingIndex; i--)
                 selectRow(PLAYLIST_VIEWER_TABLE.rows[i]);
         }
+        updateMobilePlaylistOptions();
     }
     else {
         deselectAll();
     }
     selectRow(row);
+    updateMobilePlaylistOptions();
 }
 // function onRightClick(pointerEvent){
 //   let row = pointerEvent.target;
@@ -1341,6 +1416,7 @@ function onSingleClick(mouseEvent) {
 //   contextOptions.push({text: "Delete", action: deleteSelectedSongs});
 //   spawnContextMenu(clientX, clientY, contextOptions, true);
 // }
+function isSelected(row) { return row.hasAttribute("data-selected"); }
 function scrollRowIntoView(row) {
     //@ts-ignore
     if (row.scrollIntoViewIfNeeded) {
@@ -1353,7 +1429,7 @@ function scrollRowIntoView(row) {
 }
 function selectRow(row) {
     row = findValidTableRow(row);
-    if (!row || row.hasAttribute("data-selected"))
+    if (!row || isSelected(row))
         return;
     row.toggleAttribute("data-selected", true);
     updateRowColor(row);
@@ -1361,6 +1437,9 @@ function selectRow(row) {
     scrollRowIntoView(row);
 }
 function onDoubleClick(mouseEvent) {
+    if (selectedRows.length > 1) {
+        return;
+    }
     deselectAll();
     let row = findValidTableRow(mouseEvent.target);
     if (row)
@@ -1381,6 +1460,19 @@ function deselectAll() {
     for (let i = 0; i < selectedRows.length; i++)
         deselectRow(i, false);
     selectedRows = [];
+    hideMobilePlaylistOptions();
+}
+function selectAll() {
+    const rows = PLAYLIST_VIEWER_TABLE.rows;
+    if (rows.length <= 1)
+        return;
+    for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        row.toggleAttribute("data-selected", true);
+        updateRowColor(row);
+    }
+    selectedRows = Array.prototype.slice.call(rows, 1);
+    updateMobilePlaylistOptions();
 }
 function playRow(row) {
     row = findValidTableRow(row);
@@ -1549,23 +1641,29 @@ function onRightClickFileDisplay(mouseEvent) {
     return spawnContextMenu(mouseEvent.clientX, mouseEvent.clientY, [{ text: (SHOW_LENGTHS.checked) ? "Show File Sizes" : "Show Sound Lengths", action: () => SHOW_LENGTHS.dispatchEvent(new MouseEvent('click')) }], false);
 }
 function onRowRightClick(mouseEvent) {
+    if (mouseEvent instanceof PointerEvent && mouseEvent.pointerType != "mouse") {
+        mouseEvent.preventDefault();
+        return;
+    }
     const row = findValidTableRow(mouseEvent.target);
     if (row == null)
         return;
-    if (mouseEvent instanceof PointerEvent && mouseEvent.pointerType != "mouse") {
-        console.log(`mouseEvent.pointerType != "mouse"`);
-    }
     if (!selectedRows.includes(row)) {
         deselectAll();
         selectRow(row);
     }
+    mouseEvent.preventDefault();
+    mouseEvent.stopPropagation();
+    spawnRowContextMenu(mouseEvent.clientX, mouseEvent.clientY, true);
+}
+function spawnRowContextMenu(clientX, clientY, showDefaultOptions) {
     const contextOptions = [];
     if (selectedRows.length == 1)
         contextOptions.push({ text: (currentSongIndex != selectedRows[0].rowIndex - 1) ? "Play" : "Stop", action: () => playRow(selectedRows[0]) });
     contextOptions.push({ text: "Delete", action: deleteSelectedSongs });
-    mouseEvent.preventDefault();
-    mouseEvent.stopPropagation();
-    return spawnContextMenu(mouseEvent.clientX, mouseEvent.clientY, contextOptions, true);
+    if (selectedRows.length !== PLAYLIST_VIEWER_TABLE.rows.length - 1)
+        contextOptions.push({ text: "Select All", action: selectAll });
+    spawnContextMenu(clientX, clientY, contextOptions, showDefaultOptions);
 }
 function initContextMenu() {
     curDoc.addEventListener('contextmenu', (pointerEvent) => {
@@ -1610,15 +1708,14 @@ function initContextMenu() {
             deselectAll();
     });
 }
-function spawnContextMenu(clientX, clientY, contextOptions, allowDefaultOptions) {
+function spawnContextMenu(clientX, clientY, contextOptions, showDefaultOptions) {
     let childElement;
     while ((childElement = CONTEXT_MENU.lastChild) != null) {
         CONTEXT_MENU.removeChild(childElement);
     }
-    if (allowDefaultOptions) {
+    if (showDefaultOptions) {
         contextOptions = contextOptions.concat([
-            { text: COMPACT_MODE_TOGGLE.checked ? "Disable Compact Mode" : "Enable Compact Mode", action: () => { COMPACT_MODE_TOGGLE.dispatchEvent(new MouseEvent('click')); } },
-            { text: REORDER_FILES_CHECKBOX.checked ? "Disable Song Reordering" : "Enable Song Reordering", action: () => { REORDER_FILES_CHECKBOX.dispatchEvent(new MouseEvent('click')); } }
+            { text: COMPACT_MODE_TOGGLE.checked ? "Disable Compact Mode" : "Enable Compact Mode", action: () => { COMPACT_MODE_TOGGLE.dispatchEvent(new MouseEvent('click')); } }
         ]);
     }
     const contextButtons = [];
@@ -1660,5 +1757,6 @@ function spawnContextMenu(clientX, clientY, contextOptions, allowDefaultOptions)
     if (contextButtons[0])
         contextButtons[0].focus({ focusVisible: true });
 }
+function contextMenuOpen() { return CONTEXT_MENU.hasAttribute('open'); }
 function closeContextMenu() { CONTEXT_MENU.toggleAttribute('open', false); CONTEXT_MENU.style.height = '0'; }
 //# sourceMappingURL=PlaylistCreator.js.map

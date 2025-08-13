@@ -17,6 +17,14 @@
     </head>
     <body>
         <div id="loadingGray"></div>
+        <div id="mobilePlaylistOptions">
+            <img class="clickableButton" id="mobileDeselectRows" style="border-radius: 8px;width: 25px;height: 30px;" src="../Icons/CancelIcon.svg" alt="Exit">
+            <div id="mobileSelectStatus" style="flex: 0 1 auto;user-select: none;font-size:20px;align-self: center;" class="scrollableText playingStatus text">0 selected</div>
+            <div style="display: flex;margin-left: auto;">
+                <img class="clickableButton" id="trashSelectedRows" style="border-radius: 8px; width: 30px; height: 30px;" src="../Icons/TrashCan.svg" alt="Trash"> <!-- https://www.svgrepo.com/svg/159361/trash-can-with-cover-from-side-view -->
+                <img class="clickableButton" id="moreOptionsSelectedRows" style="border-radius: 8px; width: 30px; height: 30px; margin-left: 5px; margin-right: 5px;" src="../Icons/MoreMenuIcon.svg" alt="More Options"> <!-- https://www.svgrepo.com/svg/506248/menu-horizontal -->
+            </div>
+        </div>
         <div id="dragOverDisplay"><div style="position: fixed; top: 50vh; left: 50vw; transform: translate(-50%, -50%);" class="text" ><b>Drop Here to add Music</b></div></div>
         <div style="z-index: 2; background-color: lightgrey; width: max-content; margin-top: -20px; left: -9999px; position: fixed; pointer-events: none;" id="hoveredTimeDisplay"><div style="margin-left:1ch; margin-right:1ch; color: black; z-index: 2" class="prevent-select text"></div></div>
 
@@ -149,9 +157,6 @@
                 </div>
                 <div>
                     <label><input type="checkbox" id="showLengths" checked>Display song durations</label>
-                </div>
-                <div>
-                    <label><input type="checkbox" id="reorderFiles">Allow reordering files</label>
                 </div>
                 <div>
                     <button id="enterPIP" type="button"></button>
