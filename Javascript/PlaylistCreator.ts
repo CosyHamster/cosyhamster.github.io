@@ -1380,22 +1380,20 @@ function initializeTableEvents(){
 function initializeTouchTableEvents(){
   PLAYLIST_VIEWER_TABLE.addEventListener('touchstart', function(event) {
     longTapping = false;
-    // @ts-ignore
-    longTapTimer = setTimeout(onLongTap, 425, event);
+    if(event.touches.length > 1){
+      cancelLongTapTimer();
+    } else {
+      // @ts-ignore
+      longTapTimer = setTimeout(onLongTap, 425, event);
+    }
   }, {passive: true});
 
   PLAYLIST_VIEWER_TABLE.addEventListener('touchmove', function(event) {
-    if(longTapTimer !== null){
-      clearTimeout(longTapTimer);
-      longTapTimer = null;
-    }
+    cancelLongTapTimer();
   }, {passive: true});
 
   PLAYLIST_VIEWER_TABLE.addEventListener('touchend', function(event) {
-    if(longTapTimer !== null){
-      clearTimeout(longTapTimer);
-      longTapTimer = null;
-    }
+    cancelLongTapTimer();
     if(longTapping)
       event.preventDefault(); //prevent default click events from running
     longTapping = false;
@@ -1404,6 +1402,13 @@ function initializeTouchTableEvents(){
   document.getElementById("mobileDeselectRows").addEventListener("click", deselectAll);
   document.getElementById("trashSelectedRows").addEventListener("click", deleteSelectedSongs);
   document.getElementById("moreOptionsSelectedRows").addEventListener("click", spawnRowContextMenuMobile);
+}
+
+function cancelLongTapTimer(){
+  if(longTapTimer !== null){
+    clearTimeout(longTapTimer);
+    longTapTimer = null;
+  }
 }
 
 function onSelectRowMobile(row: HTMLTableRowElement){
