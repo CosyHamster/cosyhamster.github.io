@@ -82,17 +82,20 @@ class Time {
 //August 27, 2023, 12:33AM
 
 const PLAYLIST_VIEWER_TABLE = document.getElementById("theTable"),
-FADE_CONTROLLER_DIALOG = document.getElementById('FadeControlDialog'),
-FADE_CONTROLLER_TABLE = document.getElementById('fadeControllingTable'),
-ON_KEY_DOWN = new OnKeyDownEvent(),
-REQUEST_ANIMATION_FRAME_EVENT = new OnRequestAnimationFrameEvent(),
-ProgressBarSeekActions = { SEEK: "seekTo", DISPLAY: "displayTime", STOP_DISPLAYING: "stopDisplaying" }
-let sounds = [],
-statusObjects = [],
-progressBarObjects = [],
-openDialogs = [],
-processQueue = [],
-fadeControllerQuantity = 0;
+    PLAYLIST_MODE_CHECKBOX = document.getElementById("1playAfter0"),
+    PLAY_ALL_BUTTON = document.getElementById("playButton");
+    FADE_CONTROLLER_DIALOG = document.getElementById('FadeControlDialog'),
+    FADE_CONTROLLER_TABLE = document.getElementById('fadeControllingTable'),
+    ON_KEY_DOWN = new OnKeyDownEvent(),
+    REQUEST_ANIMATION_FRAME_EVENT = new OnRequestAnimationFrameEvent(),
+    ProgressBarSeekActions = { SEEK: "seekTo", DISPLAY: "displayTime", STOP_DISPLAYING: "stopDisplaying" };
+/** @type Howl[] */
+var sounds = [],
+    statusObjects = [],
+    progressBarObjects = [],
+    openDialogs = [],
+    processQueue = [],
+    fadeControllerQuantity = 0;
 
 (() => {
     if ("serviceWorker" in navigator && !NO_SERVICE_WORKER) {
@@ -101,10 +104,18 @@ fadeControllerQuantity = 0;
     createNewPlayer(0)
     registerClickEvent('seekBackward', () => seek('seekBackward') )
     registerClickEvent('seekForward', () => seek('seekForward') )
-    registerClickEvent('playButton', () => {playAllSounds('playButton'); togglePlayButtonText('playButton');} )
+    PLAY_ALL_BUTTON.addEventListener('click', playAllSounds, true);
     registerClickEvent('FadingControlOpenDialog', () => toggleDialog( document.getElementById('FadeControlDialog') ))
     registerClickEvent('fadeAllButton', () => { for(var i = 0; i < fadeControllerQuantity; i++) fadeAudio(i); } )
     registerClickEvent('PlaylistModeCloseDialog', () => closeNewestDialog() )
+    PLAYLIST_MODE_CHECKBOX.addEventListener('change', () => {
+        if(PLAYLIST_MODE_CHECKBOX.checked){
+            sounds[0].loop(false);
+            sounds[1].stop();
+        } else {
+            sounds[0].loop(true);
+        }
+    }, {passive: true})
     importFileDetectID(document.getElementById('batchUpload'));
 
     ON_KEY_DOWN.register(handleKeyDown)
@@ -119,7 +130,7 @@ function handleKeyDown(key){
   let pressedKey = key.key
   switch(pressedKey){
     case " ":
-      playAllSounds('playButton'); togglePlayButtonText('playButton')
+      playAllSounds();
       break
     case "Escape":
       closeNewestDialog()
@@ -308,7 +319,9 @@ function createNewPlayer(index){
     inputNumberChangeDetect(volumeChanger);
     inputNumberChangeDetect(rateChanger);
     inputNumberChangeDetect(panChanger);
-    handleCheckBoxClick(muteButton);
+    muteButton.addEventListener('change', () => {
+        return sounds[index]?.mute(element.checked);
+    }, {passive: true})
     updateElementContainers();
 }
 
@@ -421,10 +434,19 @@ function loaded(index, fileReader, abortController, fileName) {
         preload: true,
         loop: true,
     });
-    sounds[index].rate( document.getElementById(index + "playRate").value )
-    sounds[index].volume( document.getElementById(index + "playVolume").value )
-    sounds[index].mute( document.getElementById(index + "Mute").checked )
+    sounds[index].rate( document.getElementById(index + "playRate").value );
+    sounds[index].volume( document.getElementById(index + "playVolume").value );
+    sounds[index].mute( document.getElementById(index + "Mute").checked );
     sounds[index].faded = false;
+    if(index === 0){
+        sounds[index].loop(!PLAYLIST_MODE_CHECKBOX.checked);
+        sounds[index].on('end', () => {
+            if(PLAYLIST_MODE_CHECKBOX.checked){ //user could uncheck button before end
+                sounds[1].play()
+                statusObjects[1].innerHTML = "Playing";
+            }
+        });
+    }
 
     if(index >= sounds.length-1){
         createNewPlayer(index+1);
@@ -525,44 +547,28 @@ function updateSeekButtonTexts(){
 
 function toNum(num){ return parseFloat(num.toString()) }
 
-function handleCheckBoxClick(element){
-    const onlyText = element.id.replace(/[^a-z]/gi, ''), //grab all text except numbers
-    index = parseInt(element.id); //grab all numbers except text
-    element.addEventListener('change', () => {
-        if(onlyText === "Mute") return sounds[index]?.mute(element.checked);
-        if(onlyText !== "playAfter") return;
-        
-        if(!element.checked){ sounds[0].off('end'); return sounds[0].loop(true); }
-        
-        const playAfterCheckbox = document.getElementById("1playAfter0") //fetch element early to minimize delay on play
-        sounds[0].loop(false)
-        sounds[0].once('end', () => {
-            if(playAfterCheckbox.checked){ //user could uncheck button before end
-                sounds[1].play()
-                statusObjects[1].innerHTML = "Playing";
-            }
-        })
-        sounds[1].stop()
-    }, {passive: true})
-}
+function playAllSounds(){ //controls playing and pausing. doesn't toggle "Play All" button text; handled by seperate function called by HTML element.
+    if(PLAY_ALL_BUTTON.textContent == "Play All"){
+        const numSounds = (PLAYLIST_MODE_CHECKBOX.checked) ? Math.min(sounds.length, 1) : sounds.length;
+        for(let i = 0; i < numSounds; i++){
+            if(sounds[i] == null || sounds[i].state() !== 'loaded') continue;
 
-function playAllSounds(id){ //controls playing and pausing. doesn't toggle "Play All" button text; handled by seperate function called by HTML element.
-    for(let i = 0; i < sounds.length; i++){
-        if(sounds[i] == null || sounds[i].state() !== 'loaded') continue;
-
-        if(document.getElementById(id).textContent === "Stop All"){ sounds[i].stop(); continue; }
-
-        if(ratesInIndexOrder[i].value !== 0) sounds[i].play();
-        statusObjects[i].innerHTML = "Playing";
-        if(document.getElementById("1playAfter0").checked) break;
+            if(ratesInIndexOrder[i].value !== 0)
+                sounds[i].play();
+            statusObjects[i].innerHTML = "Playing";
+        }
+        PLAY_ALL_BUTTON.textContent = "Stop All";
     }
-    if(document.getElementById(id).textContent === "Stop All") for(var i = 0; i < statusObjects.length; i++) statusObjects[i].innerHTML = "Stopped";
-}
+    else {
+        const numSounds = sounds.length;
+        for(let i = 0; i < numSounds; i++){
+            if(sounds[i] == null || sounds[i].state() !== 'loaded') continue;
 
-function togglePlayButtonText(id){
-    let text = document.getElementById(id).firstChild;
-    if(text.data === 'Play All') text.data = "Stop All"
-    else if (text.data === 'Stop All') text.data = "Play All"
+            sounds[i].stop()
+            statusObjects[i].innerHTML = "Stopped";
+        }
+        PLAY_ALL_BUTTON.textContent = "Play All";
+    }
 }
 
 function fadeAudio(soundIndex){

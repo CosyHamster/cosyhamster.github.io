@@ -1214,7 +1214,7 @@ function initializeTableEvents() {
 function initializeTouchTableEvents() {
     PLAYLIST_VIEWER_TABLE.addEventListener('touchstart', function (event) {
         longTapping = false;
-        if (event.touches.length > 1) {
+        if (event.touches.length > 1 || (event.target instanceof Element && event.target.classList.contains("fileSizeLabel"))) {
             cancelLongTapTimer();
         }
         else {
@@ -1227,8 +1227,10 @@ function initializeTouchTableEvents() {
     }, { passive: true });
     PLAYLIST_VIEWER_TABLE.addEventListener('touchend', function (event) {
         cancelLongTapTimer();
-        if (longTapping)
+        if (longTapping) {
             event.preventDefault(); //prevent default click events from running
+            event.stopImmediatePropagation();
+        }
         longTapping = false;
     }, { passive: false });
     document.getElementById("mobileDeselectRows").addEventListener("click", deselectAll);
