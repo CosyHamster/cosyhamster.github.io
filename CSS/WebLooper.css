@@ -7,7 +7,7 @@ progress {
 text[class='scrollableText']{
     display: inline-block;
     text-overflow: ellipsis;
-    overflow: hidden;
+    overflow: scroll;
     white-space: nowrap;
     font-family: Cambria, serif;
     max-width: 99%;
