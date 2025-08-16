@@ -475,7 +475,7 @@ async function updateCreatureStatsTable() {
             newCell.setAttribute("tabindex", "0");
             newCell.setAttribute("scope", "col");
             newCell.setAttribute("data-keyname", statValue.keyName);
-            newCell.setAttribute("class", "clickableButton creatureStatHeaderCell creatureStatCell");
+            newCell.setAttribute("class", "clickableButton creatureStatCell creatureStatHeaderCell");
             newCell.textContent = statValue.displayName;
             tableHeaderRow.appendChild(newCell);
             addStatValueToCreatureRows(statValue);
