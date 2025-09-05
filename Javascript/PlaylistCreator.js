@@ -209,7 +209,7 @@ class SongLoader {
         // LOADING_GRAY.toggleAttribute("enable", true);
         // await sleep(0); //dom update before beginning the load
         console.time("createHowl");
-        const sound = new Howl({
+        const howl = new Howl({
             providedBuffer: (useObjectURLS) ? null : this.fileReader.result, //providedBuffer will be used over src
             src: this.song.fileURL,
             preload: PRELOAD_TYPE_SELECTOR.value === "process",
@@ -219,12 +219,12 @@ class SongLoader {
         });
         console.timeEnd("createHowl");
         // LOADING_GRAY.toggleAttribute("enable", false);
-        reapplySoundAttributes(sound);
-        sound.on("load", () => {
-            this.song.duration = sound.duration();
+        reapplySoundAttributes(howl);
+        howl.on("load", () => {
+            this.song.duration = howl.duration();
             this.song.updateFileInfoDisplay();
         });
-        sound.on('end', () => {
+        howl.on('end', () => {
             if (REPEAT_BUTTON.checked) {
                 if (sounds[currentSongIndex].isInExistence() && !sounds[currentSongIndex].howl.playing()) {
                     sounds[currentSongIndex].howl.stop();
@@ -234,7 +234,8 @@ class SongLoader {
             }
             jumpSong();
         }); //jump to next song when they end (or do custom stuff if needed)
-        return sound;
+        howl.on("play", onPlayStart);
+        return howl;
     }
 }
 async function updateAllFileInfos() {
@@ -440,32 +441,15 @@ class RegistrableEvent {
 class KeyDownEventRegistrar extends RegistrableEvent {
     constructor() {
         super();
-        this.createNewListener();
+        this.attachToCurrentWindow();
     }
     register(func) {
         this.registeredCallbacks.push(func);
     }
-    createNewListener() {
+    attachToCurrentWindow() {
         curWin.addEventListener('keydown', keyEvent => this.callAllRegisteredFunctions(keyEvent), { passive: false });
     }
 }
-class RequestAnimationFrameEventRegistrar extends RegistrableEvent {
-    constructor() {
-        super();
-        RequestAnimationFrameEventRegistrar.raf((timestamp) => this.handleRAFCall(timestamp));
-    }
-    handleRAFCall(timestamp) {
-        this.callAllRegisteredFunctions(timestamp);
-        RequestAnimationFrameEventRegistrar.raf((timestamp) => this.handleRAFCall(timestamp));
-    }
-    register(func) {
-        this.registeredCallbacks.push(func);
-    }
-    createNewListener() {
-    }
-}
-// @ts-expect-error
-RequestAnimationFrameEventRegistrar.raf = (window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame).bind(window);
 /** Splits inputted seconds into hours, minutes, & seconds. toString() returns the time in digital format. */
 class Time {
     constructor(seconds) {
@@ -588,7 +572,7 @@ class DataTransferItemGrabber {
         }
     }
 }
-var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(), KEY_DOWN_EVENT = new KeyDownEventRegistrar(), StatusTexts = {
+var KEY_DOWN_EVENT = new KeyDownEventRegistrar(), StatusTexts = {
     PLAYING: "Playing",
     PAUSED: "Paused",
     STOPPED: "Stopped",
@@ -601,8 +585,7 @@ var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(), K
     PLAYING: "rgb(172, 172, 172)",
     SELECTING: "lightblue",
     NONE: ""
-}, PAUSED = false, PLAYING = true, MAIN_TABLE = document.body.querySelector(".mainTable"), PLAYLIST_VIEWER_TABLE = document.getElementById("Playlist_Viewer"), PRELOAD_DIST_ELEMENT = document.getElementById('preloadDistance'), PRELOAD_TYPE_SELECTOR = document.getElementById("preloadType"), COMPACT_MODE_LINK_ELEMENT = null, //document.getElementById('compactModeStyleLink'),
-COMPACT_MODE_TOGGLE = document.getElementById('compactMode'), SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration'), SEEK_DURATION_DISPLAY = document.getElementById("seekDurationDisplay"), SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional'), SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable'), SHOW_LENGTHS = document.getElementById('showLengths'), TOGGLE_PIP_BUTTON = document.getElementById('enterPIP'), UPLOAD_BUTTON = document.getElementById('0input'), UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory'), PLAY_RATE_RANGE = document.getElementById('0playRateSlider'), SETTINGS_POPUP = document.getElementById('settingsPage'), ERROR_POPUP = document.getElementById('errorPopup'), DEPRECATED_POPUP = document.getElementById('deprecatedPopup'), DIALOGS = [SETTINGS_POPUP, ERROR_POPUP, DEPRECATED_POPUP], ERROR_LIST = document.getElementById('errorList'), CONTEXT_MENU = document.getElementById('rightClickContextMenu'), MOBILE_PLAYLIST_OPTIONS = document.getElementById('mobilePlaylistOptions'), 
+}, PAUSED = false, PLAYING = true, MAIN_TABLE = document.body.querySelector(".mainTable"), PLAYLIST_VIEWER_TABLE = document.getElementById("Playlist_Viewer"), PRELOAD_DIST_ELEMENT = document.getElementById('preloadDistance'), PRELOAD_TYPE_SELECTOR = document.getElementById("preloadType"), COMPACT_MODE_LINK_ELEMENT = document.getElementById('compactModeStyleLink'), COMPACT_MODE_TOGGLE = document.getElementById('compactMode'), SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration'), SEEK_DURATION_DISPLAY = document.getElementById("seekDurationDisplay"), SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional'), SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable'), SHOW_LENGTHS = document.getElementById('showLengths'), TOGGLE_PIP_BUTTON = document.getElementById('enterPIP'), UPLOAD_BUTTON = document.getElementById('0input'), UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory'), PLAY_RATE_RANGE = document.getElementById('0playRateSlider'), SETTINGS_POPUP = document.getElementById('settingsPage'), ERROR_POPUP = document.getElementById('errorPopup'), DEPRECATED_POPUP = document.getElementById('deprecatedPopup'), DIALOGS = [SETTINGS_POPUP, ERROR_POPUP, DEPRECATED_POPUP], ERROR_LIST = document.getElementById('errorList'), CONTEXT_MENU = document.getElementById('rightClickContextMenu'), MOBILE_PLAYLIST_OPTIONS = document.getElementById('mobilePlaylistOptions'), 
 // LOADING_GRAY = document.getElementById('loadingGray') as HTMLDivElement,
 PROGRESS_BAR = document.getElementById('progress-bar'), HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay'), VOLUME_CHANGER = document.getElementById('0playVolume'), PLAY_RATE = document.getElementById('0playRate'), PLAY_PAN = document.getElementById('0playPan'), SEEK_BACK = document.getElementById('seekBack'), 
 // SEEK_FORWARD = document.getElementById('seekForward') as HTMLTableCellElement,
@@ -621,10 +604,57 @@ var currentSongIndex = null;
     KEY_DOWN_EVENT.register(keyEvent => {
         if (keyEvent.key != "Tab" && keyEvent.key != "Shift" && keyEvent.key != "Ctrl" && keyEvent.key != "Alt" && keyEvent.key != "Enter")
             closeContextMenu();
+        const target = keyEvent.target;
+        if (target instanceof HTMLElement && target.closest("dialog") !== null)
+            return;
+        const keyLower = keyEvent.key.toLowerCase();
+        if (keyEvent.shiftKey) {
+            switch (keyLower) {
+                case "n":
+                    jumpSong(1);
+                    keyEvent.preventDefault();
+                    break;
+                case "p":
+                    jumpSong(-1);
+                    keyEvent.preventDefault();
+                    break;
+            }
+        }
+        else if (keyEvent.ctrlKey) {
+            switch (keyLower) {
+                case "a":
+                    selectAll();
+                    keyEvent.preventDefault();
+                    break;
+            }
+        }
+        else {
+            switch (keyLower) {
+                case "escape":
+                    deselectAll();
+                    break;
+                case " ": //space
+                case "k":
+                    togglePauseCurrentSong();
+                    keyEvent.preventDefault();
+                    break;
+                case "arrowleft":
+                    seek(-1);
+                    keyEvent.preventDefault();
+                    break;
+                case "arrowright":
+                    seek(1);
+                    keyEvent.preventDefault();
+                    break;
+                case "m":
+                    MUTE_BUTTON.click();
+                    break;
+            }
+        }
     });
-    KEY_DOWN_EVENT.register((keyboardEvent) => { if (keyboardEvent.key == "Escape")
-        deselectAll(); });
-    REQUEST_ANIMATION_FRAME_EVENT.register(onFrameStepped);
+    requestAnimationFrame(onFrameStepped);
+    setInterval(onTickStepped, 0);
+    setInterval(onPeriodicStepped, 500);
     updateSongInfos();
     makeDocumentDroppable();
     // curDoc.addEventListener('touchend', (touchEvent: TouchEvent) => {
@@ -765,68 +795,65 @@ function registerInputEvent(elem, func) {
     elem.addEventListener('input', func, { passive: true });
 }
 function toggleCompactMode() {
-    if (COMPACT_MODE_LINK_ELEMENT === null) {
-        COMPACT_MODE_LINK_ELEMENT = curDoc.createElement('link');
-        setAttributes(COMPACT_MODE_LINK_ELEMENT, {
-            rel: "stylesheet",
-            href: "../CSS/CompactMode.css",
-        });
-        curDoc.head.appendChild(COMPACT_MODE_LINK_ELEMENT);
-    }
+    COMPACT_MODE_LINK_ELEMENT.disabled = !COMPACT_MODE_TOGGLE.checked;
+    rowHeight = (COMPACT_MODE_TOGGLE.checked) ? 23 + 1 : 55 + 1;
 }
+var firstRowTop = 55;
+var rowHeight = 56;
 async function updateSongInfos() {
-    if (PLAYLIST_VIEWER_TABLE.rows.length < 2 || !SHOW_LENGTHS.checked) {
-        requestAnimationFrame(updateSongInfos);
-        return;
-    }
-    const firstRow = PLAYLIST_VIEWER_TABLE.rows[1];
-    const heightAway = firstRow.getBoundingClientRect().top;
-    const heightOfEachRow = firstRow.getBoundingClientRect().height;
-    const rowsAway = Math.floor(Math.max(-heightAway / heightOfEachRow, 0)) + 1;
-    for (let i = 0; i < innerHeight / heightOfEachRow; i++) {
-        const rowIndex = i + rowsAway;
-        if (rowIndex >= PLAYLIST_VIEWER_TABLE.rows.length)
-            break;
-        const song = sounds[rowIndex - 1];
-        if (!song.durationLoaded()) {
-            await loadSongDuration(song);
-            break;
+    if (PLAYLIST_VIEWER_TABLE.rows.length > 1 && SHOW_LENGTHS.checked) {
+        // const rowsAway = Math.floor(Math.max(-heightAway/heightOfEachRow, 0))+1;
+        // const firstRowTop = firstRowRect.top; //55px
+        // const heightOfEachRow = firstRowRect.height+1; //+1 to account for row border
+        const rowsAway = Math.floor(Math.max((scrollY - firstRowTop) / rowHeight, 0)) + 1;
+        for (let i = 0; i < innerHeight / rowHeight; i++) {
+            const rowIndex = i + rowsAway;
+            if (rowIndex >= PLAYLIST_VIEWER_TABLE.rows.length)
+                break;
+            const song = sounds[rowIndex - 1];
+            if (!song.durationLoaded()) {
+                await loadSongDuration(song);
+                setTimeout(updateSongInfos, 0);
+                return;
+            }
         }
     }
-    requestAnimationFrame(updateSongInfos);
+    setTimeout(updateSongInfos, 500);
 }
-function onFrameStepped() {
+function onPeriodicStepped() {
+    PRELOAD_DIST_ELEMENT.max = String(Math.max(sounds.length - 1, 1));
     if (skipSongQueued) {
         skipSongQueued = false;
         const nextSongIndex = (currentSongIndex + 1) % sounds.length;
         sounds[nextSongIndex].currentRow.getPlaySongCheckbox().dispatchEvent(new MouseEvent('click'));
     }
-    PRELOAD_DIST_ELEMENT.max = String(Math.max(sounds.length - 1, 1));
-    if (COMPACT_MODE_LINK_ELEMENT?.sheet) {
-        // if(COMPACT_MODE_TOGGLE.disabled) COMPACT_MODE_TOGGLE.disabled = false;
-        if (COMPACT_MODE_LINK_ELEMENT.sheet.disabled == COMPACT_MODE_TOGGLE.checked) //if disabled needs to be updated with checkbox (checked is enabled, unchecked is disabled)
-            COMPACT_MODE_LINK_ELEMENT.sheet.disabled = !COMPACT_MODE_TOGGLE.checked;
-    }
-    if (currentSongIndex === null || !sounds[currentSongIndex].isLoaded())
-        return cannotUpdateProgress(sounds[currentSongIndex]?.isLoading?.());
-    else if (sounds[currentSongIndex].howl.playing() && (STATUS_TEXT.textContent == StatusTexts.LOADING || STATUS_TEXT.textContent == StatusTexts.DOWNLOADING))
-        onLatePlayStart();
-    let songDuration = sounds[currentSongIndex].howl.duration();
-    let currentTime = sounds[currentSongIndex].howl.seek();
-    const timeToSet = (currentTime / songDuration) * 100;
-    if (Number.isFinite(timeToSet))
-        setProgressBarPercentage(timeToSet);
-    updateCurrentTimeDisplay(currentTime, songDuration);
 }
-function onLatePlayStart() {
+function onTickStepped() {
+    let isLoading;
+    if (currentSongIndex === null || (isLoading = sounds[currentSongIndex].isLoading()))
+        return cannotUpdateProgress(isLoading);
+    // else if(sounds[currentSongIndex].howl.playing() && (STATUS_TEXT.textContent == StatusTexts.LOADING || STATUS_TEXT.textContent == StatusTexts.DOWNLOADING))
+    //   onLatePlayStart();
+}
+function onFrameStepped() {
+    if (currentSongIndex !== null && sounds[currentSongIndex].isLoaded()) {
+        const songDuration = sounds[currentSongIndex].howl.duration();
+        const currentTime = sounds[currentSongIndex].howl.seek();
+        const timeToSet = (currentTime / songDuration) * 100;
+        if (Number.isFinite(timeToSet))
+            setProgressBarPercentage(timeToSet);
+        updateCurrentTimeDisplay(currentTime, songDuration);
+    }
+    requestAnimationFrame(onFrameStepped);
+}
+function onPlayStart() {
     changeStatus(StatusTexts.PLAYING);
     reapplySoundAttributes(sounds[currentSongIndex].howl);
 }
 function cannotUpdateProgress(isProcessing) {
     if (isProcessing)
         changeStatus(StatusTexts.LOADING);
-    if (useObjectURLS)
-        setProgressBarPercentage(0);
+    setProgressBarPercentage(100);
     if (DURATION_OF_SONG_DISPLAY.textContent != "00:00")
         DURATION_OF_SONG_DISPLAY.textContent = "00:00";
     if (POSITION_OF_SONG_DISPLAY.textContent != "00:00")
@@ -958,12 +985,23 @@ async function importFiles(element) {
 }
 function addRowsInPlaylistTable(songTableRows) {
     const QUANTUM = 32768;
+    const addEvents = PLAYLIST_VIEWER_TABLE.rows.length <= 1 && songTableRows.length > 0;
     const playlistTableBody = PLAYLIST_VIEWER_TABLE.tBodies[0];
     // const headerRow = playlistTableBody.rows[0];
     // playlistTableBody.replaceChildren();
     // playlistTableBody.appendChild(headerRow);
     for (let i = 0; i < songTableRows.length; i += QUANTUM) {
         playlistTableBody.append(...songTableRows.slice(i, Math.min(i + QUANTUM, songTableRows.length)));
+    }
+    if (addEvents) {
+        const firstRow = songTableRows[0];
+        // const resizeObserver = new ResizeObserver((entries) => {
+        //   rowHeight = entries.at(-1).contentBoxSize[0].blockSize+1; //account for table border
+        // });
+        // resizeObserver.observe(firstRow);
+        const firstRowRect = firstRow.getBoundingClientRect();
+        firstRowTop = firstRowRect.top;
+        rowHeight = firstRowRect.height + 1;
     }
 }
 function onPlayRateUpdate(newRate) {
@@ -1120,6 +1158,8 @@ function startPlayingSong(song) {
     setCurrentFileName(song.file.name);
     reapplySoundAttributes(song.howl);
     if (Number(PLAY_RATE.value) != 0) {
+        if (song.howl.state() == "unloaded")
+            song.howl.load();
         song.howl.play();
         PLAY_BUTTON.checked = PLAYING;
     }
@@ -1150,6 +1190,12 @@ function jumpSong(amount = 1) {
     currentSongIndex = (currentSongIndex + (sounds.length + amount)) % sounds.length;
     const playButtonToActivate = filePlayingCheckboxes[currentSongIndex];
     playButtonToActivate.dispatchEvent(new MouseEvent('click'));
+}
+function togglePauseCurrentSong() {
+    if (currentSongIndex !== null && sounds[currentSongIndex].isInExistence()) {
+        PLAY_BUTTON.checked = !PLAY_BUTTON.checked;
+        pauseOrUnpauseCurrentSong(!PLAY_BUTTON.checked);
+    }
 }
 function pauseOrUnpauseCurrentSong(pause) {
     if (!sounds[currentSongIndex] || !sounds[currentSongIndex].isInExistence()) {
@@ -1492,6 +1538,7 @@ function selectAll() {
     }
     selectedRows = Array.prototype.slice.call(rows, 1);
     updateMobilePlaylistOptions();
+    PLAYLIST_VIEWER_TABLE.focus({ focusVisible: true });
 }
 function playRow(row) {
     row = findValidTableRow(row);
@@ -1635,7 +1682,7 @@ async function enterPictureInPicture() {
     curDoc = storedWindow.document;
     moveElementsToDocument(document, storedWindow.document);
     storedWindow.addEventListener('pagehide', exitPictureInPicture, true);
-    KEY_DOWN_EVENT.createNewListener();
+    KEY_DOWN_EVENT.attachToCurrentWindow();
     makeDocumentDroppable();
     modifyDialogPrototype();
     initContextMenu();
@@ -1680,10 +1727,11 @@ function spawnRowContextMenu(clientX, clientY, showDefaultOptions) {
     if (selectedRows.length == 1)
         contextOptions.push({ text: (currentSongIndex != selectedRows[0].rowIndex - 1) ? "Play" : "Stop", action: () => playRow(selectedRows[0]) });
     contextOptions.push({ text: "Delete", action: deleteSelectedSongs });
-    if (selectedRows.length >= 2)
-        contextOptions.push({ text: "Select Interval", action: selectInterval });
-    if (selectedRows.length !== PLAYLIST_VIEWER_TABLE.rows.length - 1)
+    if (selectedRows.length !== PLAYLIST_VIEWER_TABLE.rows.length - 1) {
+        if (selectedRows.length >= 2)
+            contextOptions.push({ text: "Select Interval", action: selectInterval });
         contextOptions.push({ text: "Select All", action: selectAll });
+    }
     spawnContextMenu(clientX, clientY, contextOptions, showDefaultOptions);
 }
 function initContextMenu() {

@@ -246,7 +246,7 @@ class SongLoader{
     // LOADING_GRAY.toggleAttribute("enable", true);
     // await sleep(0); //dom update before beginning the load
     console.time("createHowl");
-    const sound: Howl = new Howl({
+    const howl: Howl = new Howl({
       providedBuffer: (useObjectURLS) ? null : this.fileReader.result as ArrayBuffer, //providedBuffer will be used over src
       src: this.song.fileURL,
       preload: PRELOAD_TYPE_SELECTOR.value === "process",
@@ -258,12 +258,12 @@ class SongLoader{
 
     // LOADING_GRAY.toggleAttribute("enable", false);
 
-    reapplySoundAttributes(sound);
-    sound.on("load", () => {
-      this.song.duration = sound.duration();
+    reapplySoundAttributes(howl);
+    howl.on("load", () => {
+      this.song.duration = howl.duration();
       this.song.updateFileInfoDisplay();
     });
-    sound.on('end', () => {
+    howl.on('end', () => {
       if(REPEAT_BUTTON.checked) {
         if (sounds[currentSongIndex].isInExistence() && !sounds[currentSongIndex].howl.playing()) {
           sounds[currentSongIndex].howl.stop();
@@ -273,8 +273,10 @@ class SongLoader{
       }
       jumpSong();
     }); //jump to next song when they end (or do custom stuff if needed)
+    howl.on("play", onPlayStart);
+
   
-    return sound;
+    return howl;
   }
 }
 
@@ -486,7 +488,7 @@ class Song {
 abstract class RegistrableEvent {
   registeredCallbacks: Function[] = [];
 
-  abstract createNewListener(): void
+  abstract attachToCurrentWindow(): void
 
   register(func: (parameter: unknown) => void) {
     this.registeredCallbacks.push(func)
@@ -505,33 +507,14 @@ abstract class RegistrableEvent {
 class KeyDownEventRegistrar extends RegistrableEvent {
   constructor() {
     super();
-    this.createNewListener();
+    this.attachToCurrentWindow();
   }
   override register(func: (keyEvent: KeyboardEvent) => void) {
     this.registeredCallbacks.push(func)
   }
 
-  createNewListener(): void {
+  attachToCurrentWindow(): void {
     curWin.addEventListener('keydown', keyEvent => this.callAllRegisteredFunctions(keyEvent), { passive: false });
-  }
-}
-
-class RequestAnimationFrameEventRegistrar extends RegistrableEvent {
-  // @ts-expect-error
-  static raf: ((callback: FrameRequestCallback) => number) = (window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame).bind(window)
-  constructor() {
-    super();
-    RequestAnimationFrameEventRegistrar.raf((timestamp) => this.handleRAFCall(timestamp));
-  }
-  handleRAFCall(timestamp: DOMHighResTimeStamp) {
-    this.callAllRegisteredFunctions(timestamp);
-    RequestAnimationFrameEventRegistrar.raf((timestamp) => this.handleRAFCall(timestamp));
-  }
-  override register(func: (timestamp: DOMHighResTimeStamp) => void) {
-    this.registeredCallbacks.push(func);
-  }
-
-  createNewListener(): void {
   }
 }
 
@@ -669,7 +652,7 @@ class DataTransferItemGrabber { //this exists because javascript has bugs (it ke
   }
 }
 
-var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(),
+var
   KEY_DOWN_EVENT = new KeyDownEventRegistrar(),
   StatusTexts = {
     PLAYING: "Playing",
@@ -692,7 +675,7 @@ var REQUEST_ANIMATION_FRAME_EVENT = new RequestAnimationFrameEventRegistrar(),
   PLAYLIST_VIEWER_TABLE = document.getElementById("Playlist_Viewer") as HTMLTableElement,
   PRELOAD_DIST_ELEMENT = document.getElementById('preloadDistance') as HTMLInputElement,
   PRELOAD_TYPE_SELECTOR = document.getElementById("preloadType") as HTMLSelectElement,
-  COMPACT_MODE_LINK_ELEMENT: HTMLLinkElement | null = null,//document.getElementById('compactModeStyleLink'),
+  COMPACT_MODE_LINK_ELEMENT = document.getElementById('compactModeStyleLink') as HTMLLinkElement,
   COMPACT_MODE_TOGGLE = document.getElementById('compactMode') as HTMLInputElement,
   SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration') as HTMLInputElement,
   SEEK_DURATION_DISPLAY = document.getElementById("seekDurationDisplay") as HTMLLabelElement,
@@ -742,10 +725,63 @@ var currentSongIndex: number | null = null;
 
   registerDialogInertEvents();
   KEY_DOWN_EVENT.register(keyEvent => {
-    if(keyEvent.key != "Tab" && keyEvent.key != "Shift" && keyEvent.key != "Ctrl" && keyEvent.key != "Alt" && keyEvent.key != "Enter") closeContextMenu();
+    if(keyEvent.key != "Tab" && keyEvent.key != "Shift" && keyEvent.key != "Ctrl" && keyEvent.key != "Alt" && keyEvent.key != "Enter")
+      closeContextMenu();
+    const target = keyEvent.target;
+    if(target instanceof HTMLElement && target.closest("dialog") !== null)
+      return;
+
+    const keyLower = keyEvent.key.toLowerCase();
+    if(keyEvent.shiftKey){
+
+      switch(keyLower){
+        case "n":
+          jumpSong(1);
+          keyEvent.preventDefault();
+          break;
+        case "p":
+          jumpSong(-1);
+          keyEvent.preventDefault();
+          break;
+      }
+    } else if(keyEvent.ctrlKey){
+
+      switch(keyLower){
+        case "a":
+          selectAll();
+          keyEvent.preventDefault();
+          break;
+      }
+    } else {
+
+      switch(keyLower){
+        case "escape":
+          deselectAll();
+          break;
+        case " ": //space
+        case "k":
+          togglePauseCurrentSong()
+          keyEvent.preventDefault();
+          break;
+        case "arrowleft":
+          seek(-1);
+          keyEvent.preventDefault();
+          break;
+        case "arrowright":
+          seek(1);
+          keyEvent.preventDefault();
+          break;
+        case "m":
+          MUTE_BUTTON.click();
+          break;
+      }
+    }
+
   });
-  KEY_DOWN_EVENT.register((keyboardEvent) => { if(keyboardEvent.key == "Escape") deselectAll()});
-  REQUEST_ANIMATION_FRAME_EVENT.register(onFrameStepped);
+
+  requestAnimationFrame(onFrameStepped);
+  setInterval(onTickStepped, 0);
+  setInterval(onPeriodicStepped, 500);
   updateSongInfos();
   makeDocumentDroppable();
   // curDoc.addEventListener('touchend', (touchEvent: TouchEvent) => {
@@ -883,72 +919,73 @@ function registerInputEvent(elem: HTMLInputElement, func: (event: Event) => void
 }
 
 function toggleCompactMode() {
-  if (COMPACT_MODE_LINK_ELEMENT === null) {
-    COMPACT_MODE_LINK_ELEMENT = curDoc.createElement('link');
-    setAttributes(COMPACT_MODE_LINK_ELEMENT, {
-      rel: "stylesheet",
-      href: "../CSS/CompactMode.css",
-    });
-    curDoc.head.appendChild(COMPACT_MODE_LINK_ELEMENT);
-  }
+  COMPACT_MODE_LINK_ELEMENT.disabled = !COMPACT_MODE_TOGGLE.checked;
+  rowHeight = (COMPACT_MODE_TOGGLE.checked) ? 23+1 : 55+1;
 }
 
+var firstRowTop= 55;
+var rowHeight = 56;
 async function updateSongInfos() {
-  if(PLAYLIST_VIEWER_TABLE.rows.length < 2 || !SHOW_LENGTHS.checked) {
-    requestAnimationFrame(updateSongInfos);
-    return;
-  }
+  if(PLAYLIST_VIEWER_TABLE.rows.length > 1 && SHOW_LENGTHS.checked) {
+    // const rowsAway = Math.floor(Math.max(-heightAway/heightOfEachRow, 0))+1;
+    // const firstRowTop = firstRowRect.top; //55px
+    // const heightOfEachRow = firstRowRect.height+1; //+1 to account for row border
+    const rowsAway = Math.floor(Math.max((scrollY-firstRowTop)/rowHeight, 0))+1;
+    for(let i = 0; i < innerHeight/rowHeight; i++){
+      const rowIndex = i+rowsAway;
+      if(rowIndex >= PLAYLIST_VIEWER_TABLE.rows.length) break;
 
-  const firstRow = PLAYLIST_VIEWER_TABLE.rows[1];
-  const heightAway = firstRow.getBoundingClientRect().top;
-  const heightOfEachRow = firstRow.getBoundingClientRect().height;
-  const rowsAway = Math.floor(Math.max(-heightAway/heightOfEachRow, 0))+1;
-
-  for(let i = 0; i < innerHeight/heightOfEachRow; i++){
-    const rowIndex = i+rowsAway;
-    if(rowIndex >= PLAYLIST_VIEWER_TABLE.rows.length) break;
-
-    const song = sounds[rowIndex-1];
-    if(!song.durationLoaded()){
-      await loadSongDuration(song);
-      break;
+      const song = sounds[rowIndex-1];
+      if(!song.durationLoaded()){
+        await loadSongDuration(song);
+        setTimeout(updateSongInfos, 0);
+        return;
+      }
     }
   }
-  requestAnimationFrame(updateSongInfos);
+
+  setTimeout(updateSongInfos, 500);
 }
 
-function onFrameStepped() {
+function onPeriodicStepped(){ //runs every 500 ms
+  PRELOAD_DIST_ELEMENT.max = String(Math.max(sounds.length - 1, 1));
   if (skipSongQueued) {
     skipSongQueued = false;
     const nextSongIndex = (currentSongIndex + 1) % sounds.length;
     sounds[nextSongIndex].currentRow.getPlaySongCheckbox().dispatchEvent(new MouseEvent('click'));
   }
-
-  PRELOAD_DIST_ELEMENT.max = String(Math.max(sounds.length - 1, 1));
-  if (COMPACT_MODE_LINK_ELEMENT?.sheet) {
-    // if(COMPACT_MODE_TOGGLE.disabled) COMPACT_MODE_TOGGLE.disabled = false;
-    if (COMPACT_MODE_LINK_ELEMENT.sheet.disabled == COMPACT_MODE_TOGGLE.checked) //if disabled needs to be updated with checkbox (checked is enabled, unchecked is disabled)
-      COMPACT_MODE_LINK_ELEMENT.sheet.disabled = !COMPACT_MODE_TOGGLE.checked;
-  }
-
-  if (currentSongIndex === null || !sounds[currentSongIndex].isLoaded()) return cannotUpdateProgress(sounds[currentSongIndex]?.isLoading?.());
-  else if(sounds[currentSongIndex].howl.playing() && (STATUS_TEXT.textContent == StatusTexts.LOADING || STATUS_TEXT.textContent == StatusTexts.DOWNLOADING)) onLatePlayStart();
-  let songDuration = sounds[currentSongIndex].howl.duration();
-  let currentTime = sounds[currentSongIndex].howl.seek();
-
-  const timeToSet: number = (currentTime / songDuration) * 100;
-  if (Number.isFinite(timeToSet)) setProgressBarPercentage(timeToSet);
-  updateCurrentTimeDisplay(currentTime, songDuration);
 }
 
-function onLatePlayStart() {
+function onTickStepped(){ //runs every heartbeat
+  let isLoading: boolean;
+  if (currentSongIndex === null || (isLoading = sounds[currentSongIndex].isLoading()))
+    return cannotUpdateProgress(isLoading);
+  // else if(sounds[currentSongIndex].howl.playing() && (STATUS_TEXT.textContent == StatusTexts.LOADING || STATUS_TEXT.textContent == StatusTexts.DOWNLOADING))
+  //   onLatePlayStart();
+}
+
+function onFrameStepped() { //runs every frame
+  if(currentSongIndex !== null && sounds[currentSongIndex].isLoaded()){
+    const songDuration = sounds[currentSongIndex].howl.duration();
+    const currentTime = sounds[currentSongIndex].howl.seek();
+    const timeToSet: number = (currentTime / songDuration) * 100;
+
+    if (Number.isFinite(timeToSet)) setProgressBarPercentage(timeToSet);
+    updateCurrentTimeDisplay(currentTime, songDuration);
+  }
+
+  requestAnimationFrame(onFrameStepped);
+}
+
+function onPlayStart() {
   changeStatus(StatusTexts.PLAYING);
   reapplySoundAttributes(sounds[currentSongIndex].howl);
 }
+
 function cannotUpdateProgress(isProcessing: boolean) {
   if (isProcessing) changeStatus(StatusTexts.LOADING);
-  if (useObjectURLS) setProgressBarPercentage(0);
 
+  setProgressBarPercentage(100);
   if (DURATION_OF_SONG_DISPLAY.textContent != "00:00") DURATION_OF_SONG_DISPLAY.textContent = "00:00";
   if (POSITION_OF_SONG_DISPLAY.textContent != "00:00") POSITION_OF_SONG_DISPLAY.textContent = "00:00";
   if (HOVERED_TIME_DISPLAY.style.left != '-9999px') HOVERED_TIME_DISPLAY.style.left = '-9999px';
@@ -1092,6 +1129,7 @@ async function importFiles(element: DataTransfer | ArrayLike<File>) {
 
 function addRowsInPlaylistTable(songTableRows: HTMLTableRowElement[]){
   const QUANTUM = 32768;
+  const addEvents = PLAYLIST_VIEWER_TABLE.rows.length <= 1 && songTableRows.length > 0;
   const playlistTableBody = PLAYLIST_VIEWER_TABLE.tBodies[0];
   // const headerRow = playlistTableBody.rows[0];
   // playlistTableBody.replaceChildren();
@@ -1099,6 +1137,18 @@ function addRowsInPlaylistTable(songTableRows: HTMLTableRowElement[]){
 
   for (let i = 0; i < songTableRows.length; i += QUANTUM) {
     playlistTableBody.append( ...songTableRows.slice(i, Math.min(i + QUANTUM, songTableRows.length)) );
+  }
+
+  if(addEvents){
+    const firstRow = songTableRows[0];
+    // const resizeObserver = new ResizeObserver((entries) => {
+    //   rowHeight = entries.at(-1).contentBoxSize[0].blockSize+1; //account for table border
+    // });
+    // resizeObserver.observe(firstRow);
+
+    const firstRowRect = firstRow.getBoundingClientRect();
+    firstRowTop = firstRowRect.top;
+    rowHeight = firstRowRect.height+1;
   }
 }
 
@@ -1272,6 +1322,8 @@ function startPlayingSong(song: Song) {
   setCurrentFileName(song.file.name);
   reapplySoundAttributes(song.howl);
   if (Number(PLAY_RATE.value) != 0) {
+    if(song.howl.state() == "unloaded")
+      song.howl.load();
     song.howl.play();
     PLAY_BUTTON.checked = PLAYING;
   }
@@ -1304,6 +1356,13 @@ function jumpSong(amount: number = 1) { // amount can be negative or positive ;)
 
   const playButtonToActivate = filePlayingCheckboxes[currentSongIndex];
   playButtonToActivate.dispatchEvent(new MouseEvent('click'));
+}
+
+function togglePauseCurrentSong(){
+  if (currentSongIndex !== null && sounds[currentSongIndex].isInExistence()){
+    PLAY_BUTTON.checked = !PLAY_BUTTON.checked;
+    pauseOrUnpauseCurrentSong(!PLAY_BUTTON.checked);
+  }
 }
 
 function pauseOrUnpauseCurrentSong(pause: boolean){ //controls playAll button, called by HTML element
@@ -1388,7 +1447,7 @@ function initializeTouchTableEvents(){
     }
   }, {passive: true});
 
-  PLAYLIST_VIEWER_TABLE.addEventListener('touchmove', function(event) {
+  PLAYLIST_VIEWER_TABLE.addEventListener('touchmove', function(_) {
     cancelLongTapTimer();
   }, {passive: true});
 
@@ -1668,6 +1727,7 @@ function selectAll() {
 
   selectedRows = Array.prototype.slice.call(rows, 1);
   updateMobilePlaylistOptions();
+  PLAYLIST_VIEWER_TABLE.focus({focusVisible: true});
 }
 function playRow(row: HTMLTableRowElement) {
   row = findValidTableRow(row);
@@ -1807,7 +1867,7 @@ async function enterPictureInPicture() {
   moveElementsToDocument(document, storedWindow.document);
   storedWindow.addEventListener('pagehide', exitPictureInPicture, true);
 
-  KEY_DOWN_EVENT.createNewListener();
+  KEY_DOWN_EVENT.attachToCurrentWindow();
   makeDocumentDroppable();
   modifyDialogPrototype();
   initContextMenu();
@@ -1860,11 +1920,11 @@ function spawnRowContextMenu(clientX: number, clientY: number, showDefaultOption
 
   contextOptions.push({ text: "Delete", action: deleteSelectedSongs });
 
-  if(selectedRows.length >= 2)
-    contextOptions.push({ text: "Select Interval", action: selectInterval });
-
-  if(selectedRows.length !== PLAYLIST_VIEWER_TABLE.rows.length-1)
+  if(selectedRows.length !== PLAYLIST_VIEWER_TABLE.rows.length-1){
+    if(selectedRows.length >= 2)
+      contextOptions.push({ text: "Select Interval", action: selectInterval });
     contextOptions.push({ text: "Select All", action: selectAll });
+  }
 
   spawnContextMenu(clientX, clientY, contextOptions, showDefaultOptions);
 }

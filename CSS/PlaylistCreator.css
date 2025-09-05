@@ -1,14 +1,16 @@
 html {
-    --mainTableControlsHeight: 3em;
+    /*--mainTableControlsHeight: 3em; !*6.65 vw*!*/
+    /*--mainTableControlsHeight: max(4vw, 3em); !*48 px*!*/
+    --mainTableControlsHeight: calc(2em + 1vw); /*48 px*/
 }
 
-.muteCheckbox + label svg{
+.muteCheckbox + div svg{
     transition-duration: 200ms;
     fill: black;
     stroke: black;
 }
 
-.muteCheckbox:checked + label svg{
+.muteCheckbox:checked + div svg{
     fill: red;
     stroke: red;
 }
@@ -279,7 +281,7 @@ dialog::backdrop{
 .pullsOpen:is(:hover, :focus-within) div{
     width: 100%;
     height: 200px;
-    @media(max-height: calc(200px + 3em)){ /* i cant use var(--mainTableControlsHeight) here */
+    @media(max-height: calc( 200px + max(4vw, 3em) )){ /* i cant use var(--mainTableControlsHeight) here */
         height: calc(100dvh - var(--mainTableControlsHeight));
     }
     visibility: visible;
@@ -403,7 +405,7 @@ dt::after {
 .mainTable {
     background-color: #fbfbfb;
     position: fixed;
-    width: calc(100%);
+    width: 100%;
     left: 0px;
     top: 100dvh;
     transform: translate(0%, -100%);
