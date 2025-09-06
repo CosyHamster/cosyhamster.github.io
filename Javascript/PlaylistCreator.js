@@ -649,6 +649,12 @@ var currentSongIndex = null;
                 case "m":
                     MUTE_BUTTON.click();
                     break;
+                case "l":
+                    REPEAT_BUTTON.click();
+                    break;
+                case "s":
+                    SHUFFLE_BUTTON.click();
+                    break;
             }
         }
     });
@@ -1268,7 +1274,7 @@ function initializeTouchTableEvents() {
             longTapTimer = setTimeout(onLongTap, 425, event);
         }
     }, { passive: true });
-    PLAYLIST_VIEWER_TABLE.addEventListener('touchmove', function (event) {
+    PLAYLIST_VIEWER_TABLE.addEventListener('touchmove', function (_) {
         cancelLongTapTimer();
     }, { passive: true });
     PLAYLIST_VIEWER_TABLE.addEventListener('touchend', function (event) {

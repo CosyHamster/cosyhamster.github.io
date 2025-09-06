@@ -774,6 +774,12 @@ var currentSongIndex: number | null = null;
         case "m":
           MUTE_BUTTON.click();
           break;
+        case "l":
+          REPEAT_BUTTON.click();
+          break;
+        case "s":
+          SHUFFLE_BUTTON.click();
+          break;
       }
     }
 
