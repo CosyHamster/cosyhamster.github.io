@@ -811,7 +811,7 @@ var currentSongIndex: number | null = null;
   registerClickEvent('exitErrorPopup', () => ERROR_POPUP.close())();
   registerClickEvent('exitDeprecatedPopup', () => DEPRECATED_POPUP.close())();
   registerKeyDownEvent(<HTMLElement>SEEK_BACK.nextElementSibling, () => PLAY_BUTTON.click());
-  registerChangeEvent(PLAY_BUTTON, () => pauseOrUnpauseCurrentSong(!PLAY_BUTTON.checked));
+  registerChangeEvent(PLAY_BUTTON, pauseOrUnpauseCurrentSong);
   registerChangeEvent(COMPACT_MODE_TOGGLE, toggleCompactMode);
   registerChangeEvent(SHOW_LENGTHS, updateAllFileInfos);
   registerKeyDownEvent(MUTE_BUTTON.parentElement, () => MUTE_BUTTON.click());
@@ -1360,25 +1360,26 @@ function jumpSong(amount: number = 1) { // amount can be negative or positive ;)
 function togglePauseCurrentSong(){
   if (currentSongIndex !== null && sounds[currentSongIndex].isInExistence()){
     PLAY_BUTTON.checked = !PLAY_BUTTON.checked;
-    pauseOrUnpauseCurrentSong(!PLAY_BUTTON.checked);
+    pauseOrUnpauseCurrentSong();
   }
 }
 
-function pauseOrUnpauseCurrentSong(pause: boolean){ //controls playAll button, called by HTML element
+function pauseOrUnpauseCurrentSong(){
+  const pause = !PLAY_BUTTON.checked;
   if (!sounds[currentSongIndex] || !sounds[currentSongIndex].isInExistence()){
     PLAY_BUTTON.checked = !PLAY_BUTTON.checked;
     return;
   }
 
-  if (pause) { //if set to paused
+  if (pause) {
     PLAY_BUTTON.checked = PAUSED;
     sounds[currentSongIndex].howl.pause();
     changeStatus(StatusTexts.PAUSED);
-    return;
+  } else {
+    sounds[currentSongIndex].howl.play();
+    changeStatus(StatusTexts.PLAYING);
   }
 
-  sounds[currentSongIndex].howl.play();
-  changeStatus(StatusTexts.PLAYING);
 }
 
 function refreshSongNames() {
@@ -1409,11 +1410,6 @@ function sleep(ms: number): Promise<void> { return new Promise(resolve => setTim
 function getInMegabytes(bytes: number): string { return (bytes / 1_048_576).toFixed(2); }
 function getFileExtension(fileName: string): string { return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase(); }
 
-/*               LONG TAP CUSTOM EVENT                */
-
-
-
-
 
 
 /*            TABLE INTERACTION FUNCTIONS             */
@@ -1438,7 +1434,7 @@ function initializeTableEvents(){
 function initializeTouchTableEvents(){
   PLAYLIST_VIEWER_TABLE.addEventListener('touchstart', function(event) {
     longTapping = false;
-    if(event.touches.length > 1 || (event.target instanceof Element && event.target.classList.contains("fileSizeLabel"))){
+    if(event.touches.length > 1 || ((event.target as Element).classList.contains("fileSizeLabel"))){
       cancelLongTapTimer();
     } else {
       // @ts-ignore
@@ -1487,11 +1483,9 @@ function onLongTap(event: TouchEvent) {
   if("vibrate" in navigator)
     navigator.vibrate(5);
   const target = event.target;
-  if (target instanceof Element) {
-    const row = findValidTableRow(target)
-    if (row) {
-      onSelectRowMobile(row)
-    }
+  const row = findValidTableRow(target as Element)
+  if (row) {
+    onSelectRowMobile(row);
   }
 }
 
@@ -1901,11 +1895,13 @@ function onRowRightClick(mouseEvent: MouseEvent | PointerEvent) {
   }
 
   const row = findValidTableRow(mouseEvent.target as Element);
-  if(row == null) return;
-
-  if (!selectedRows.includes(row)) {
-    deselectAll();
-    selectRow(row);
+  if(row !== null){
+    if(!selectedRows.includes(row)){
+      deselectAll();
+      selectRow(row);
+    }
+  } else if(selectedRows.length == 0) {
+    return;
   }
 
   mouseEvent.preventDefault();
@@ -1992,8 +1988,9 @@ function spawnContextMenu(clientX: number, clientY: number, contextOptions: Cont
     contextButton.setAttribute('class', 'contextOption');
     contextButton.tabIndex = 1;
     if (i < contextOptions.length - 1) contextButton.style.borderBottomWidth = "1px";
-    contextButton.addEventListener('click', (event) => { if (CONTEXT_MENU.hasAttribute('open')) contextOption.action(event) });
-    contextButton.addEventListener('keyup', (event) => { if (event.key == 'Enter' && CONTEXT_MENU.hasAttribute('open')) contextOption.action(event) });
+    contextButton.addEventListener('click', (event) => { if (CONTEXT_MENU.hasAttribute('open')) contextOption.action(event); closeContextMenu(); });
+    contextButton.addEventListener('keyup', (event) => { if (event.key == 'Enter' && CONTEXT_MENU.hasAttribute('open')) {contextOption.action(event); closeContextMenu();} });
+    contextButton.addEventListener("keydown", contextButtonScroll, {passive: false});
 
     if (contextOption.icon) {
       const contextIcon = curDoc.createElement('img');
@@ -2025,6 +2022,32 @@ function spawnContextMenu(clientX: number, clientY: number, contextOptions: Cont
   CONTEXT_MENU.style.top = `${downOffset}px`;
   CONTEXT_MENU.toggleAttribute('open', true);
   if(contextButtons[0]) contextButtons[0].focus({focusVisible: true});
+}
+
+function contextButtonScroll(keyboardEvent: KeyboardEvent){
+  let contextButton: HTMLDivElement;
+  switch(keyboardEvent.key){
+    case "ArrowDown":
+      keyboardEvent.preventDefault();
+      keyboardEvent.stopPropagation();
+      contextButton = keyboardEvent.currentTarget as HTMLDivElement;
+      let nextButton = contextButton.nextElementSibling as (HTMLDivElement | null);
+      if(nextButton == null){
+        nextButton = contextButton.parentElement.firstElementChild as HTMLDivElement;
+      }
+      nextButton.focus();
+      break;
+    case "ArrowUp":
+      keyboardEvent.preventDefault();
+      keyboardEvent.stopPropagation();
+      contextButton = keyboardEvent.currentTarget as HTMLDivElement;
+      let prevButton = contextButton.previousElementSibling as (HTMLDivElement | null);
+      if(prevButton == null){
+        prevButton = contextButton.parentElement.lastElementChild as HTMLDivElement;
+      }
+      prevButton.focus();
+      break;
+  }
 }
 
 function contextMenuOpen(){ return CONTEXT_MENU.hasAttribute('open'); }

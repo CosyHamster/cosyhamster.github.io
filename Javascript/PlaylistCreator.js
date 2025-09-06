@@ -682,7 +682,7 @@ var currentSongIndex = null;
     registerClickEvent('exitErrorPopup', () => ERROR_POPUP.close())();
     registerClickEvent('exitDeprecatedPopup', () => DEPRECATED_POPUP.close())();
     registerKeyDownEvent(SEEK_BACK.nextElementSibling, () => PLAY_BUTTON.click());
-    registerChangeEvent(PLAY_BUTTON, () => pauseOrUnpauseCurrentSong(!PLAY_BUTTON.checked));
+    registerChangeEvent(PLAY_BUTTON, pauseOrUnpauseCurrentSong);
     registerChangeEvent(COMPACT_MODE_TOGGLE, toggleCompactMode);
     registerChangeEvent(SHOW_LENGTHS, updateAllFileInfos);
     registerKeyDownEvent(MUTE_BUTTON.parentElement, () => MUTE_BUTTON.click());
@@ -1191,22 +1191,24 @@ function jumpSong(amount = 1) {
 function togglePauseCurrentSong() {
     if (currentSongIndex !== null && sounds[currentSongIndex].isInExistence()) {
         PLAY_BUTTON.checked = !PLAY_BUTTON.checked;
-        pauseOrUnpauseCurrentSong(!PLAY_BUTTON.checked);
+        pauseOrUnpauseCurrentSong();
     }
 }
-function pauseOrUnpauseCurrentSong(pause) {
+function pauseOrUnpauseCurrentSong() {
+    const pause = !PLAY_BUTTON.checked;
     if (!sounds[currentSongIndex] || !sounds[currentSongIndex].isInExistence()) {
         PLAY_BUTTON.checked = !PLAY_BUTTON.checked;
         return;
     }
-    if (pause) { //if set to paused
+    if (pause) {
         PLAY_BUTTON.checked = PAUSED;
         sounds[currentSongIndex].howl.pause();
         changeStatus(StatusTexts.PAUSED);
-        return;
     }
-    sounds[currentSongIndex].howl.play();
-    changeStatus(StatusTexts.PLAYING);
+    else {
+        sounds[currentSongIndex].howl.play();
+        changeStatus(StatusTexts.PLAYING);
+    }
 }
 function refreshSongNames() {
     for (let i = 0; i < sounds.length; i++) {
@@ -1235,7 +1237,6 @@ function setAttributes(element, attrs) { for (const key in attrs)
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 function getInMegabytes(bytes) { return (bytes / 1048576).toFixed(2); }
 function getFileExtension(fileName) { return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase(); }
-/*               LONG TAP CUSTOM EVENT                */
 /*            TABLE INTERACTION FUNCTIONS             */
 var longTapTimer = null;
 var longTapping = false;
@@ -1257,7 +1258,7 @@ function initializeTableEvents() {
 function initializeTouchTableEvents() {
     PLAYLIST_VIEWER_TABLE.addEventListener('touchstart', function (event) {
         longTapping = false;
-        if (event.touches.length > 1 || (event.target instanceof Element && event.target.classList.contains("fileSizeLabel"))) {
+        if (event.touches.length > 1 || (event.target.classList.contains("fileSizeLabel"))) {
             cancelLongTapTimer();
         }
         else {
@@ -1302,11 +1303,9 @@ function onLongTap(event) {
     if ("vibrate" in navigator)
         navigator.vibrate(5);
     const target = event.target;
-    if (target instanceof Element) {
-        const row = findValidTableRow(target);
-        if (row) {
-            onSelectRowMobile(row);
-        }
+    const row = findValidTableRow(target);
+    if (row) {
+        onSelectRowMobile(row);
     }
 }
 function spawnRowContextMenuMobile(mouseEvent) {
@@ -1709,11 +1708,14 @@ function onRowRightClick(mouseEvent) {
         return;
     }
     const row = findValidTableRow(mouseEvent.target);
-    if (row == null)
+    if (row !== null) {
+        if (!selectedRows.includes(row)) {
+            deselectAll();
+            selectRow(row);
+        }
+    }
+    else if (selectedRows.length == 0) {
         return;
-    if (!selectedRows.includes(row)) {
-        deselectAll();
-        selectRow(row);
     }
     mouseEvent.preventDefault();
     mouseEvent.stopPropagation();
@@ -1793,9 +1795,12 @@ function spawnContextMenu(clientX, clientY, contextOptions, showDefaultOptions) 
         if (i < contextOptions.length - 1)
             contextButton.style.borderBottomWidth = "1px";
         contextButton.addEventListener('click', (event) => { if (CONTEXT_MENU.hasAttribute('open'))
-            contextOption.action(event); });
-        contextButton.addEventListener('keyup', (event) => { if (event.key == 'Enter' && CONTEXT_MENU.hasAttribute('open'))
-            contextOption.action(event); });
+            contextOption.action(event); closeContextMenu(); });
+        contextButton.addEventListener('keyup', (event) => { if (event.key == 'Enter' && CONTEXT_MENU.hasAttribute('open')) {
+            contextOption.action(event);
+            closeContextMenu();
+        } });
+        contextButton.addEventListener("keydown", contextButtonScroll, { passive: false });
         if (contextOption.icon) {
             const contextIcon = curDoc.createElement('img');
             contextIcon.setAttribute('class', 'contextIcon');
@@ -1822,6 +1827,31 @@ function spawnContextMenu(clientX, clientY, contextOptions, showDefaultOptions) 
     CONTEXT_MENU.toggleAttribute('open', true);
     if (contextButtons[0])
         contextButtons[0].focus({ focusVisible: true });
+}
+function contextButtonScroll(keyboardEvent) {
+    let contextButton;
+    switch (keyboardEvent.key) {
+        case "ArrowDown":
+            keyboardEvent.preventDefault();
+            keyboardEvent.stopPropagation();
+            contextButton = keyboardEvent.currentTarget;
+            let nextButton = contextButton.nextElementSibling;
+            if (nextButton == null) {
+                nextButton = contextButton.parentElement.firstElementChild;
+            }
+            nextButton.focus();
+            break;
+        case "ArrowUp":
+            keyboardEvent.preventDefault();
+            keyboardEvent.stopPropagation();
+            contextButton = keyboardEvent.currentTarget;
+            let prevButton = contextButton.previousElementSibling;
+            if (prevButton == null) {
+                prevButton = contextButton.parentElement.lastElementChild;
+            }
+            prevButton.focus();
+            break;
+    }
 }
 function contextMenuOpen() { return CONTEXT_MENU.hasAttribute('open'); }
 function closeContextMenu() { CONTEXT_MENU.toggleAttribute('open', false); CONTEXT_MENU.style.height = '0'; }
