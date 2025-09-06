@@ -267,46 +267,32 @@ async function loadAndDisplaySongLengths() {
             song.updateFileInfoDisplay();
             continue;
         }
-        await new Promise((resolve) => {
-            const audio = curDoc.createElement('audio');
-            const abortController = new AbortController();
-            audio.addEventListener("durationchange", () => {
-                abortController.abort();
-                song.duration = audio.duration;
-                song.onDurationLoaded();
-                resolve();
-            }, { passive: true, once: true, signal: abortController.signal });
-            audio.addEventListener("error", () => {
-                abortController.abort();
-                resolve();
-            }, { passive: true, once: true, signal: abortController.signal });
-            audio.addEventListener("abort", () => {
-                abortController.abort();
-                resolve();
-            }, { passive: true, once: true, signal: abortController.signal });
-            audio.preload = "metadata";
-            audio.src = song.fileURL;
-        });
+        await loadSongDuration(song);
     }
 }
 async function loadSongDuration(song) {
     await new Promise((resolve) => {
         const audio = curDoc.createElement('audio');
         const abortController = new AbortController();
-        audio.addEventListener("durationchange", () => {
+        let timeoutID;
+        function onFinish() {
+            clearTimeout(timeoutID);
             abortController.abort();
+        }
+        function giveUp() {
+            onFinish();
+            resolve();
+        }
+        // @ts-ignore
+        timeoutID = setTimeout(giveUp, 60000);
+        audio.addEventListener("durationchange", () => {
             song.duration = audio.duration;
             song.onDurationLoaded();
+            onFinish();
             resolve();
         }, { passive: true, once: true, signal: abortController.signal });
-        audio.addEventListener("error", () => {
-            abortController.abort();
-            resolve();
-        }, { passive: true, once: true, signal: abortController.signal });
-        audio.addEventListener("abort", () => {
-            abortController.abort();
-            resolve();
-        }, { passive: true, once: true, signal: abortController.signal });
+        audio.addEventListener("error", giveUp, { passive: true, once: true, signal: abortController.signal });
+        audio.addEventListener("abort", giveUp, { passive: true, once: true, signal: abortController.signal });
         audio.preload = "metadata";
         audio.src = song.fileURL;
     });
@@ -632,6 +618,7 @@ var currentSongIndex = null;
             switch (keyLower) {
                 case "escape":
                     deselectAll();
+                    PLAYLIST_VIEWER_TABLE.blur();
                     break;
                 case " ": //space
                 case "k":
