@@ -864,8 +864,8 @@ function cannotUpdateProgress(isProcessing) {
         DURATION_OF_SONG_DISPLAY.textContent = "00:00";
     if (POSITION_OF_SONG_DISPLAY.textContent != "00:00")
         POSITION_OF_SONG_DISPLAY.textContent = "00:00";
-    if (HOVERED_TIME_DISPLAY.style.left != '-9999px')
-        HOVERED_TIME_DISPLAY.style.left = '-9999px';
+    if (HOVERED_TIME_DISPLAY.style.transform != "translate(-9999px, 0px)")
+        HOVERED_TIME_DISPLAY.style.transform = "translate(-9999px, 0px)";
 }
 function reapplySoundAttributes(howl) {
     howl.rate(parseFloat(PLAY_RATE.value));
@@ -890,7 +890,7 @@ function updateCurrentTimeDisplay(currentTime, songDurationInSeconds) {
 function progressBarSeek(mouse, hoverType) {
     if (currentSongIndex === null || !sounds[currentSongIndex].isInExistence() || (mouse?.pointerType == "touch" && hoverType !== 0 /* ProgressBarSeekAction.SEEK_TO */) || hoverType === 2 /* ProgressBarSeekAction.STOP_DISPLAYING */) {
         // HOVERED_TIME_DISPLAY.toggleAttribute('inUse', false);
-        HOVERED_TIME_DISPLAY.style.left = '-9999px';
+        HOVERED_TIME_DISPLAY.style.transform = "translate(-9999px, 0px)";
         return;
     }
     const offsetX = mouse.offsetX, progressBarWidth = PROGRESS_BAR.clientWidth, currentSongLength = sounds[currentSongIndex].howl.duration();
@@ -903,8 +903,9 @@ function progressBarSeek(mouse, hoverType) {
         case (1 /* ProgressBarSeekAction.DISPLAY_TIME */): {
             // HOVERED_TIME_DISPLAY.toggleAttribute('inUse', true);
             const progressBarDomRect = PROGRESS_BAR.getBoundingClientRect();
-            HOVERED_TIME_DISPLAY.style.top = `${progressBarDomRect.top}px`;
-            HOVERED_TIME_DISPLAY.style.left = `${(mouse.x - HOVERED_TIME_DISPLAY.getBoundingClientRect().width / 2) + 1}px`;
+            // HOVERED_TIME_DISPLAY.style.top = `${progressBarDomRect.top}px`;
+            // HOVERED_TIME_DISPLAY.style.left = `${(mouse.x - HOVERED_TIME_DISPLAY.getBoundingClientRect().width / 2) + 1}px`;
+            HOVERED_TIME_DISPLAY.style.transform = `translate(${(mouse.x - HOVERED_TIME_DISPLAY.getBoundingClientRect().width / 2)}px, ${progressBarDomRect.top - 20}px)`;
             HOVERED_TIME_DISPLAY.firstChild.textContent = new Time(seekToTime).toString();
             return;
         }
@@ -916,26 +917,29 @@ function progressBarSeek(mouse, hoverType) {
  * @param errorCategory The category the error is contained in.
 */
 function displayError(error, shortMessage, errorCategory) {
-    let insertAfter;
-    const children = ERROR_LIST.children;
-    for (let i = 0; i < children.length; i++) {
-        if (children[i].textContent == errorCategory) {
-            insertAfter = children[i];
-            break;
-        }
-    }
-    const songTitle = curDoc.createElement('dt');
-    songTitle.textContent = errorCategory;
+    console.error(error);
+    errorCategory += ":";
     const songError = curDoc.createElement('dd');
     songError.textContent = error.name.concat(": ", shortMessage ?? error.message);
     songError.title = error.message;
-    if (insertAfter) {
-        insertAfter.after(songError);
+    let insertInside = null;
+    const children = ERROR_LIST.children;
+    const length = children.length;
+    for (let i = 0; i < length; i++) {
+        if (children[i].firstChild.data == errorCategory) {
+            insertInside = children[i];
+            break;
+        }
+    }
+    if (insertInside) {
+        insertInside.appendChild(songError);
     }
     else {
-        ERROR_LIST.append(songTitle, songError);
+        const songTitle = curDoc.createElement('dt');
+        songTitle.textContent = errorCategory;
+        songTitle.appendChild(songError);
+        ERROR_LIST.appendChild(songTitle);
     }
-    console.error(error);
     if (!ERROR_POPUP.open)
         ERROR_POPUP.showModal();
 }

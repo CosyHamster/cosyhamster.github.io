@@ -387,11 +387,12 @@ input[type=number]{
     width: 100%;
 }
 .cell{ text-align: center; }
+
 dt {
-  font-weight: bold;
+    font-weight: bold;
 }
-dt::after {
-  content: ": ";
+dd {
+    font-weight: normal;
 }
 
 #Playlist_Viewer {
