@@ -195,7 +195,7 @@ class SongLoader {
         });
     }
     ;
-    quitLoading() {
+    cancelLoading() {
         this.triggerAbort();
         this.fileReader.abort();
     }
@@ -312,22 +312,17 @@ class Song {
     }
     getState() {
         if (!this.isInExistence()) {
-            if (this.songLoader == null) {
-                return "NO DATA";
-            }
-            else {
-                return "DOWNLOADING FILE";
-            }
+            return (this.songLoader == null) ?
+                "NO DATA" : "DOWNLOADING FILE";
         }
         else {
-            if (this.isLoaded()) {
-                return "HOWL LOADED";
-            }
-            else if (this.isLoading()) {
-                return "HOWL LOADING";
-            }
-            else {
-                return "HOWL UNLOADED";
+            switch (this.howl.state()) {
+                case "loaded":
+                    return "HOWL LOADED";
+                case "loading":
+                    return "HOWL LOADING";
+                default:
+                    return "HOWL UNLOADED";
             }
         }
     }
@@ -356,7 +351,7 @@ class Song {
     }
     unload() {
         if (this.songLoader != null) {
-            this.songLoader.quitLoading();
+            this.songLoader.cancelLoading();
             this.songLoader = null;
         }
         if (this.howl != null) {
@@ -571,7 +566,7 @@ var KEY_DOWN_EVENT = new KeyDownEventRegistrar(), StatusTexts = {
     PLAYING: "rgb(172, 172, 172)",
     SELECTING: "lightblue",
     NONE: ""
-}, PAUSED = false, PLAYING = true, MAIN_TABLE = document.body.querySelector(".mainTable"), PLAYLIST_VIEWER_TABLE = document.getElementById("Playlist_Viewer"), PRELOAD_DIST_ELEMENT = document.getElementById('preloadDistance'), PRELOAD_TYPE_SELECTOR = document.getElementById("preloadType"), COMPACT_MODE_LINK_ELEMENT = document.getElementById('compactModeStyleLink'), COMPACT_MODE_TOGGLE = document.getElementById('compactMode'), SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration'), SEEK_DURATION_DISPLAY = document.getElementById("seekDurationDisplay"), SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional'), SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable'), SHOW_LENGTHS = document.getElementById('showLengths'), TOGGLE_PIP_BUTTON = document.getElementById('enterPIP'), UPLOAD_BUTTON = document.getElementById('0input'), UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory'), PLAY_RATE_RANGE = document.getElementById('0playRateSlider'), SETTINGS_POPUP = document.getElementById('settingsPage'), ERROR_POPUP = document.getElementById('errorPopup'), DEPRECATED_POPUP = document.getElementById('deprecatedPopup'), DIALOGS = [SETTINGS_POPUP, ERROR_POPUP, DEPRECATED_POPUP], ERROR_LIST = document.getElementById('errorList'), CONTEXT_MENU = document.getElementById('rightClickContextMenu'), MOBILE_PLAYLIST_OPTIONS = document.getElementById('mobilePlaylistOptions'), 
+}, PAUSED = false, PLAYING = true, MAIN_TABLE = document.body.querySelector(".mainTable"), PLAYLIST_VIEWER_TABLE = document.getElementById("Playlist_Viewer"), PRELOAD_DIST_ELEMENT = document.getElementById('preloadDistance'), PRELOAD_TYPE_SELECTOR = document.getElementById("preloadType"), COMPACT_MODE_LINK_ELEMENT = document.getElementById('compactModeStyleLink'), COMPACT_MODE_TOGGLE = document.getElementById('compactMode'), SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration'), SEEK_DURATION_DISPLAY = document.getElementById("seekDurationDisplay"), SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional'), SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable'), SHOW_LENGTHS = document.getElementById('showLengths'), TOGGLE_PIP_BUTTON = document.getElementById('enterPIP'), UPLOAD_BUTTON = document.getElementById('0input'), UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory'), PLAY_RATE_RANGE = document.getElementById('0playRateSlider'), SETTINGS_POPUP = document.getElementById('settingsPage'), ERROR_POPUP = document.getElementById('errorPopup'), DEPRECATED_POPUP = document.getElementById('deprecatedPopup'), DIALOGS = [SETTINGS_POPUP, ERROR_POPUP, DEPRECATED_POPUP], ERROR_LIST = document.getElementById('errorList'), CONTEXT_MENU = document.getElementById('rightClickContextMenu'), MOBILE_CONTEXT_BUTTONS = document.getElementById("mobileContextButtons"), MOBILE_PLAYLIST_OPTIONS = document.getElementById('mobilePlaylistOptions'), 
 // LOADING_GRAY = document.getElementById('loadingGray') as HTMLDivElement,
 PROGRESS_BAR = document.getElementById('progress-bar'), HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay'), VOLUME_CHANGER = document.getElementById('0playVolume'), PLAY_RATE = document.getElementById('0playRate'), PLAY_PAN = document.getElementById('0playPan'), SEEK_BACK = document.getElementById('seekBack'), 
 // SEEK_FORWARD = document.getElementById('seekForward') as HTMLTableCellElement,
@@ -590,8 +585,7 @@ var currentSongIndex = null;
     KEY_DOWN_EVENT.register(keyEvent => {
         if (keyEvent.key != "Tab" && keyEvent.key != "Shift" && keyEvent.key != "Ctrl" && keyEvent.key != "Alt" && keyEvent.key != "Enter")
             closeContextMenu();
-        const target = keyEvent.target;
-        if (target instanceof HTMLElement && target.closest("dialog") !== null)
+        if (!keyboardCanInteract(keyEvent))
             return;
         const keyLower = keyEvent.key.toLowerCase();
         if (keyEvent.shiftKey) {
@@ -798,7 +792,7 @@ async function updateSongInfos() {
         // const rowsAway = Math.floor(Math.max(-heightAway/heightOfEachRow, 0))+1;
         // const firstRowTop = firstRowRect.top; //55px
         // const heightOfEachRow = firstRowRect.height+1; //+1 to account for row border
-        const rowsAway = Math.floor(Math.max((scrollY - firstRowTop) / rowHeight, 0)) + 1;
+        const rowsAway = Math.floor(Math.max((curWin.scrollY - firstRowTop) / rowHeight, 0)) + 1;
         for (let i = 0; i < innerHeight / rowHeight; i++) {
             const rowIndex = i + rowsAway;
             if (rowIndex >= PLAYLIST_VIEWER_TABLE.rows.length)
@@ -1113,7 +1107,7 @@ function quitPlayingMusic() {
     filePlayingCheckboxes[currentSongIndex].checked = false;
     PLAY_BUTTON.checked = false;
     currentSongIndex = null;
-    setProgressBarPercentage(0);
+    setProgressBarPercentage(100);
     for (let i = 0; i < sounds.length; i++)
         sounds[i].unload();
     Howler.stop();
@@ -1252,7 +1246,7 @@ function initializeTableEvents() {
     PLAYLIST_VIEWER_TABLE.addEventListener("keydown", selectionLogicForKeyboard);
     PLAYLIST_VIEWER_TABLE.addEventListener('click', onSingleClick, { passive: true });
     PLAYLIST_VIEWER_TABLE.addEventListener('dblclick', onDoubleClick, { passive: true });
-    PLAYLIST_VIEWER_TABLE.addEventListener("contextmenu", onRowRightClick);
+    PLAYLIST_VIEWER_TABLE.addEventListener("contextmenu", onPlayListRightClick);
     initializeTouchTableEvents();
 }
 function initializeTouchTableEvents() {
@@ -1278,23 +1272,12 @@ function initializeTouchTableEvents() {
         longTapping = false;
     }, { passive: false });
     document.getElementById("mobileDeselectRows").addEventListener("click", deselectAll);
-    document.getElementById("trashSelectedRows").addEventListener("click", deleteSelectedSongs);
     document.getElementById("moreOptionsSelectedRows").addEventListener("click", spawnRowContextMenuMobile);
 }
 function cancelLongTapTimer() {
     if (longTapTimer !== null) {
         clearTimeout(longTapTimer);
         longTapTimer = null;
-    }
-}
-function onSelectRowMobile(row) {
-    if (isSelected(row)) {
-        deselectRow(selectedRows.indexOf(row));
-        updateMobilePlaylistOptions();
-    }
-    else {
-        selectRow(row);
-        showMobilePlaylistOptions();
     }
 }
 function onLongTap(event) {
@@ -1314,16 +1297,59 @@ function spawnRowContextMenuMobile(mouseEvent) {
         spawnRowContextMenu(mouseEvent.clientX, 30, false);
     }
 }
+function onSelectRowMobile(row) {
+    if (isSelected(row)) {
+        deselectRow(selectedRows.indexOf(row));
+        updateMobilePlaylistOptions();
+    }
+    else {
+        selectRow(row);
+        showMobilePlaylistOptions();
+    }
+}
 function showMobilePlaylistOptions() {
-    MOBILE_PLAYLIST_OPTIONS.querySelector("#mobileSelectStatus").textContent = String(selectedRows.length) + " selected";
+    updateMobilePlaylistOptions_internal();
     MOBILE_PLAYLIST_OPTIONS.toggleAttribute("data-active", true);
+}
+function updateMobilePlaylistOptions_internal() {
+    MOBILE_PLAYLIST_OPTIONS.querySelector("#mobileSelectStatus").textContent = String(selectedRows.length) + " selected";
+    const contextOptions = getPlaylistContextOptions();
+    const contextButtons = [];
+    for (const child of MOBILE_CONTEXT_BUTTONS.children) {
+        for (let i = 0; i < contextOptions.length; i++) {
+            if (child.alt == contextOptions[i].text) {
+                contextOptions[i] = child;
+                break;
+            }
+        }
+    }
+    for (const option of contextOptions) {
+        if (option instanceof HTMLImageElement) {
+            contextButtons.push(option);
+            continue;
+        }
+        const icon = option.icon;
+        if (icon == null)
+            continue;
+        const button = document.createElement("img");
+        button.className = "clickableButton";
+        button.style.borderRadius = "8px";
+        button.style.width = "30px";
+        button.style.height = "30px";
+        button.src = icon;
+        button.alt = option.text;
+        button.title = option.text;
+        button.addEventListener("click", option.action);
+        contextButtons.push(button);
+    }
+    MOBILE_CONTEXT_BUTTONS.replaceChildren(...contextButtons);
 }
 function updateMobilePlaylistOptions() {
     if (selectedRows.length === 0) {
         hideMobilePlaylistOptions();
     }
     else {
-        MOBILE_PLAYLIST_OPTIONS.querySelector("#mobileSelectStatus").textContent = String(selectedRows.length) + " selected";
+        updateMobilePlaylistOptions_internal();
     }
 }
 function hideMobilePlaylistOptions() {
@@ -1412,8 +1438,8 @@ function onSingleClick(mouseEvent) {
     let row = findValidTableRow(mouseEvent.target);
     if (row == null)
         return;
-    if (mouseEvent instanceof PointerEvent && mouseEvent.pointerType != "mouse") {
-        if (selectedRows.length !== 0) {
+    if (mouseEvent instanceof curWin.PointerEvent && mouseEvent.pointerType != "mouse") {
+        if (selectedRows.length !== 0 || mouseEvent.ctrlKey) {
             onSelectRowMobile(row);
         }
         return;
@@ -1541,7 +1567,7 @@ function playRow(row) {
     const index = row.rowIndex - 1;
     const checkbox = filePlayingCheckboxes[index];
     checkbox.checked = !checkbox.checked;
-    onClickSpecificPlaySong(checkbox);
+    startOrUnloadSong(index, checkbox.checked);
 }
 function deleteSelectedSongs() {
     const tableBody = PLAYLIST_VIEWER_TABLE.firstElementChild;
@@ -1599,7 +1625,7 @@ var indexScrollDirection = 0;
 function arrowSelection(keyboardEvent, indexIncrement) {
     keyboardEvent.preventDefault();
     sortSelectedRows();
-    if (isTyping(keyboardEvent))
+    if (!keyboardCanInteract(keyboardEvent))
         return;
     if (keyboardEvent.shiftKey) {
         if (selectedRows.length == 1)
@@ -1632,10 +1658,10 @@ function arrowSelection(keyboardEvent, indexIncrement) {
         selectRow(oneElement);
     }
 }
-function deleteSongsFromKeyboard(keyboardEvent) { if (!isTyping(keyboardEvent))
+function deleteSongsFromKeyboard(keyboardEvent) { if (keyboardCanInteract(keyboardEvent))
     deleteSelectedSongs(); }
 function startPlayingFromKeyboard(keyboardEvent) {
-    if (isTyping(keyboardEvent) || selectedRows.length != 1)
+    if (!keyboardCanInteract(keyboardEvent) || selectedRows.length !== 1)
         return;
     keyboardEvent.preventDefault();
     playRow(selectedRows[0]);
@@ -1662,7 +1688,10 @@ function findValidTableRow(topLevelElement) {
     }
 }
 function sortSelectedRows() { selectedRows.sort((a, b) => a.rowIndex - b.rowIndex); }
-function isTyping(keyboardEvent) { return keyboardEvent.target instanceof curWin.HTMLInputElement; }
+function keyboardCanInteract(keyEvent) {
+    const target = keyEvent.target;
+    return !(target instanceof curWin.HTMLInputElement && target.type === "number") && target.closest("dialog") === null;
+}
 async function togglePictureInPicture() {
     TOGGLE_PIP_BUTTON.disabled = true;
     if (storedWindow == null)
@@ -1702,8 +1731,8 @@ function onRightClickFileDisplay(mouseEvent) {
     mouseEvent.stopPropagation();
     return spawnContextMenu(mouseEvent.clientX, mouseEvent.clientY, [{ text: (SHOW_LENGTHS.checked) ? "Show File Sizes" : "Show Sound Lengths", action: () => SHOW_LENGTHS.dispatchEvent(new MouseEvent('click')) }], false);
 }
-function onRowRightClick(mouseEvent) {
-    if (mouseEvent instanceof PointerEvent && mouseEvent.pointerType != "mouse") {
+function onPlayListRightClick(mouseEvent) {
+    if (mouseEvent instanceof curWin.PointerEvent && mouseEvent.pointerType != "mouse") {
         mouseEvent.preventDefault();
         return;
     }
@@ -1722,16 +1751,26 @@ function onRowRightClick(mouseEvent) {
     spawnRowContextMenu(mouseEvent.clientX, mouseEvent.clientY, true);
 }
 function spawnRowContextMenu(clientX, clientY, showDefaultOptions) {
+    const contextOptions = getPlaylistContextOptions();
+    spawnContextMenu(clientX, clientY, contextOptions, showDefaultOptions);
+}
+function getPlaylistContextOptions() {
     const contextOptions = [];
-    if (selectedRows.length == 1)
-        contextOptions.push({ text: (currentSongIndex != selectedRows[0].rowIndex - 1) ? "Play" : "Stop", action: () => playRow(selectedRows[0]) });
-    contextOptions.push({ text: "Delete", action: deleteSelectedSongs });
+    if (selectedRows.length == 1) {
+        if (currentSongIndex != selectedRows[0].rowIndex - 1) {
+            contextOptions.push({ text: "Play", icon: "../Icons/play-button-arrowhead-svgrepo-com.svg", action: () => { playRow(selectedRows[0]); deselectAll(); } });
+        }
+        else {
+            contextOptions.push({ text: "Stop", icon: "../Icons/pause-alt-svgrepo-com.svg", action: () => { playRow(selectedRows[0]); deselectAll(); } });
+        }
+    }
+    contextOptions.push({ text: "Delete", action: deleteSelectedSongs, icon: "../Icons/TrashCan.svg" });
     if (selectedRows.length !== PLAYLIST_VIEWER_TABLE.rows.length - 1) {
         if (selectedRows.length >= 2)
             contextOptions.push({ text: "Select Interval", action: selectInterval });
         contextOptions.push({ text: "Select All", action: selectAll });
     }
-    spawnContextMenu(clientX, clientY, contextOptions, showDefaultOptions);
+    return contextOptions;
 }
 function initContextMenu() {
     curDoc.addEventListener('contextmenu', (pointerEvent) => {

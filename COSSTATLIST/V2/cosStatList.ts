@@ -1,4 +1,5 @@
 var creatureList: Creature[] = [];
+var creatureListFiltered: Creature[] = [];
 var nameStat: StatValue;
 var statList: StatValue[] = [];
 var selectedStats: StatValue[] = [];
@@ -529,6 +530,7 @@ async function updateCreatureStatsTable(){
     }
 
     filterCreatures();
+    // STAT_LIST_TABLE.tBodies[0].style.height = `${creatureList.length*22-2}px`
     let tableHeaderRow = STAT_LIST_TABLE.querySelector("thead").querySelector("tr");
     const headerCells = tableHeaderRow.children;
     const headerCellsKeyNames: string[] = [];
@@ -668,7 +670,7 @@ function updateFilterChanges(){
         const statTypeIndex = Number((filterContainer.querySelector("button[name='statTypeSelect']") as HTMLButtonElement).value);
         if(Number.isNaN(statTypeIndex) || statTypeIndex == -1) continue;
 
-        const filterType = (filterContainer.querySelector("select").selectedIndex as FilterType); // const filterType = getFilterTypeFromValue(filterContainer.querySelector("select").value);
+        const filterType = getFilterTypeFromValue(filterContainer.querySelector("select").selectedIndex); // const filterType = getFilterTypeFromValue(filterContainer.querySelector("select").value);
         if(filterType == null) continue;
 
         const inputtedText: string = (filterContainer.querySelector("input[name='statFilterInput']") as HTMLInputElement).value;
@@ -680,21 +682,23 @@ function updateFilterChanges(){
 
 function updateFilterInput(filterContainer: HTMLDivElement){
     const preferredInputAttributes =
-        ((filterContainer.querySelector("select").selectedIndex as FilterType) == FilterType.CONTAINS) ? StatValue.preferredInputAttributes()
+        (getFilterTypeFromValue(filterContainer.querySelector("select").selectedIndex) == FilterType.CONTAINS) ? StatValue.preferredInputAttributes()
             : statList[Number((filterContainer.querySelector("button[name='statTypeSelect']") as HTMLButtonElement).value)].preferredInputAttributes();
 
     setAttributes((filterContainer.querySelector("input[name='statFilterInput']") as HTMLInputElement), preferredInputAttributes);
 }
 
 function filterCreatures(){
+    creatureListFiltered = [];
     for(const creature of creatureList){
         let matchesAllFilters = true;
         for(const filter of activeFilters){
             if(!filter.test(creature)){
-                matchesAllFilters = false;
                 break;
             }
         }
+
+        creatureListFiltered.push(creature);
 
         if(matchesAllFilters){
             if(creature.tableRow.style.display != "table-row") creature.tableRow.style.display = "table-row";
@@ -706,16 +710,15 @@ function filterCreatures(){
 
 function getFilterTypeFromValue(value: number){
     // switch(value){ case "equals": return FilterType.EQUALS; case "contains": return FilterType.CONTAINS; case "lessThan": return FilterType.LESS_THAN; case "lessThanEquals": return FilterType.LESS_THAN_EQUALS; case "greaterThan": return FilterType.GREATER_THAN; case "greaterThanEquals": return FilterType.GREATER_THAN_EQUALS; default: return null; }
-    // switch(value){
-    //     case 0: return FilterType.EQUALS;
-    //     case 1: return FilterType.CONTAINS;
-    //     case 2: return FilterType.LESS_THAN;
-    //     case 3: return FilterType.LESS_THAN_EQUALS;
-    //     case 4: return FilterType.GREATER_THAN;
-    //     case 5: return FilterType.GREATER_THAN_EQUALS;
-    //     default: return null;
-    // }
-    return value as FilterType;
+    switch(value){
+        case 0: return FilterType.EQUALS;
+        case 1: return FilterType.CONTAINS;
+        case 2: return FilterType.LESS_THAN;
+        case 3: return FilterType.LESS_THAN_EQUALS;
+        case 4: return FilterType.GREATER_THAN;
+        case 5: return FilterType.GREATER_THAN_EQUALS;
+        default: return null;
+    }
 }
 
 function createOption(value: string, text: string): HTMLOptionElement{
@@ -947,7 +950,7 @@ function onFinishedLoadingData(){
             nameCell.style.position = "sticky";
             nameCell.style.left = "0px";
         }
-    }).finally(() => STAT_LIST_TABLE.style.display = "");
+    }).then(() => STAT_LIST_TABLE.style.display = "");
 }
 
 (async () => { //START

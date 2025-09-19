@@ -19,10 +19,10 @@
         <div id="loadingGray"></div>
         <div id="mobilePlaylistOptions">
             <img class="clickableButton" id="mobileDeselectRows" style="border-radius: 8px;width: 25px;height: 30px;" src="../Icons/CancelIcon.svg" alt="Exit">
-            <div id="mobileSelectStatus" style="flex: 0 1 auto;user-select: none;font-size:20px;align-self: center;" class="scrollableText playingStatus text">0 selected</div>
-            <div style="display: flex;margin-left: auto;">
-                <img class="clickableButton" id="trashSelectedRows" style="border-radius: 8px; width: 30px; height: 30px;" src="../Icons/TrashCan.svg" alt="Trash"> <!-- https://www.svgrepo.com/svg/159361/trash-can-with-cover-from-side-view -->
-                <img class="clickableButton" id="moreOptionsSelectedRows" style="border-radius: 8px; width: 30px; height: 30px; margin-left: 5px; margin-right: 5px;" src="../Icons/MoreMenuIcon.svg" alt="More Options"> <!-- https://www.svgrepo.com/svg/506248/menu-horizontal -->
+            <div id="mobileSelectStatus" style="flex: 0 1 100%; user-select: none; font-size:20px; align-self: center;" class="scrollableText playingStatus text">0 selected</div>
+            <div style="display: flex; margin-left: auto; width: 100%; justify-content: flex-end;">
+                <div id="mobileContextButtons" style="display: flex;overflow: scroll;scrollbar-width: none;"></div>
+                <img class="clickableButton" id="moreOptionsSelectedRows" style="border-radius: 8px; width: 30px; height: 30px; margin-left: 5px; margin-right: 5px;" src="../Icons/MoreMenuIcon.svg" alt="More Options">
             </div>
         </div>
         <div id="dragOverDisplay"><div style="position: fixed; top: 50vh; left: 50vw; transform: translate(-50%, -50%);" class="text" ><b>Drop Here to add Music</b></div></div>
@@ -31,9 +31,9 @@
         <input accept="audio/*" type="file" style="display: none;" id="0input" multiple>
         <input accept="audio/*" type="file" style="display: none;" id="inputDirectory" multiple webkitdirectory>
         <div style="display: flex">
-            <label for="0input"><img id="uploadFilesLabel" class="clickableButton" tabindex="0" data-onRightClick="uploadFileMenu" src="../Icons/UploadIcon.svg" width=20 height=20 alt=""/></label> <!--https://commons.wikimedia.org/wiki/File:OOjs_UI_icon_upload.svg-->
+            <label for="0input"><img id="uploadFilesLabel" class="clickableButton" tabindex="0" data-onRightClick="uploadFileMenu" src="../Icons/UploadIcon.svg" width=20 height=20 alt=""/></label>
             <div style="cursor: pointer; flex: 0 1 auto;" tabindex="0" class="scrollableText playingStatus text" id="currentFileName">Upload Files to Begin!</div>
-            <img tabindex="0" class="clickableButton" id="settingsButton" data-onRightClick="quickSettings" width=20 height=20 style="margin-left: auto;" src="../Icons/SettingsIcon.svg" alt="Settings"/> <!--https://en.m.wikipedia.org/wiki/File:Ic_settings_48px.svg-->
+            <img tabindex="0" class="clickableButton" id="settingsButton" data-onRightClick="quickSettings" width=20 height=20 style="margin-left: auto;" src="../Icons/SettingsIcon.svg" alt="Settings"/>
         </div>
 
         <table class="mainTable">
@@ -81,7 +81,7 @@
                             </div>
                             <div id="modifiers1" style="display: flex; justify-content: flex-end; flex-basis: 20%;">
                                 <div style="position: relative; width: calc(100% / 3); max-width: 150px;" class="tableBorder">
-                                    <img class="playBackIcon" src="../Icons/HeadphonesIcon.svg" alt="Pan Changer" style="width:100%; height:100%; position: absolute; left:50%; transform: translate(-50%, 0%)"> <!--https://www.svgrepo.com/svg/103147/headphone-->
+                                    <img class="playBackIcon" src="../Icons/HeadphonesIcon.svg" alt="Pan Changer" style="width:100%; height:100%; position: absolute; left:50%; transform: translate(-50%, 0%)">
                                     <div tabindex="0" id="planPanPullsOpen" class="pullsOpen" style="visibility: visible; position: absolute;">
                                         <div>
                                             <label for="0playPan" style="color: black; position: absolute;">0%</label>
@@ -90,7 +90,7 @@
                                     </div>
                                 </div>
                                 <div style="position: relative; width: calc(100% / 3); max-width: 150px;" class="tableBorder">
-                                    <img class="playBackIcon" src="../Icons/PlaybackSpeedIcon.svg" alt="Playback Speed Changer" style="width:100%; height:100%; position: absolute; left:50%; transform: translate(-50%, 0%);"><!--https://www.svgrepo.com/svg/76295/download-speed-->
+                                    <img class="playBackIcon" src="../Icons/PlaybackSpeedIcon.svg" alt="Playback Speed Changer" style="width:100%; height:100%; position: absolute; left:50%; transform: translate(-50%, 0%);">
                                     <div tabindex="0" id="playRatePullsOpen" class="pullsOpen" style="position: absolute; justify-content: center; display: flex; visibility: visible;">
                                         <div style="display: flex; flex-direction: column;">
                                             <input type="number" style="width: calc(100% - 7.6px)" class="playRate" id="0playRate" value="1" step="0.01" min="0" inputmode="numeric">
@@ -144,7 +144,7 @@
                     <label for="preloadDistance" style="display: inline-block;">Value: 1</label>
                 </div>
                 <div>
-                    <input style="width: 40%; margin-right: 5px;" type="number" value=10 step=1 min=0 id="seekDuration"><label for="seekDuration">Seek Duration: </label><label id="seekDurationDisplay" for="seekDuration">10 sec</label>
+                    <input style="width: 40%; margin-right: 5px;" type="number" inputmode="numeric" value=10 step=1 min=0 id="seekDuration"><label for="seekDuration">Seek Duration: </label><label id="seekDurationDisplay" for="seekDuration">10 sec</label>
                 </div>
                 <div>
                     <label><input type="checkbox" id="compactMode" autocomplete="off">Compact Mode</label>

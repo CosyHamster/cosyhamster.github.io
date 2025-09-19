@@ -1,0 +1,780 @@
+[
+  {
+    "type": "string",
+    "displayName": "Name",
+    "keyName": "common",
+    "canBeDisabled": false,
+    "keyed": true
+  },
+  {
+    "type": "string",
+    "displayName": "Legacy Name",
+    "keyName": "legacyName",
+    "keyed": true
+  },
+  {
+    "type": "string",
+    "displayName": "Lore Name",
+    "keyName": "loreName",
+    "keyed": true
+  },
+  {
+    "type": "string",
+    "displayName": "Class",
+    "keyName": "class",
+    "keyed": true
+  },
+  {
+    "type": "string",
+    "displayName": "Type",
+    "keyName": "type",
+    "keyed": true
+  },
+  {
+    "type": "string",
+    "displayName": "Diet",
+    "keyName": "diet",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Tier",
+    "keyName": "tier",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Ambush",
+    "keyName": "ambush",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Appetite",
+    "keyName": "appetite",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Beached Speed",
+    "keyName": "beachSpeed",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Bite Cooldown",
+    "keyName": "biteCooldown",
+    "keyed": true
+  },
+  {
+    "type": "string",
+    "displayName": "Blood Color",
+    "keyName": "bloodColor",
+    "keyed": true
+  },
+  {
+    "type": "string",
+    "displayName": "Blood Texture",
+    "keyName": "bloodTexture",
+    "keyed": true
+  },
+  {
+    "type": "string",
+    "displayName": "Breath Type",
+    "keyName": "breath",
+    "keyed": true
+  },
+  {
+    "type": "string",
+    "displayName": "Concept Artist(s)",
+    "keyName": "conceptBy",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Bite Damage",
+    "keyName": "damage",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Secondary Damage",
+    "keyName": "damage2",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Dart Power",
+    "keyName": "dartPower",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Dart Stamina Cost",
+    "keyName": "dartStamina",
+    "keyed": true
+  },
+  {
+    "type": "date",
+    "displayName": "Added Date",
+    "keyName": "dateAdded",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Fly Multiplier",
+    "keyName": "flyMultiplier",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Fly Speed",
+    "keyName": "flySpeed",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Fly Sprint Multiplier",
+    "keyName": "flySprintMultiplier",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Glide Stamina Regen",
+    "keyName": "glideStaminaRegen",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Growth Time (minutes)",
+    "keyName": "growthTime",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Veneration Rate",
+    "keyName": "venerationRate",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Health",
+    "keyName": "health",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Health Regen Percent",
+    "keyName": "healthRegen",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Hunger Drain",
+    "keyName": "hungerDrain",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Thirst Drain",
+    "keyName": "thirstDrain",
+    "keyed": true
+  },
+  {
+    "type": "string",
+    "displayName": "Image Link",
+    "keyName": "imageLink",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Minimum Age to use Spacebar",
+    "keyName": "jumpAge",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Jump Power",
+    "keyName": "jumpPower",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Jump Stamina Cost",
+    "keyName": "jumpStamina",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Moisture Duration (secs)",
+    "keyName": "moistureTime",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Night Vision",
+    "keyName": "nightvision",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Oxygen Duration (secs)",
+    "keyName": "oxygenTime",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Sprint Speed",
+    "keyName": "sprintSpeed",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Walk and Swim Speed",
+    "keyName": "walkAndSwimSpeed",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Max Stamina",
+    "keyName": "stamina",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Stamina Regen",
+    "keyName": "stamRegen",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Stored Price",
+    "keyName": "storedPrice",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Take off Multiplier",
+    "keyName": "takeoffMultiplier",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Turn Radius",
+    "keyName": "turn",
+    "keyed": true
+  },
+  {
+    "type": "number",
+    "displayName": "Weight (lbs)",
+    "keyName": "weight",
+    "keyed": true
+  },
+
+  {
+    "type": "boolean",
+    "keyName": "Grab",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Latch",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Guilt",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Harden",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Frosty",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Climber",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Fortify",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Berserk",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Volcanic",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Earthquake",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Drowsy Area",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Egg Stealer",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Sticky Fur",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Adrenaline",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Tail Drop",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Agile Swimmer",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Water Gale",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Life Leech",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Warden's Rage",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Will To Live",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Quick Recovery",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Reflect",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Snow Shield",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Unbreakable",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Serrated Teeth",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Iron Stomach",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Keen Observer",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Healing Pulse",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Pack Healer",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Mud Pile",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Strength In Numbers",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Hunters Curse",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Unbridled Rage",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Cause Fear",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Dazzling Flash",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Shock Area",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Invisibility",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Stamina Puddle",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Poison Area",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Channeling",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Toxic Trap",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Thorn Trap",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Sticky Trap",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Frost Snare",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Speed Steal",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Speed Blitz",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Sonic Wings",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Escape Area",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "displayName": "Self Destruct",
+    "keyName": "Self-Destruct",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Rewind",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Raider",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Change Weather",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Area Food Restore",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Area Water Restore",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Broodwatcher",
+    "keyed": false
+  },
+
+  {
+    "type": "number",
+    "keyName": "Spite",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Diver",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Hunker",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Burrower",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Radiation",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Frost Nova",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Heal Aura",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Healing Hunter",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Healing Step",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Cursed Sigil",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "First Strike",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Damage Link",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Soft Landing",
+    "keyed": false
+  },
+
+  {
+    "type": "number",
+    "keyName": "Bleed Attack",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Poison Attack",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Necropoison Attack",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Burn Attack",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Disease Attack",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Frostbite Attack",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Corrosion Attack",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Injury Attack",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Wing Shredder",
+    "keyed": false
+  },
+
+  {
+    "type": "number",
+    "keyName": "Block Bleed",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Block Poison",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Block Necropoison",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Block Burn",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Block Disease",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Block Frostbite",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Block Corrosion",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Block Injury",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Breath Resistance",
+    "keyed": false
+  },
+
+  {
+    "type": "number",
+    "keyName": "Defensive Bleed",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Defensive Poison",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Toxic Trail",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Defensive Necropoison",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Defensive Burn",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Defensive Paralyze",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Defensive Disease",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Defensive Frostbite",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Defensive Corrosion",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Defensive Injury",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Defensive Wing Shredder",
+    "keyed": false
+  },
+
+  {
+    "type": "string",
+    "keyName": "Charge",
+    "keyed": false
+  },
+  {
+    "type": "string",
+    "keyName": "Totem",
+    "keyed": false
+  },
+  {
+    "type": "string",
+    "keyName": "Yolk Bomb",
+    "keyed": false
+  }
+]

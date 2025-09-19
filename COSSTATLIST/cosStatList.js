@@ -585,7 +585,7 @@ function updateFilterChanges() {
         const statTypeIndex = Number(filterContainer.querySelector("button[name='statTypeSelect']").value);
         if (Number.isNaN(statTypeIndex) || statTypeIndex == -1)
             continue;
-        const filterType = getFilterTypeFromValue(filterContainer.querySelector("select").selectedIndex); // const filterType = getFilterTypeFromValue(filterContainer.querySelector("select").value);
+        const filterType = filterContainer.querySelector("select").selectedIndex; // const filterType = getFilterTypeFromValue(filterContainer.querySelector("select").value);
         if (filterType == null)
             continue;
         const inputtedText = filterContainer.querySelector("input[name='statFilterInput']").value;
@@ -595,7 +595,7 @@ function updateFilterChanges() {
     updateCreatureStatsTable();
 }
 function updateFilterInput(filterContainer) {
-    const preferredInputAttributes = (getFilterTypeFromValue(filterContainer.querySelector("select").selectedIndex) == 1 /* FilterType.CONTAINS */) ? StatValue.preferredInputAttributes()
+    const preferredInputAttributes = (filterContainer.querySelector("select").selectedIndex == 1 /* FilterType.CONTAINS */) ? StatValue.preferredInputAttributes()
         : statList[Number(filterContainer.querySelector("button[name='statTypeSelect']").value)].preferredInputAttributes();
     setAttributes(filterContainer.querySelector("input[name='statFilterInput']"), preferredInputAttributes);
 }
@@ -620,15 +620,16 @@ function filterCreatures() {
 }
 function getFilterTypeFromValue(value) {
     // switch(value){ case "equals": return FilterType.EQUALS; case "contains": return FilterType.CONTAINS; case "lessThan": return FilterType.LESS_THAN; case "lessThanEquals": return FilterType.LESS_THAN_EQUALS; case "greaterThan": return FilterType.GREATER_THAN; case "greaterThanEquals": return FilterType.GREATER_THAN_EQUALS; default: return null; }
-    switch (value) {
-        case 0: return 0 /* FilterType.EQUALS */;
-        case 1: return 1 /* FilterType.CONTAINS */;
-        case 2: return 2 /* FilterType.LESS_THAN */;
-        case 3: return 3 /* FilterType.LESS_THAN_EQUALS */;
-        case 4: return 4 /* FilterType.GREATER_THAN */;
-        case 5: return 5 /* FilterType.GREATER_THAN_EQUALS */;
-        default: return null;
-    }
+    // switch(value){
+    //     case 0: return FilterType.EQUALS;
+    //     case 1: return FilterType.CONTAINS;
+    //     case 2: return FilterType.LESS_THAN;
+    //     case 3: return FilterType.LESS_THAN_EQUALS;
+    //     case 4: return FilterType.GREATER_THAN;
+    //     case 5: return FilterType.GREATER_THAN_EQUALS;
+    //     default: return null;
+    // }
+    return value;
 }
 function createOption(value, text) {
     const option = document.createElement("option");
