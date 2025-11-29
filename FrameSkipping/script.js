@@ -1,17 +1,20 @@
 var PREFERRED_ITERS = 5;
 
 const fileUpload = document.getElementById("upload");
-const skipForward = document.getElementById("skipForward");
-const skipBackward = document.getElementById("skipBackward");
+const skipForwardButton = document.getElementById("skipForward");
+const skipBackwardButton = document.getElementById("skipBackward");
 const skipDuration = document.getElementById("skipDuration");
 const currentTimeInput = document.getElementById("currentTimeInput");
-const videoFrameRateInput = document.getElementById("videoFrameRate");
+const videoFramerateInput = document.getElementById("videoFrameRate");
+const calcFramerateButton = document.getElementById("calcFramerate");
 const calcFrameButton = document.getElementById("calcCurrentVideoFrame");
 const outputFrame = document.getElementById("outputFrame");
 const video = document.getElementById("video");
 var seeking = 0;
 var iters = 0;
 var currentMediaTime = 0;
+/** @type null | (framerate: string) => null */
+let resolveWithVideoFrameRate = null;
 
 
 
@@ -25,12 +28,12 @@ fileUpload.addEventListener("change", () => {
 });
 document.addEventListener("dragover", (event) => {
 	const dataTransfer = event.dataTransfer;
-	if(dataTransfer.types.length == 1 && dataTransfer.types.includes("Files"))
+	if(dataTransfer.types.length === 1 && dataTransfer.types.includes("Files"))
 		event.preventDefault();
 });
 document.addEventListener("drop", (event) => {
 	const dataTransfer = event.dataTransfer;
-	if(dataTransfer.types.length == 1 && dataTransfer.types.includes("Files")){
+	if(dataTransfer.types.length === 1 && dataTransfer.types.includes("Files")){
 		event.preventDefault();
 		uploadFile(dataTransfer.files[0]);
 	}
@@ -42,8 +45,10 @@ function videoFrameAdvanced(now, metadata){
 	console.log(`iters: ${iters}; currentTime: ${video.currentTime}; prevMediaTime: ${currentMediaTime}; mediaTime: ${metadata.mediaTime}`);
 	skipDuration.valueAsNumber = (skipDuration.valueAsNumber*iters)/PREFERRED_ITERS;
 	if(iters >= PREFERRED_ITERS){
-		if(!videoFrameRateInput.value)
-			videoFrameRateInput.value = (1/(metadata.mediaTime-currentMediaTime)).toFixed(2);
+		if(resolveWithVideoFrameRate != null){
+			console.log((1/(metadata.mediaTime-currentMediaTime)))
+			resolveWithVideoFrameRate(1/(metadata.mediaTime-currentMediaTime));
+		}
 		currentMediaTime = metadata.mediaTime+0.0001;
 		currentTimeInput.valueAsNumber = metadata.mediaTime;
 		setButtonsDisabled(false);
@@ -58,10 +63,13 @@ function videoFrameAdvanced(now, metadata){
 
 function onVideoFrame(now, metadata){
 	video.requestVideoFrameCallback(onVideoFrame);
+	// noinspection FallThroughInSwitchStatementJS
 	switch(seeking){
 		case -1:
-			if(!videoFrameRateInput.value)
-				videoFrameRateInput.value = (1/(currentMediaTime-metadata.mediaTime)).toFixed(2);
+			if(resolveWithVideoFrameRate != null){
+				console.log((1/(currentMediaTime-metadata.mediaTime)))
+				resolveWithVideoFrameRate(1/(currentMediaTime-metadata.mediaTime));
+			}
 			seeking = 0;
 		case 0:
 			currentMediaTime = metadata.mediaTime+0.0001;
@@ -80,35 +88,53 @@ function onVideoFrame(now, metadata){
 }
 video.requestVideoFrameCallback(onVideoFrame);
 
+function skipBackward(){
+	seeking = -1;
+	video.currentTime = currentMediaTime-0.0002;
+}
+function skipForward(){
+	seeking = 1;
+	if(video.currentTime === currentMediaTime)
+		video.currentTime = currentMediaTime+0.0001;
+	else
+		video.currentTime = currentMediaTime;
+}
 
-
-skipBackward.addEventListener("click", () => {
+skipBackwardButton.addEventListener("click", () => {
 	setButtonsDisabled(true);
 	video.addEventListener("seeked", () => {
 		setButtonsDisabled(false);
 	}, {once: true});
-	seeking = -1;
-	video.currentTime = currentMediaTime-0.0002;
+	skipBackward();
 });
-skipForward.addEventListener("click", () => {
+skipForwardButton.addEventListener("click", () => {
 	setButtonsDisabled(true);
-	seeking = 1;
-	if(video.currentTime == currentMediaTime)
-		video.currentTime = currentMediaTime+0.0001;
-	else
-		video.currentTime = currentMediaTime;
+	skipForward();
 });
+calcFramerateButton.addEventListener("click", async () => {
+	setButtonsDisabled(true);
+	const backwardFramerate = await new Promise(resolve => {
+		resolveWithVideoFrameRate = resolve;
+		skipBackward();
+	});
+	const forwardFramerate = await new Promise(resolve => {
+		resolveWithVideoFrameRate = resolve;
+		skipForward();
+	});
+	videoFramerateInput.value = ((backwardFramerate+forwardFramerate)/2).toFixed(2);
+}, true);
 calcFrameButton.addEventListener("click", () => {
-	const frameRate = videoFrameRateInput.valueAsNumber;
+	const frameRate = videoFramerateInput.valueAsNumber;
 	if(!frameRate)
 		return;
 	outputFrame.innerText = currentMediaTime*frameRate;
-})
+}, true);
 currentTimeInput.addEventListener("change", () => {
 	video.currentTime = currentTimeInput.valueAsNumber;
-});
+}, true);
 
 function setButtonsDisabled(disabled){
-	skipForward.disabled = disabled;
-	skipBackward.disabled = disabled;
+	skipForwardButton.disabled = disabled;
+	skipBackwardButton.disabled = disabled;
+	calcFramerateButton.disabled = disabled;
 }
