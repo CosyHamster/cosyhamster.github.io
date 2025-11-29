@@ -1,0 +1,20 @@
+<html>
+	<head>
+		<script src="script.js" defer></script>
+	</head>
+	<body>
+		<div>
+			<input type="file" id="upload">
+			<button id="skipBackward">Frame Skip Backward</button>
+			<button id="skipForward">Frame Skip Forward</button>
+			<input type="number" id="skipDuration" value="0.001" step="0.0001" min="0.0001">
+			<label>MediaTime: <input id="currentTimeInput" type="number" value="0" step="0.0001"></label>
+		</div>
+		<video id="video" style="width:100%;max-height:calc(100% - 21px);object-fit:contain;" controls></video>
+		<div>
+			<label>Video Frame Rate: <input type="number" id="videoFrameRate" value="" step="0.0001" min="0.0001"></label>
+			<button id="calcCurrentVideoFrame">Calc Current Video Frame</button>
+			<output id="outputFrame" name="currentFrame" for="videoFrameRate calcCurrentVideoFrame"></output>
+		</div>
+	</body>
+</html>
