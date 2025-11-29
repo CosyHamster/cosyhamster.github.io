@@ -1,9 +1,9 @@
 const NO_SERVICE_WORKER = document.URL.includes("127.0.0.1");
 
-import("./howler.js").catch((error) => {
+import("../Javascript/howler.js").catch((error) => {
     console.warn(error);
     let howlerScript = document.createElement('script');
-    howlerScript.src = "./howler.js";
+    howlerScript.src = "../Javascript/howler.js";
     document.head.appendChild(howlerScript);
 });
 

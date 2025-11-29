@@ -1,5 +1,5 @@
 //@ts-expect-error
-import("./howler.js").catch((error) => {
+import("../Javascript/howler.js").catch((error) => {
   console.warn(error + "\nLoading Howler using script element instead.");
   let howlerScript = document.createElement('script');
   howlerScript.src = "../Javascript/howler.js";
@@ -1497,12 +1497,12 @@ function showMobilePlaylistOptions(){
 
 function updateMobilePlaylistOptions_internal(){
   MOBILE_PLAYLIST_OPTIONS.querySelector("#mobileSelectStatus").textContent = String(selectedRows.length) + " selected";
-  const contextOptions: (HTMLImageELement | ContextMenuOption)[] = getPlaylistContextOptions();
+  const contextOptions: (HTMLImageElement | ContextMenuOption)[] = getPlaylistContextOptions();
   const contextButtons: HTMLImageElement[] = [];
 
   for(const child of MOBILE_CONTEXT_BUTTONS.children){
     for(let i = 0; i < contextOptions.length; i++){
-      if((child as HTMLImageElement).alt == contextOptions[i].text){
+      if((child as HTMLImageElement).alt == (contextOptions[i] as ContextMenuOption).text){
         contextOptions[i] = child as HTMLImageElement;
         break;
       }

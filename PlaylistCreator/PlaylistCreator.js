@@ -1,6 +1,6 @@
 "use strict";
 //@ts-expect-error
-import("./howler.js").catch((error) => {
+import("../Javascript/howler.js").catch((error) => {
     console.warn(error + "\nLoading Howler using script element instead.");
     let howlerScript = document.createElement('script');
     howlerScript.src = "../Javascript/howler.js";
