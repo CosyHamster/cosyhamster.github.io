@@ -8,12 +8,14 @@ const currentTimeInput = document.getElementById("currentTimeInput");
 const videoFramerateInput = document.getElementById("videoFrameRate");
 const calcFramerateButton = document.getElementById("calcFramerate");
 const calcFrameButton = document.getElementById("calcCurrentVideoFrame");
+/** @type HTMLOutputElement */
 const outputFrame = document.getElementById("outputFrame");
+/** @type HTMLVideoElement */
 const video = document.getElementById("video");
 var seeking = 0;
 var iters = 0;
 var currentMediaTime = 0;
-/** @type null | (framerate: string) => null */
+/** @type null | (framerate: number) => null */
 let resolveWithVideoFrameRate = null;
 
 
@@ -25,7 +27,7 @@ function uploadFile(file){
 }
 fileUpload.addEventListener("change", () => {
 	uploadFile(fileUpload.files[0]);
-});
+}, true);
 document.addEventListener("dragover", (event) => {
 	const dataTransfer = event.dataTransfer;
 	if(dataTransfer.types.length === 1 && dataTransfer.types.includes("Files"))
@@ -38,8 +40,6 @@ document.addEventListener("drop", (event) => {
 		uploadFile(dataTransfer.files[0]);
 	}
 });
-
-
 
 function videoFrameAdvanced(now, metadata){
 	console.log(`iters: ${iters}; currentTime: ${video.currentTime}; prevMediaTime: ${currentMediaTime}; mediaTime: ${metadata.mediaTime}`);
@@ -106,17 +106,20 @@ skipBackwardButton.addEventListener("click", () => {
 		setButtonsDisabled(false);
 	}, {once: true});
 	skipBackward();
-});
+}, true);
 skipForwardButton.addEventListener("click", () => {
+	if(video.ended) return;
 	setButtonsDisabled(true);
 	skipForward();
-});
+}, true);
 calcFramerateButton.addEventListener("click", async () => {
+	if(currentMediaTime <= 0.0001 || video.ended) return;
 	setButtonsDisabled(true);
 	const backwardFramerate = await new Promise(resolve => {
 		resolveWithVideoFrameRate = resolve;
 		skipBackward();
 	});
+	await new Promise(resolve => setTimeout(resolve, 0)); //allow normal processes to finish before starting next thingy
 	const forwardFramerate = await new Promise(resolve => {
 		resolveWithVideoFrameRate = resolve;
 		skipForward();
@@ -132,7 +135,6 @@ calcFrameButton.addEventListener("click", () => {
 currentTimeInput.addEventListener("change", () => {
 	video.currentTime = currentTimeInput.valueAsNumber;
 }, true);
-
 function setButtonsDisabled(disabled){
 	skipForwardButton.disabled = disabled;
 	skipBackwardButton.disabled = disabled;
