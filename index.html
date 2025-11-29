@@ -15,11 +15,44 @@
         navigator.serviceWorker.register("ServiceWorker.js");
       }
     </script>
+    <style>
+      body{
+        color:black;
+      }
+      .bigLink{
+        font-family: Cambria,serif;
+        text-align: center;
+        font-size: 30px;
+        font-weight: bold;
+        border:1px solid black;
+        margin-top: 15px;
+        margin-bottom: 15px;
+        background-color:white;
+      }
+      .smallLink{
+        font-family: Cambria,serif;
+        text-align: center;
+        font-size: 15px;
+        font-weight: bold;
+        margin-top: 15px;
+        margin-bottom: 15px;
+      }
+      #poweredByText{
+        color:black;
+        text-align: center;
+        font-weight: bold;
+        font-family: Cascadia Code, serif;
+      }
+    </style>
   </head>
-
   <body>
-    <div style="text-align: center;"><h1 style="border:1px solid black; background-color:white; color:black; font-family: Cambria,serif"><a href="HTML/WebLooper.html">Web Looper</a></h1></div>
-    <div style="text-align: center;"><h1 style="border:1px solid black; background-color:white; color:black; font-family: Cambria,serif"><a href="HTML/PlaylistCreator.html">Playlist Creator</a></h1></div>
-    <h5 style="text-align: center;"><a id="poweredByText" style="color:black; font-family: Cascadia Code, serif;" href="https://howlerjs.com" target="_blank">Powered by Howler.js</a></h5>
+    <div class="bigLink"><a href="WebLooper">Web Looper</a></div>
+    <div class="bigLink"><a href="PlaylistCreator">Playlist Creator</a></div>
+    <div class="smallLink"><a id="poweredByText" href="https://howlerjs.com" target="_blank">Powered by Howler.js</a></div>
+    <nav>
+      <span>Additional:</span>
+      <div><a href="COSSTATLIST">COS Stat List</a></div>
+      <div><a href="FrameSkipper">Video Frame Skipper</a></div>
+    </nav>
   </body>
 </html>
