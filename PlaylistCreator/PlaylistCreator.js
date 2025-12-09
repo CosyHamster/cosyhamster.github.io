@@ -585,9 +585,70 @@ var currentSongIndex = null;
     KEY_DOWN_EVENT.register(keyEvent => {
         if (keyEvent.key != "Tab" && keyEvent.key != "Shift" && keyEvent.key != "Ctrl" && keyEvent.key != "Alt" && keyEvent.key != "Enter")
             closeContextMenu();
-        if (!keyboardCanInteract(keyEvent))
+        const target = keyEvent.target;
+        if (target.closest("dialog") !== null)
             return;
         const keyLower = keyEvent.key.toLowerCase();
+        const compressed = (Number(keyEvent.shiftKey) /*1*/) + (Number(keyEvent.ctrlKey) << 1 /*2*/) + (Number(keyEvent.altKey) << 2 /*4*/) + (Number(keyEvent.metaKey) << 3 /*8*/);
+        if (compressed == 1) { //shift key only
+            switch (keyLower) {
+                case "n":
+                    jumpSong(1);
+                    keyEvent.preventDefault();
+                    break;
+                case "p":
+                    jumpSong(-1);
+                    keyEvent.preventDefault();
+                    break;
+            }
+        }
+        else if (compressed == 2) { //ctrl key only
+            switch (keyLower) {
+                case "a":
+                    selectAll();
+                    keyEvent.preventDefault();
+                    break;
+            }
+            // } else if(compressed == 4){ //alt key only
+            // } else if(compressed == 8){ //meta key only
+        }
+        else { //combination or none
+            if (compressed == 0) {
+                switch (keyLower) {
+                    case "escape":
+                        deselectAll();
+                        PLAYLIST_VIEWER_TABLE.blur();
+                        break;
+                    case " ": //space
+                    case "k":
+                        togglePauseCurrentSong();
+                        keyEvent.preventDefault();
+                        break;
+                    case "arrowleft":
+                        if (!(keyEvent.target instanceof curWin.HTMLInputElement && keyEvent.target.inputMode === "numeric")) {
+                            seek(-1);
+                            keyEvent.preventDefault();
+                        }
+                        break;
+                    case "arrowright":
+                        if (!(keyEvent.target instanceof curWin.HTMLInputElement && keyEvent.target.inputMode === "numeric")) {
+                            seek(1);
+                            keyEvent.preventDefault();
+                        }
+                        break;
+                    case "m":
+                        MUTE_BUTTON.click();
+                        break;
+                    case "l":
+                        REPEAT_BUTTON.click();
+                        break;
+                    case "s":
+                        SHUFFLE_BUTTON.click();
+                        break;
+                }
+            }
+        }
+        return;
         if (keyEvent.shiftKey) {
             switch (keyLower) {
                 case "n":
@@ -1690,7 +1751,7 @@ function findValidTableRow(topLevelElement) {
 function sortSelectedRows() { selectedRows.sort((a, b) => a.rowIndex - b.rowIndex); }
 function keyboardCanInteract(keyEvent) {
     const target = keyEvent.target;
-    return !(target instanceof curWin.HTMLInputElement && target.type === "number") && target.closest("dialog") === null;
+    return !(target instanceof curWin.HTMLInputElement) && target.closest("dialog") === null;
 }
 async function togglePictureInPicture() {
     TOGGLE_PIP_BUTTON.disabled = true;
