@@ -47,18 +47,18 @@ const enum FilterType{
 }
 
 class Filter{
-    statType: StatValue;
+    statEntry: StatValue;
     filterType: FilterType;
     inputtedText: string;
     reverseFilter: boolean;
     constructor(statType: StatValue, filterType: FilterType, inputtedText: string, reverseFilter: boolean){
-        this.statType = statType;
+        this.statEntry = statType;
         this.filterType = filterType;
         this.inputtedText = inputtedText;
         this.reverseFilter = reverseFilter;
     }
     test(creature: Creature): boolean{
-        const filterResult = this.statType.filter(creature, this.filterType, this.inputtedText);
+        const filterResult = this.statEntry.filter(creature, this.filterType, this.inputtedText);
         return (this.reverseFilter) ? !filterResult : filterResult;
     }
 }
@@ -287,7 +287,7 @@ abstract class DateStatValue extends StatValue {
     }
 
     override filter(creature: Creature, filterType: FilterType, testVal: string): boolean {
-        const date = new Date(testVal+"T00:00").getTime();//this.getDateStringAsNumber(testVal);
+        const date = new Date(testVal+"T00:00").getTime();//this.dateStringToNumber(testVal);
         switch(filterType){
             case FilterType.EQUALS: return this.getValue(creature) == date;
             case FilterType.CONTAINS: return this.getDisplayValue(creature).toLowerCase().includes(testVal.toLowerCase());
@@ -299,7 +299,7 @@ abstract class DateStatValue extends StatValue {
         }
     }
 
-    getDateStringAsNumber(date: string){
+    dateStringToNumber(date: string){
         const dateComponents = date.split("/", 3).map(comp => parseInt(comp));
         return new Date(dateComponents[2], dateComponents[0]-1, dateComponents[1]).getTime();
     }
@@ -314,7 +314,7 @@ class KeyedDateStatValue extends DateStatValue {
         return creature[this.keyName] as string;
     }
     override getValue(creature: Creature): number {
-        return this.getDateStringAsNumber(this.getDisplayValue(creature));
+        return this.dateStringToNumber(this.getDisplayValue(creature));
     }
 }
 
@@ -425,7 +425,7 @@ function initializeCreatureList(): Promise<void>{
     
         function tryLoad(){
             fetch("creatureStats.json").then(response => {
-                if(!response.ok) throw new Error("Response is not ok");
+                if(!response.ok) throw new TypeError("Response is not ok");
                 response.json().then((uninitializedCreatureStats: {[key: string]: Creature}) => {
                     const creatureStats: Creature[] = [];
                     for (const [_, value] of Object.entries(uninitializedCreatureStats)) {

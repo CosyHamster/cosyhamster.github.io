@@ -1,5 +1,6 @@
 <html>
 	<head>
+		<script>if(navigator.userAgent.includes("CrOS"))document.addEventListener("keydown",(event)=>{if(event.keyCode==119)window.addEventListener("beforeunload",(event) => {event.preventDefault();});});</script>
 		<script src="script.js" defer></script>
 		<style>
 			html,body,main{
@@ -16,7 +17,7 @@
 			<div>
 				<input type="file" id="upload">
 				<span class="buttonChunk"><button id="skipBackward">Frame Skip Backward</button><button id="skipForward">Frame Skip Forward</button></span>
-				<label class="buttonChunk" title="Skip Duration (time to next frame / 5). Setting this too high may unintentionally skip frames.">Skip Duration: <input type="number" id="skipDuration" value="0.001" step="0.0001" min="0.0001"></label>
+				<label class="buttonChunk" title="Skip Duration (time to next frame / 5). Setting this too high may unintentionally skip frames when seeking forward.">Skip Duration: <input type="number" id="skipDuration" value="0.001" step="0.0001" min="0.0001"></label>
 				<label class="buttonChunk" title="The time of the video's current frame (secs)">MediaTime: <input id="mediaTimeInput" type="number" value="0" step="0.0001"></label>
 			</div>
 			<div style="height: 100%; position: relative;">
