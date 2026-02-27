@@ -6,8 +6,8 @@ self.addEventListener("install", (event) => {
     const contentToCache = [
         "/",
         "./index.html",
-        "./WebLooper/index.html",
-        "./PlaylistCreator/index.html",
+        "./WebLooper",
+        "./PlaylistCreator",
         "./Javascript/howler.js",
         "./WebLooper/WebLooper.js",
         "./PlaylistCreator/PlaylistCreator.js",
@@ -68,7 +68,7 @@ self.addEventListener("fetch", (e) => {
                     reject("Failed to fetch and no value in cache.");
                 }
             }, rejectReason => {
-                reject("Failed to fetch and no value in cache.");
+                reject("Failed to fetch and no value in cache.", rejectReason);
             });
         }
     }));
@@ -98,11 +98,12 @@ async function useCache(request) {
     });
 }
 async function getCachedResponse(request) {
-    return new Promise((accept, reject) => {
+    return new Promise((resolve, reject) => {
         cacheStorage.match(request).then((response) => {
-            accept(response);
+            if (response)
+                resolve(response);
         }).catch(() => {
-            reject("Cache miss: " + request.url);
+            reject("The cache errored: " + request.url);
         });
     });
 }

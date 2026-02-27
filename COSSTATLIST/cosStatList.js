@@ -1,7 +1,15 @@
 "use strict";
-var creatureList = [];
-var nameStat;
-var statList = [];
+/*
+resources:
+https://creatures-of-sonaria-official.fandom.com/wiki/Module:CreatureData/data
+https://creatures-of-sonaria-official.fandom.com/wiki/Template:ActiveAbilitiesSectionA-G
+https://creatures-of-sonaria-official.fandom.com/wiki/Template:ActiveAbilitiesSectionH-Z
+https://creatures-of-sonaria-official.fandom.com/wiki/Template:PassiveAbilitiesSection
+*/
+var creatureEntries = [];
+// var creatureEntriesFiltered: Creature[] = [];
+var nameStatEntry;
+var statEntries = [];
 var selectedStats = [];
 var activeFilters = [];
 var currentSortingStat;
@@ -27,17 +35,17 @@ else {
 }
 class Filter {
     constructor(statType, filterType, inputtedText, reverseFilter) {
-        this.statType = statType;
+        this.statEntry = statType;
         this.filterType = filterType;
         this.inputtedText = inputtedText;
         this.reverseFilter = reverseFilter;
     }
     test(creature) {
-        const filterResult = this.statType.filter(creature, this.filterType, this.inputtedText);
+        const filterResult = this.statEntry.filter(creature, this.filterType, this.inputtedText);
         return (this.reverseFilter) ? !filterResult : filterResult;
     }
 }
-class StatValue {
+class StatEntry {
     setDisplayName(displayName) {
         this.displayName = displayName;
     }
@@ -51,14 +59,14 @@ class StatValue {
         return { type: "text", placeholder: "Enter text" };
     }
     preferredInputAttributes() {
-        return StatValue.preferredInputAttributes();
+        return StatEntry.preferredInputAttributes();
     }
     constructor(keyName) {
         this.canBeDisabled = true;
         this.keyName = this.displayName = keyName;
     }
 }
-class AbilityBooleanValue extends StatValue {
+class AbilityBooleanEntry extends StatEntry {
     constructor(keyName) {
         super(keyName.toLowerCase());
     }
@@ -66,7 +74,7 @@ class AbilityBooleanValue extends StatValue {
         return { type: "text", placeholder: "Enter true or false" };
     }
     preferredInputAttributes() {
-        return AbilityBooleanValue.preferredInputAttributes();
+        return AbilityBooleanEntry.preferredInputAttributes();
     }
     getDisplayValue(creature) {
         return this.getValue(creature) ? "Yes" : "No";
@@ -95,7 +103,7 @@ class AbilityBooleanValue extends StatValue {
         }
     }
 }
-class NumberStatValue extends StatValue {
+class NumberStatEntry extends StatEntry {
     constructor(keyName) {
         super(keyName);
     }
@@ -103,7 +111,7 @@ class NumberStatValue extends StatValue {
         return { type: "text", placeholder: "Enter a number or N/A" };
     }
     preferredInputAttributes() {
-        return NumberStatValue.preferredInputAttributes();
+        return NumberStatEntry.preferredInputAttributes();
     }
     getDisplayValue(creature) {
         const value = this.getValue(creature);
@@ -140,7 +148,7 @@ class NumberStatValue extends StatValue {
         }
     }
 }
-class KeyedNumberStatValue extends NumberStatValue {
+class KeyedNumberStatEntry extends NumberStatEntry {
     constructor(keyName) {
         super(keyName);
     }
@@ -148,7 +156,7 @@ class KeyedNumberStatValue extends NumberStatValue {
         return parseFloat(creature[this.keyName]);
     }
 }
-class AbilityNumberStatValue extends NumberStatValue {
+class AbilityNumberStatEntry extends NumberStatEntry {
     constructor(keyName) {
         super(keyName.toLowerCase());
     }
@@ -166,7 +174,7 @@ class AbilityNumberStatValue extends NumberStatValue {
         return parseFloat(abilityValue);
     }
 }
-class StringStatValue extends StatValue {
+class StringStatEntry extends StatEntry {
     constructor(keyName) {
         super(keyName);
     }
@@ -174,7 +182,7 @@ class StringStatValue extends StatValue {
         return { type: "text", placeholder: "Enter text" };
     }
     preferredInputAttributes() {
-        return StringStatValue.preferredInputAttributes();
+        return StringStatEntry.preferredInputAttributes();
     }
     sort(creature1, creature2) {
         const creature1Val = this.getValue(creature1);
@@ -193,7 +201,7 @@ class StringStatValue extends StatValue {
         }
     }
 }
-class KeyedStringStatValue extends StringStatValue {
+class KeyedStringStatEntry extends StringStatEntry {
     constructor(keyName) {
         super(keyName);
     }
@@ -201,7 +209,7 @@ class KeyedStringStatValue extends StringStatValue {
         return creature[this.keyName];
     }
 }
-class AbilityStringStatValue extends StringStatValue {
+class AbilityStringStatEntry extends StringStatEntry {
     constructor(keyName) {
         super(keyName.toLowerCase());
     }
@@ -220,7 +228,7 @@ class AbilityStringStatValue extends StringStatValue {
         return abilityValue;
     }
 }
-class DateStatValue extends StatValue {
+class DateStatEntry extends StatEntry {
     constructor(keyName) {
         super(keyName);
     }
@@ -228,7 +236,7 @@ class DateStatValue extends StatValue {
         return { type: "date", placeholder: "Enter a date" };
     }
     preferredInputAttributes() {
-        return DateStatValue.preferredInputAttributes();
+        return DateStatEntry.preferredInputAttributes();
     }
     sort(creature1, creature2) {
         const creature1Value = this.getValue(creature1);
@@ -247,12 +255,12 @@ class DateStatValue extends StatValue {
             default: return false;
         }
     }
-    getDateStringAsNumber(date) {
+    dateStringToNumber(date) {
         const dateComponents = date.split("/", 3).map(comp => parseInt(comp));
         return new Date(dateComponents[2], dateComponents[0] - 1, dateComponents[1]).getTime();
     }
 }
-class KeyedDateStatValue extends DateStatValue {
+class KeyedDateStatEntry extends DateStatEntry {
     constructor(keyName) {
         super(keyName);
     }
@@ -260,23 +268,23 @@ class KeyedDateStatValue extends DateStatValue {
         return creature[this.keyName];
     }
     getValue(creature) {
-        return this.getDateStringAsNumber(this.getDisplayValue(creature));
+        return this.dateStringToNumber(this.getDisplayValue(creature));
     }
 }
-function initializeStatList() {
+function initializeStatEntries() {
     return new Promise((resolve) => {
         function onError(reason) {
             setTimeout(tryLoad, 5000);
             console.error(reason);
-            console.log("statList.json failed to download. Retrying in 5000ms");
+            console.log("statEntries.json failed to download. Retrying in 5000ms");
         }
         function tryLoad() {
-            fetch("statList.json").then(response => {
+            fetch("statEntries.json").then(response => {
                 if (!response.ok)
                     throw new Error("Response is not ok");
                 response.json().then((jsonStatList) => {
                     for (const jsonStat of jsonStatList) {
-                        statList.push(createStatValue(jsonStat));
+                        statEntries.push(createStatValue(jsonStat));
                     }
                     resolve();
                 }).catch(onError);
@@ -287,13 +295,13 @@ function initializeStatList() {
             if (jsonStat.keyed) {
                 switch (jsonStat.type) {
                     case "number":
-                        statValue = new KeyedNumberStatValue(jsonStat.keyName);
+                        statValue = new KeyedNumberStatEntry(jsonStat.keyName);
                         break;
                     case "date": //date is unimplemented so it is treated like a string
-                        statValue = new KeyedDateStatValue(jsonStat.keyName);
+                        statValue = new KeyedDateStatEntry(jsonStat.keyName);
                         break;
                     case "string":
-                        statValue = new KeyedStringStatValue(jsonStat.keyName);
+                        statValue = new KeyedStringStatEntry(jsonStat.keyName);
                         break;
                     case "boolean":
                         throw TypeError("There is no class type for a keyed boolean StatValue");
@@ -302,14 +310,14 @@ function initializeStatList() {
             else {
                 switch (jsonStat.type) {
                     case "boolean":
-                        statValue = new AbilityBooleanValue(jsonStat.keyName);
+                        statValue = new AbilityBooleanEntry(jsonStat.keyName);
                         break;
                     case "number":
-                        statValue = new AbilityNumberStatValue(jsonStat.keyName);
+                        statValue = new AbilityNumberStatEntry(jsonStat.keyName);
                         break;
                     case "string":
                     case "date": //no abilities use the date type. there is no reason to implement this.
-                        statValue = new AbilityStringStatValue(jsonStat.keyName);
+                        statValue = new AbilityStringStatEntry(jsonStat.keyName);
                 }
             }
             statValue.setDisplayName(jsonStat.displayName ?? jsonStat.keyName);
@@ -352,10 +360,10 @@ function initializeCreatureList() {
         function onError(reason) {
             setTimeout(tryLoad, 5000);
             console.error(reason);
-            console.log("creatureStats.json failed to download. Retrying in 5000ms");
+            console.log("creatureEntries.json failed to download. Retrying in 5000ms");
         }
         function tryLoad() {
-            fetch("creatureStats.json").then(response => {
+            fetch("creatureEntries.json").then(response => {
                 if (!response.ok)
                     throw new Error("Response is not ok");
                 response.json().then((uninitializedCreatureStats) => {
@@ -364,7 +372,7 @@ function initializeCreatureList() {
                         initializeCreatureObject(value);
                         creatureStats.push(value);
                     }
-                    creatureList = creatureStats;
+                    creatureEntries = creatureStats;
                     resolve();
                 }).catch(onError);
             }).catch(onError);
@@ -379,9 +387,25 @@ function initializeCreatureObject(creature) {
     creature.tableRow.setAttribute("class", "creatureTableRow");
     creature.tableRow.title = creature.common;
 }
+function validateCreatureAbilities() {
+    for (const creature of creatureEntries) {
+        for (const abilityString of creature.passive.split(",").map(str => str.trim()).concat(creature.activated.split(",").map(str => str.trim()))) {
+            let found = false;
+            for (const statEntry of statEntries) {
+                if (abilityString.includes(statEntry.keyName)) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                console.warn(`${creature.common} contains missing ability ${abilityString}`, creature);
+            }
+        }
+    }
+}
 function addStatValueToCreatureRows(statValue) {
-    for (let i = 0; i < creatureList.length; i++) {
-        const creature = creatureList[i];
+    for (let i = 0; i < creatureEntries.length; i++) {
+        const creature = creatureEntries[i];
         const newCell = document.createElement("td");
         newCell.setAttribute("tabindex", "-1");
         newCell.setAttribute("class", "creatureStatCell focusable");
@@ -401,26 +425,26 @@ function addStatValueToCreatureRows(statValue) {
 //         }
 //     }
 // }
-function removeStatValueFromCreatureRows(index) {
-    for (let i = 0; i < creatureList.length; i++) {
-        creatureList[i].tableRow.children[index].remove();
+function removeStatEntryFromCreatureRows(index) {
+    for (let i = 0; i < creatureEntries.length; i++) {
+        creatureEntries[i].tableRow.children[index].remove();
     }
 }
-function getSelectedStatValueWithKeyName(keyName) {
+function getSelectedStatEntryWithKeyName(keyName) {
     for (let i = 0; i < selectedStats.length; i++) {
         if (selectedStats[i].keyName == keyName)
             return selectedStats[i];
     }
     return null;
 }
-function getStatValueWithKeyName(keyName) {
-    for (let i = 0; i < statList.length; i++) {
-        if (statList[i].keyName == keyName)
-            return statList[i];
+function getStatEntryWithKeyName(keyName) {
+    for (let i = 0; i < statEntries.length; i++) {
+        if (statEntries[i].keyName == keyName)
+            return statEntries[i];
     }
     return null;
 }
-function indexOfSelectedStat(selectedStat) {
+function indexOfSelectedStatEntry(selectedStat) {
     for (let i = 0; i < selectedStats.length; i++) {
         if (selectedStats[i] == selectedStat)
             return i;
@@ -428,7 +452,7 @@ function indexOfSelectedStat(selectedStat) {
     return -1;
 }
 async function updateCreatureStatsTable() {
-    if (creatureList.length == 0)
+    if (creatureEntries.length == 0)
         return; //it's not initialized yet!
     console.time("updateTable");
     STAT_LIST_TABLE.toggleAttribute('disabled', true);
@@ -451,19 +475,20 @@ async function updateCreatureStatsTable() {
         }
     }
     filterCreatures();
+    // STAT_LIST_TABLE.tBodies[0].style.height = `${creatureList.length*22-2}px`
     let tableHeaderRow = STAT_LIST_TABLE.querySelector("thead").querySelector("tr");
     const headerCells = tableHeaderRow.children;
     const headerCellsKeyNames = [];
     for (let i = 0; i < headerCells.length; i++) {
         const cell = headerCells[i];
         const keyName = cell.getAttribute("data-keyname");
-        if (getSelectedStatValueWithKeyName(keyName) != null) {
+        if (getSelectedStatEntryWithKeyName(keyName) != null) {
             headerCellsKeyNames.push(keyName);
         }
         else {
             ensureTableBodyRemoved();
             cell.remove();
-            removeStatValueFromCreatureRows(i);
+            removeStatEntryFromCreatureRows(i);
             --i;
         }
     }
@@ -486,11 +511,11 @@ async function updateCreatureStatsTable() {
         // ensureTableBodyRemoved();  //THIS IS MORE EXPENSIVE BC ONLY DOM MODIFICATION PAST THIS POINT IS REPLACECHILDREN
         const wasAscending = sortAscending;
         sortAscending = false;
-        creatureList.sort(nameStat.sort.bind(nameStat));
+        creatureEntries.sort(nameStatEntry.sort.bind(nameStatEntry));
         sortAscending = wasAscending;
-        creatureList.sort(currentSortingStat.sort.bind(currentSortingStat));
+        creatureEntries.sort(currentSortingStat.sort.bind(currentSortingStat));
         const rowsToAppend = [];
-        for (const creature of creatureList)
+        for (const creature of creatureEntries)
             rowsToAppend.push(creature.tableRow);
         statTableBody.replaceChildren(...rowsToAppend);
         // statTableBody.replaceChildren();
@@ -550,7 +575,7 @@ function createFilter() {
     textInput.autocomplete = "off";
     textInput.name = "statFilterInput";
     textInput.style.width = "20ch";
-    setAttributes(textInput, StatValue.preferredInputAttributes());
+    setAttributes(textInput, StatEntry.preferredInputAttributes());
     selectStatButton.addEventListener("click", () => {
         openChooseTypeMenu(selectStatButton, div);
     });
@@ -590,17 +615,17 @@ function updateFilterChanges() {
             continue;
         const inputtedText = filterContainer.querySelector("input[name='statFilterInput']").value;
         const reverseFilter = filterContainer.querySelector("label[data-labelType='reverse']").querySelector("input[type='checkbox']").checked;
-        activeFilters.push(new Filter(statList[statTypeIndex], filterType, inputtedText, reverseFilter));
+        activeFilters.push(new Filter(statEntries[statTypeIndex], filterType, inputtedText, reverseFilter));
     }
     updateCreatureStatsTable();
 }
 function updateFilterInput(filterContainer) {
-    const preferredInputAttributes = (filterContainer.querySelector("select").selectedIndex == 1 /* FilterType.CONTAINS */) ? StatValue.preferredInputAttributes()
-        : statList[Number(filterContainer.querySelector("button[name='statTypeSelect']").value)].preferredInputAttributes();
+    const preferredInputAttributes = (filterContainer.querySelector("select").selectedIndex == 1 /* FilterType.CONTAINS */) ? StatEntry.preferredInputAttributes()
+        : statEntries[Number(filterContainer.querySelector("button[name='statTypeSelect']").value)].preferredInputAttributes();
     setAttributes(filterContainer.querySelector("input[name='statFilterInput']"), preferredInputAttributes);
 }
 function filterCreatures() {
-    for (const creature of creatureList) {
+    for (const creature of creatureEntries) {
         let matchesAllFilters = true;
         for (const filter of activeFilters) {
             if (!filter.test(creature)) {
@@ -617,19 +642,6 @@ function filterCreatures() {
                 creature.tableRow.style.display = "none";
         }
     }
-}
-function getFilterTypeFromValue(value) {
-    // switch(value){ case "equals": return FilterType.EQUALS; case "contains": return FilterType.CONTAINS; case "lessThan": return FilterType.LESS_THAN; case "lessThanEquals": return FilterType.LESS_THAN_EQUALS; case "greaterThan": return FilterType.GREATER_THAN; case "greaterThanEquals": return FilterType.GREATER_THAN_EQUALS; default: return null; }
-    // switch(value){
-    //     case 0: return FilterType.EQUALS;
-    //     case 1: return FilterType.CONTAINS;
-    //     case 2: return FilterType.LESS_THAN;
-    //     case 3: return FilterType.LESS_THAN_EQUALS;
-    //     case 4: return FilterType.GREATER_THAN;
-    //     case 5: return FilterType.GREATER_THAN_EQUALS;
-    //     default: return null;
-    // }
-    return value;
 }
 function createOption(value, text) {
     const option = document.createElement("option");
@@ -673,13 +685,13 @@ function updateHeaderCellArrow(headerCell) {
     }
 }
 function openChooseTypeMenu(button, filterContainer) {
-    if (statList.length == 0)
+    if (statEntries.length == 0)
         return; //uninitialized
     button.parentElement.after(FLOATING_WINDOW);
     FLOATING_WINDOW_SEARCH_BAR.oninput = chooseTypeSearchBarUpdate;
     const rows = [];
-    for (let i = 0; i < statList.length; i++) {
-        const statValue = statList[i];
+    for (let i = 0; i < statEntries.length; i++) {
+        const statValue = statEntries[i];
         const row = document.createElement("tr");
         const cell = document.createElement("td");
         cell.textContent = statValue.displayName;
@@ -687,7 +699,7 @@ function openChooseTypeMenu(button, filterContainer) {
         row.setAttribute("tabindex", "0");
         function onSelectStat() {
             closeFloatingWindow();
-            const selectedStat = statList[i];
+            const selectedStat = statEntries[i];
             button.value = String(i);
             button.textContent = selectedStat.displayName;
             updateFilterInput(filterContainer);
@@ -719,7 +731,7 @@ function chooseTypeSearchBarUpdate() {
     }
 }
 function openConfigureTypesMenu() {
-    if (statList.length == 0)
+    if (statEntries.length == 0)
         return; //uninitialized
     CONFIGURE_STAT_TYPES_BUTTON.after(FLOATING_WINDOW);
     FLOATING_WINDOW_SEARCH_BAR.oninput = configureTypesSearchBarUpdate;
@@ -728,14 +740,14 @@ function openConfigureTypesMenu() {
     const cell = document.createElement("td");
     const selectAllCheckbox = document.createElement("input");
     selectAllCheckbox.type = "checkbox";
-    selectAllCheckbox.checked = selectedStats.length == statList.length;
+    selectAllCheckbox.checked = selectedStats.length == statEntries.length;
     selectAllCheckbox.addEventListener("change", () => {
         if (STAT_LIST_TABLE.hasAttribute("disabled")) {
             selectAllCheckbox.checked = !selectAllCheckbox.checked;
             return;
         }
         if (selectAllCheckbox.checked) {
-            for (const stat of statList) {
+            for (const stat of statEntries) {
                 if (!selectedStats.includes(stat))
                     selectedStats.push(stat);
             }
@@ -761,15 +773,15 @@ function openConfigureTypesMenu() {
     cell.appendChild(label);
     selectAllRow.appendChild(cell);
     rows.push(selectAllRow);
-    for (let i = 0; i < statList.length; i++) {
-        const statValue = statList[i];
+    for (let i = 0; i < statEntries.length; i++) {
+        const statValue = statEntries[i];
         const row = document.createElement("tr");
         const cell = document.createElement("td");
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
         checkbox.name = statValue.displayName;
         checkbox.disabled = !statValue.canBeDisabled;
-        checkbox.checked = getSelectedStatValueWithKeyName(statValue.keyName) != null;
+        checkbox.checked = getSelectedStatEntryWithKeyName(statValue.keyName) != null;
         checkbox.addEventListener("change", () => {
             if (STAT_LIST_TABLE.hasAttribute("disabled")) {
                 checkbox.checked = !checkbox.checked;
@@ -829,7 +841,7 @@ function onFinishedLoadingData() {
         findAndUpdateHeaderCellArrow();
         document.documentElement.style.cursor = "";
         document.getElementById("loadingText")?.remove?.();
-        const columnIndexOfNameStat = indexOfSelectedStat(nameStat);
+        const columnIndexOfNameStat = indexOfSelectedStatEntry(nameStatEntry);
         const nameHeaderCell = STAT_LIST_TABLE.tHead.rows[0].cells[columnIndexOfNameStat];
         if (nameHeaderCell != null) {
             nameHeaderCell.style.position = "sticky";
@@ -842,18 +854,18 @@ function onFinishedLoadingData() {
             nameCell.style.position = "sticky";
             nameCell.style.left = "0px";
         }
-    }).finally(() => STAT_LIST_TABLE.style.display = "");
+    }).then(() => STAT_LIST_TABLE.style.display = "");
 }
 (async () => {
     document.getElementById("loadingText").innerText = "LOADING TABLE...";
     let loadedItems = 0;
-    initializeStatList().then(() => {
-        nameStat = getStatValueWithKeyName("common");
-        selectedStats.push(nameStat);
-        selectedStats.push(getStatValueWithKeyName("type"));
-        selectedStats.push(getStatValueWithKeyName("diet"));
-        selectedStats.push(getStatValueWithKeyName("tier"));
-        currentSortingStat = nameStat;
+    initializeStatEntries().then(() => {
+        nameStatEntry = getStatEntryWithKeyName("common");
+        selectedStats.push(nameStatEntry);
+        selectedStats.push(getStatEntryWithKeyName("type"));
+        selectedStats.push(getStatEntryWithKeyName("diet"));
+        selectedStats.push(getStatEntryWithKeyName("tier"));
+        currentSortingStat = nameStatEntry;
         sortAscending = false;
         sortDirty = true;
         if (++loadedItems == 2) {

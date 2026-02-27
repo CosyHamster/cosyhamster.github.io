@@ -1,10 +1,19 @@
-var creatureList: Creature[] = [];
-var nameStat: StatValue;
-var statList: StatValue[] = [];
-var selectedStats: StatValue[] = [];
+/*
+resources:
+https://creatures-of-sonaria-official.fandom.com/wiki/Module:CreatureData/data
+https://creatures-of-sonaria-official.fandom.com/wiki/Template:ActiveAbilitiesSectionA-G
+https://creatures-of-sonaria-official.fandom.com/wiki/Template:ActiveAbilitiesSectionH-Z
+https://creatures-of-sonaria-official.fandom.com/wiki/Template:PassiveAbilitiesSection
+*/
+
+var creatureEntries: Creature[] = [];
+// var creatureEntriesFiltered: Creature[] = [];
+var nameStatEntry: StatEntry;
+var statEntries: StatEntry[] = [];
+var selectedStats: StatEntry[] = [];
 var activeFilters: Filter[] = [];
 
-var currentSortingStat: StatValue;
+var currentSortingStat: StatEntry;
 var sortAscending = false;
 var sortDirty = false;
 
@@ -47,11 +56,11 @@ const enum FilterType{
 }
 
 class Filter{
-    statEntry: StatValue;
+    statEntry: StatEntry;
     filterType: FilterType;
     inputtedText: string;
     reverseFilter: boolean;
-    constructor(statType: StatValue, filterType: FilterType, inputtedText: string, reverseFilter: boolean){
+    constructor(statType: StatEntry, filterType: FilterType, inputtedText: string, reverseFilter: boolean){
         this.statEntry = statType;
         this.filterType = filterType;
         this.inputtedText = inputtedText;
@@ -63,9 +72,7 @@ class Filter{
     }
 }
 
-
-
-abstract class StatValue{
+abstract class StatEntry {
     keyName: string;
     displayName: string;
     canBeDisabled = true;
@@ -83,7 +90,7 @@ abstract class StatValue{
         return {type: "text", placeholder: "Enter text"}
     }
     preferredInputAttributes(): { [key: string]: string } {
-        return StatValue.preferredInputAttributes();
+        return StatEntry.preferredInputAttributes();
     }
     abstract getValue(creature: Creature): unknown;
     abstract sort(creature1: Creature, creature2: Creature): number;
@@ -93,7 +100,7 @@ abstract class StatValue{
     }
 }
 
-class AbilityBooleanValue extends StatValue{
+class AbilityBooleanEntry extends StatEntry{
     constructor(keyName: string){
         super(keyName.toLowerCase());
     }
@@ -102,7 +109,7 @@ class AbilityBooleanValue extends StatValue{
         return {type: "text", placeholder: "Enter true or false"}
     }
     override preferredInputAttributes(): { [key: string]: string } {
-        return AbilityBooleanValue.preferredInputAttributes();
+        return AbilityBooleanEntry.preferredInputAttributes();
     }
     override getDisplayValue(creature: Creature): string {
         return this.getValue(creature) ? "Yes" : "No";
@@ -133,7 +140,7 @@ class AbilityBooleanValue extends StatValue{
 
 
 
-abstract class NumberStatValue extends StatValue {
+abstract class NumberStatEntry extends StatEntry {
     protected constructor(keyName: string){
         super(keyName);
     }
@@ -142,7 +149,7 @@ abstract class NumberStatValue extends StatValue {
         return {type: "text", placeholder: "Enter a number or N/A"}
     }
     override preferredInputAttributes(): { [key: string]: string } {
-        return NumberStatValue.preferredInputAttributes();
+        return NumberStatEntry.preferredInputAttributes();
     }
     abstract override getValue(creature: Creature): number;
     override getDisplayValue(creature: Creature): string {
@@ -177,7 +184,7 @@ abstract class NumberStatValue extends StatValue {
     }
 }
 
-class KeyedNumberStatValue extends NumberStatValue {
+class KeyedNumberStatEntry extends NumberStatEntry {
     constructor(keyName: string){
         super(keyName);
     }
@@ -187,7 +194,7 @@ class KeyedNumberStatValue extends NumberStatValue {
     }
 }
 
-class AbilityNumberStatValue extends NumberStatValue {
+class AbilityNumberStatEntry extends NumberStatEntry {
     constructor(keyName: string){
         super(keyName.toLowerCase());
     }
@@ -208,7 +215,7 @@ class AbilityNumberStatValue extends NumberStatValue {
 
 
 
-abstract class StringStatValue extends StatValue {
+abstract class StringStatEntry extends StatEntry {
     protected constructor(keyName: string){
         super(keyName);
     }
@@ -217,7 +224,7 @@ abstract class StringStatValue extends StatValue {
         return {type: "text", placeholder: "Enter text"}
     }
     override preferredInputAttributes(): { [key: string]: string } {
-        return StringStatValue.preferredInputAttributes();
+        return StringStatEntry.preferredInputAttributes();
     }
     abstract override getValue(creature: Creature): string;
     override sort(creature1: Creature, creature2: Creature): number {
@@ -237,7 +244,7 @@ abstract class StringStatValue extends StatValue {
     }
 }
 
-class KeyedStringStatValue extends StringStatValue {
+class KeyedStringStatEntry extends StringStatEntry {
     constructor(keyName: string){
         super(keyName);
     }
@@ -247,7 +254,7 @@ class KeyedStringStatValue extends StringStatValue {
     }
 }
 
-class AbilityStringStatValue extends StringStatValue {
+class AbilityStringStatEntry extends StringStatEntry {
     constructor(keyName: string){
         super(keyName.toLowerCase());
     }
@@ -267,7 +274,7 @@ class AbilityStringStatValue extends StringStatValue {
     }
 }
 
-abstract class DateStatValue extends StatValue {
+abstract class DateStatEntry extends StatEntry {
     protected constructor(keyName: string){
         super(keyName);
     }
@@ -276,7 +283,7 @@ abstract class DateStatValue extends StatValue {
         return {type: "date", placeholder: "Enter a date"}
     }
     override preferredInputAttributes(): { [key: string]: string } {
-        return DateStatValue.preferredInputAttributes();
+        return DateStatEntry.preferredInputAttributes();
     }
     abstract override getDisplayValue(creature: Creature): string;
     abstract override getValue(creature: Creature): number;
@@ -287,7 +294,7 @@ abstract class DateStatValue extends StatValue {
     }
 
     override filter(creature: Creature, filterType: FilterType, testVal: string): boolean {
-        const date = new Date(testVal+"T00:00").getTime();//this.dateStringToNumber(testVal);
+        const date = new Date(testVal+"T00:00").getTime();//this.getDateStringAsNumber(testVal);
         switch(filterType){
             case FilterType.EQUALS: return this.getValue(creature) == date;
             case FilterType.CONTAINS: return this.getDisplayValue(creature).toLowerCase().includes(testVal.toLowerCase());
@@ -305,7 +312,7 @@ abstract class DateStatValue extends StatValue {
     }
 }
 
-class KeyedDateStatValue extends DateStatValue {
+class KeyedDateStatEntry extends DateStatEntry {
     constructor(keyName: string){
         super(keyName);
     }
@@ -326,20 +333,20 @@ type JSONStat = {
     canBeDisabled?: boolean
 }
 
-function initializeStatList(): Promise<void> {
+function initializeStatEntries(): Promise<void> {
     return new Promise((resolve) => {
         function onError(reason: any){
             setTimeout(tryLoad, 5000);
             console.error(reason);
-            console.log("statList.json failed to download. Retrying in 5000ms");
+            console.log("statEntries.json failed to download. Retrying in 5000ms");
         }
 
         function tryLoad(){
-            fetch("statList.json").then(response => {
+            fetch("statEntries.json").then(response => {
                 if(!response.ok) throw new Error("Response is not ok");
                 response.json().then((jsonStatList: JSONStat[]) => {
                     for (const jsonStat of jsonStatList) {
-                        statList.push(createStatValue(jsonStat));
+                        statEntries.push(createStatValue(jsonStat));
                     }
 
                     resolve();
@@ -347,18 +354,18 @@ function initializeStatList(): Promise<void> {
             }).catch(onError);
         }
 
-        function createStatValue(jsonStat: JSONStat): StatValue {
-            let statValue: StatValue;
+        function createStatValue(jsonStat: JSONStat): StatEntry {
+            let statValue: StatEntry;
             if(jsonStat.keyed){
                 switch (jsonStat.type) {
                     case "number":
-                        statValue = new KeyedNumberStatValue(jsonStat.keyName);
+                        statValue = new KeyedNumberStatEntry(jsonStat.keyName);
                         break;
                     case "date": //date is unimplemented so it is treated like a string
-                        statValue = new KeyedDateStatValue(jsonStat.keyName);
+                        statValue = new KeyedDateStatEntry(jsonStat.keyName);
                         break;
                     case "string":
-                        statValue = new KeyedStringStatValue(jsonStat.keyName);
+                        statValue = new KeyedStringStatEntry(jsonStat.keyName);
                         break;
                     case "boolean":
                         throw TypeError("There is no class type for a keyed boolean StatValue");
@@ -366,14 +373,14 @@ function initializeStatList(): Promise<void> {
             } else {
                 switch (jsonStat.type) {
                     case "boolean":
-                        statValue = new AbilityBooleanValue(jsonStat.keyName);
+                        statValue = new AbilityBooleanEntry(jsonStat.keyName);
                         break;
                     case "number":
-                        statValue = new AbilityNumberStatValue(jsonStat.keyName);
+                        statValue = new AbilityNumberStatEntry(jsonStat.keyName);
                         break;
                     case "string":
                     case "date": //no abilities use the date type. there is no reason to implement this.
-                        statValue = new AbilityStringStatValue(jsonStat.keyName);
+                        statValue = new AbilityStringStatEntry(jsonStat.keyName);
                 }
             }
 
@@ -420,19 +427,19 @@ function initializeCreatureList(): Promise<void>{
         function onError(reason: any){
             setTimeout(tryLoad, 5000);
             console.error(reason);
-            console.log("creatureStats.json failed to download. Retrying in 5000ms");
+            console.log("creatureEntries.json failed to download. Retrying in 5000ms");
         }
     
         function tryLoad(){
-            fetch("creatureStats.json").then(response => {
-                if(!response.ok) throw new TypeError("Response is not ok");
+            fetch("creatureEntries.json").then(response => {
+                if(!response.ok) throw new Error("Response is not ok");
                 response.json().then((uninitializedCreatureStats: {[key: string]: Creature}) => {
                     const creatureStats: Creature[] = [];
                     for (const [_, value] of Object.entries(uninitializedCreatureStats)) {
                         initializeCreatureObject(value);
                         creatureStats.push(value);
                     }
-                    creatureList = creatureStats;
+                    creatureEntries = creatureStats;
 
                     resolve();
 
@@ -452,9 +459,27 @@ function initializeCreatureObject(creature: Creature){
     creature.tableRow.title = creature.common;
 }
 
-function addStatValueToCreatureRows(statValue: StatValue){
-    for(let i = 0; i < creatureList.length; i++){
-        const creature = creatureList[i];
+function validateCreatureAbilities(){
+    for(const creature of creatureEntries){
+        for(const abilityString of creature.passive.split(",").map(str => str.trim()).concat(creature.activated.split(",").map(str => str.trim()))){
+            let found = false;
+            for (const statEntry of statEntries) {
+                if(abilityString.includes(statEntry.keyName)){
+                    found = true;
+                    break;
+                }
+            }
+
+            if(!found){
+                console.warn(`${creature.common} contains missing ability ${abilityString}`, creature);
+            }
+        }
+    }
+}
+
+function addStatValueToCreatureRows(statValue: StatEntry){
+    for(let i = 0; i < creatureEntries.length; i++){
+        const creature = creatureEntries[i];
         const newCell = document.createElement("td");
         newCell.setAttribute("tabindex", "-1");
         newCell.setAttribute("class", "creatureStatCell focusable");
@@ -476,27 +501,27 @@ function addStatValueToCreatureRows(statValue: StatValue){
 //     }
 // }
 
-function removeStatValueFromCreatureRows(index: number){
-    for(let i = 0; i < creatureList.length; i++){
-        creatureList[i].tableRow.children[index].remove()
+function removeStatEntryFromCreatureRows(index: number){
+    for(let i = 0; i < creatureEntries.length; i++){
+        creatureEntries[i].tableRow.children[index].remove()
     }
 }
 
-function getSelectedStatValueWithKeyName(keyName: string): StatValue | null{
+function getSelectedStatEntryWithKeyName(keyName: string): StatEntry | null{
     for(let i = 0; i < selectedStats.length; i++){
         if(selectedStats[i].keyName == keyName) return selectedStats[i];
     }
     return null;
 }
 
-function getStatValueWithKeyName(keyName: string): StatValue | null{
-    for(let i = 0; i < statList.length; i++){
-        if(statList[i].keyName == keyName) return statList[i];
+function getStatEntryWithKeyName(keyName: string): StatEntry | null{
+    for(let i = 0; i < statEntries.length; i++){
+        if(statEntries[i].keyName == keyName) return statEntries[i];
     }
     return null;
 }
 
-function indexOfSelectedStat(selectedStat: StatValue){
+function indexOfSelectedStatEntry(selectedStat: StatEntry){
     for(let i = 0; i < selectedStats.length; i++){
         if(selectedStats[i] == selectedStat) return i;
     }
@@ -504,7 +529,7 @@ function indexOfSelectedStat(selectedStat: StatValue){
 }
 
 async function updateCreatureStatsTable(){
-    if(creatureList.length == 0) return; //it's not initialized yet!
+    if(creatureEntries.length == 0) return; //it's not initialized yet!
     console.time("updateTable");
 
     STAT_LIST_TABLE.toggleAttribute('disabled', true);
@@ -529,6 +554,7 @@ async function updateCreatureStatsTable(){
     }
 
     filterCreatures();
+    // STAT_LIST_TABLE.tBodies[0].style.height = `${creatureList.length*22-2}px`
     let tableHeaderRow = STAT_LIST_TABLE.querySelector("thead").querySelector("tr");
     const headerCells = tableHeaderRow.children;
     const headerCellsKeyNames: string[] = [];
@@ -536,12 +562,12 @@ async function updateCreatureStatsTable(){
         const cell = headerCells[i];
         const keyName = cell.getAttribute("data-keyname");
 
-        if(getSelectedStatValueWithKeyName(keyName) != null){
+        if(getSelectedStatEntryWithKeyName(keyName) != null){
             headerCellsKeyNames.push(keyName);
         } else {
             ensureTableBodyRemoved();
             cell.remove();
-            removeStatValueFromCreatureRows(i)
+            removeStatEntryFromCreatureRows(i)
             --i;
         }
     }
@@ -566,12 +592,12 @@ async function updateCreatureStatsTable(){
         // ensureTableBodyRemoved();  //THIS IS MORE EXPENSIVE BC ONLY DOM MODIFICATION PAST THIS POINT IS REPLACECHILDREN
         const wasAscending = sortAscending;
         sortAscending = false;
-        creatureList.sort(nameStat.sort.bind(nameStat));
+        creatureEntries.sort(nameStatEntry.sort.bind(nameStatEntry));
         sortAscending = wasAscending;
-        creatureList.sort(currentSortingStat.sort.bind(currentSortingStat));
+        creatureEntries.sort(currentSortingStat.sort.bind(currentSortingStat));
         
         const rowsToAppend: HTMLTableRowElement[] = [];
-        for(const creature of creatureList) rowsToAppend.push(creature.tableRow);
+        for(const creature of creatureEntries) rowsToAppend.push(creature.tableRow);
         statTableBody.replaceChildren(...rowsToAppend);
         // statTableBody.replaceChildren();
         // // STAT_LIST_TABLE.style.width = (selectedStats.length*25) + "ch"
@@ -630,7 +656,7 @@ function createFilter(): HTMLDivElement{
     textInput.autocomplete = "off";
     textInput.name = "statFilterInput"
     textInput.style.width = "20ch";
-    setAttributes(textInput, StatValue.preferredInputAttributes())
+    setAttributes(textInput, StatEntry.preferredInputAttributes())
     selectStatButton.addEventListener("click", () => {
         openChooseTypeMenu(selectStatButton, div);
     })
@@ -668,26 +694,26 @@ function updateFilterChanges(){
         const statTypeIndex = Number((filterContainer.querySelector("button[name='statTypeSelect']") as HTMLButtonElement).value);
         if(Number.isNaN(statTypeIndex) || statTypeIndex == -1) continue;
 
-        const filterType = (filterContainer.querySelector("select").selectedIndex as FilterType); // const filterType = getFilterTypeFromValue(filterContainer.querySelector("select").value);
+        const filterType = filterContainer.querySelector("select").selectedIndex; // const filterType = getFilterTypeFromValue(filterContainer.querySelector("select").value);
         if(filterType == null) continue;
 
         const inputtedText: string = (filterContainer.querySelector("input[name='statFilterInput']") as HTMLInputElement).value;
         const reverseFilter = (filterContainer.querySelector("label[data-labelType='reverse']").querySelector("input[type='checkbox']") as HTMLInputElement).checked;
-        activeFilters.push(new Filter(statList[statTypeIndex], filterType, inputtedText, reverseFilter))
+        activeFilters.push(new Filter(statEntries[statTypeIndex], filterType, inputtedText, reverseFilter))
     }
     updateCreatureStatsTable();
 }
 
 function updateFilterInput(filterContainer: HTMLDivElement){
     const preferredInputAttributes =
-        ((filterContainer.querySelector("select").selectedIndex as FilterType) == FilterType.CONTAINS) ? StatValue.preferredInputAttributes()
-            : statList[Number((filterContainer.querySelector("button[name='statTypeSelect']") as HTMLButtonElement).value)].preferredInputAttributes();
+        (filterContainer.querySelector("select").selectedIndex == FilterType.CONTAINS) ? StatEntry.preferredInputAttributes()
+            : statEntries[Number((filterContainer.querySelector("button[name='statTypeSelect']") as HTMLButtonElement).value)].preferredInputAttributes();
 
     setAttributes((filterContainer.querySelector("input[name='statFilterInput']") as HTMLInputElement), preferredInputAttributes);
 }
 
 function filterCreatures(){
-    for(const creature of creatureList){
+    for(const creature of creatureEntries){
         let matchesAllFilters = true;
         for(const filter of activeFilters){
             if(!filter.test(creature)){
@@ -704,20 +730,6 @@ function filterCreatures(){
     }
 }
 
-function getFilterTypeFromValue(value: number){
-    // switch(value){ case "equals": return FilterType.EQUALS; case "contains": return FilterType.CONTAINS; case "lessThan": return FilterType.LESS_THAN; case "lessThanEquals": return FilterType.LESS_THAN_EQUALS; case "greaterThan": return FilterType.GREATER_THAN; case "greaterThanEquals": return FilterType.GREATER_THAN_EQUALS; default: return null; }
-    // switch(value){
-    //     case 0: return FilterType.EQUALS;
-    //     case 1: return FilterType.CONTAINS;
-    //     case 2: return FilterType.LESS_THAN;
-    //     case 3: return FilterType.LESS_THAN_EQUALS;
-    //     case 4: return FilterType.GREATER_THAN;
-    //     case 5: return FilterType.GREATER_THAN_EQUALS;
-    //     default: return null;
-    // }
-    return value as FilterType;
-}
-
 function createOption(value: string, text: string): HTMLOptionElement{
     const option = document.createElement("option");
     option.value = value;
@@ -726,7 +738,7 @@ function createOption(value: string, text: string): HTMLOptionElement{
 }
 
 function onHeaderCellClick(headerCell: HTMLTableCellElement){
-    const selectedSortingStat: StatValue = selectedStats[headerCell.cellIndex];
+    const selectedSortingStat: StatEntry = selectedStats[headerCell.cellIndex];
     if(currentSortingStat == selectedSortingStat){
         sortAscending = !sortAscending;
     } else {
@@ -763,14 +775,14 @@ function updateHeaderCellArrow(headerCell: HTMLTableCellElement){
 }
 
 function openChooseTypeMenu(button: HTMLButtonElement, filterContainer: HTMLDivElement){
-    if(statList.length == 0) return; //uninitialized
+    if(statEntries.length == 0) return; //uninitialized
 
     button.parentElement.after(FLOATING_WINDOW);
     FLOATING_WINDOW_SEARCH_BAR.oninput = chooseTypeSearchBarUpdate; 
 
     const rows: HTMLTableRowElement[] = [];
-    for(let i = 0; i < statList.length; i++){
-        const statValue: StatValue = statList[i];
+    for(let i = 0; i < statEntries.length; i++){
+        const statValue: StatEntry = statEntries[i];
         const row = document.createElement("tr");
         const cell = document.createElement("td");
         cell.textContent = statValue.displayName;
@@ -778,7 +790,7 @@ function openChooseTypeMenu(button: HTMLButtonElement, filterContainer: HTMLDivE
         row.setAttribute("tabindex", "0");
         function onSelectStat(){
             closeFloatingWindow();
-            const selectedStat = statList[i];
+            const selectedStat = statEntries[i];
             button.value = String(i);
             button.textContent = selectedStat.displayName;
             updateFilterInput(filterContainer);
@@ -811,7 +823,7 @@ function chooseTypeSearchBarUpdate(){
 }
 
 function openConfigureTypesMenu(){
-    if(statList.length == 0) return; //uninitialized
+    if(statEntries.length == 0) return; //uninitialized
 
     CONFIGURE_STAT_TYPES_BUTTON.after(FLOATING_WINDOW);
     FLOATING_WINDOW_SEARCH_BAR.oninput = configureTypesSearchBarUpdate; 
@@ -822,7 +834,7 @@ function openConfigureTypesMenu(){
     const cell = document.createElement("td");
     const selectAllCheckbox = document.createElement("input");
     selectAllCheckbox.type = "checkbox";
-    selectAllCheckbox.checked = selectedStats.length == statList.length;
+    selectAllCheckbox.checked = selectedStats.length == statEntries.length;
     selectAllCheckbox.addEventListener("change", () => {
         if(STAT_LIST_TABLE.hasAttribute("disabled")) {
             selectAllCheckbox.checked = !selectAllCheckbox.checked;
@@ -830,11 +842,11 @@ function openConfigureTypesMenu(){
         }
 
         if(selectAllCheckbox.checked){
-            for(const stat of statList){
+            for(const stat of statEntries){
                 if(!selectedStats.includes(stat)) selectedStats.push(stat);
             }
         } else {
-            const keepEnabled: StatValue[] = [];
+            const keepEnabled: StatEntry[] = [];
             for(const stat of selectedStats){
                 if(stat.canBeDisabled == false) keepEnabled.push(stat);
             }
@@ -857,15 +869,15 @@ function openConfigureTypesMenu(){
     selectAllRow.appendChild(cell);
     rows.push(selectAllRow);
 
-    for(let i = 0; i < statList.length; i++){
-        const statValue: StatValue = statList[i];
+    for(let i = 0; i < statEntries.length; i++){
+        const statValue: StatEntry = statEntries[i];
         const row = document.createElement("tr");
         const cell = document.createElement("td");
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
         checkbox.name = statValue.displayName;
         checkbox.disabled = !statValue.canBeDisabled;
-        checkbox.checked = getSelectedStatValueWithKeyName(statValue.keyName) != null;
+        checkbox.checked = getSelectedStatEntryWithKeyName(statValue.keyName) != null;
         checkbox.addEventListener("change", () => {
             if(STAT_LIST_TABLE.hasAttribute("disabled")) {
                 checkbox.checked = !checkbox.checked;
@@ -933,7 +945,7 @@ function onFinishedLoadingData(){
         document.documentElement.style.cursor = "";
         document.getElementById("loadingText")?.remove?.();
 
-        const columnIndexOfNameStat = indexOfSelectedStat(nameStat);
+        const columnIndexOfNameStat = indexOfSelectedStatEntry(nameStatEntry);
         const nameHeaderCell = STAT_LIST_TABLE.tHead.rows[0].cells[columnIndexOfNameStat];
         if(nameHeaderCell != null){
             nameHeaderCell.style.position = "sticky";
@@ -947,22 +959,22 @@ function onFinishedLoadingData(){
             nameCell.style.position = "sticky";
             nameCell.style.left = "0px";
         }
-    }).finally(() => STAT_LIST_TABLE.style.display = "");
+    }).then(() => STAT_LIST_TABLE.style.display = "");
 }
 
 (async () => { //START
     document.getElementById("loadingText").innerText = "LOADING TABLE..."
 
     let loadedItems = 0;
-    initializeStatList().then(() => {
-        nameStat = getStatValueWithKeyName("common");
+    initializeStatEntries().then(() => {
+        nameStatEntry = getStatEntryWithKeyName("common");
 
-        selectedStats.push(nameStat);
-        selectedStats.push(getStatValueWithKeyName("type"));
-        selectedStats.push(getStatValueWithKeyName("diet"));
-        selectedStats.push(getStatValueWithKeyName("tier"));
+        selectedStats.push(nameStatEntry);
+        selectedStats.push(getStatEntryWithKeyName("type"));
+        selectedStats.push(getStatEntryWithKeyName("diet"));
+        selectedStats.push(getStatEntryWithKeyName("tier"));
 
-        currentSortingStat = nameStat;
+        currentSortingStat = nameStatEntry;
         sortAscending = false;
         sortDirty = true;
 

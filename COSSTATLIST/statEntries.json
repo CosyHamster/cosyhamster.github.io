@@ -32,6 +32,12 @@
   },
   {
     "type": "string",
+    "displayName": "Mobility Override",
+    "keyName": "mobilityOverride",
+    "keyed": true
+  },
+  {
+    "type": "string",
     "displayName": "Diet",
     "keyName": "diet",
     "keyed": true
@@ -273,6 +279,11 @@
 
   {
     "type": "boolean",
+    "keyName": "Gourmandizer",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
     "keyName": "Grab",
     "keyed": false
   },
@@ -428,6 +439,11 @@
   },
   {
     "type": "boolean",
+    "keyName": "Two-Faced",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
     "keyName": "Hunters Curse",
     "keyed": false
   },
@@ -458,12 +474,32 @@
   },
   {
     "type": "boolean",
+    "keyName": "vanish",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Silent Hunter",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
     "keyName": "Stamina Puddle",
     "keyed": false
   },
   {
     "type": "boolean",
     "keyName": "Poison Area",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Stubborn Stacker",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Expunge",
     "keyed": false
   },
   {
@@ -493,7 +529,17 @@
   },
   {
     "type": "boolean",
+    "keyName": "Lure",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
     "keyName": "Speed Steal",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Gale",
     "keyed": false
   },
   {
@@ -555,12 +601,27 @@
   },
   {
     "type": "number",
+    "keyName": "Shadow Barrage",
+    "keyed": false
+  },
+  {
+    "type": "number",
     "keyName": "Diver",
     "keyed": false
   },
   {
     "type": "number",
     "keyName": "Hunker",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Cocoon",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Reflux",
     "keyed": false
   },
   {
@@ -571,6 +632,11 @@
   {
     "type": "number",
     "keyName": "Radiation",
+    "keyed": false
+  },
+  {
+    "type": "string",
+    "keyName": "Lich Mark",
     "keyed": false
   },
   {
@@ -702,6 +768,11 @@
   },
   {
     "type": "number",
+    "keyName": "Block",
+    "keyed": false
+  },
+  {
+    "type": "number",
     "keyName": "Breath Resistance",
     "keyed": false
   },
@@ -719,6 +790,11 @@
   {
     "type": "number",
     "keyName": "Toxic Trail",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Glittering Trail",
     "keyed": false
   },
   {
@@ -773,8 +849,28 @@
     "keyed": false
   },
   {
+    "type": "boolean",
+    "keyName": "Warden's Resistance",
+    "keyed": false
+  },
+  {
     "type": "string",
     "keyName": "Yolk Bomb",
     "keyed": false
+  },
+
+
+
+  {
+    "type": "string",
+    "displayName": "_redesign",
+    "keyName": "redesign",
+    "keyed": true
+  },
+  {
+    "type": "string",
+    "displayName": "_returns",
+    "keyName": "returns",
+    "keyed": true
   }
 ]
