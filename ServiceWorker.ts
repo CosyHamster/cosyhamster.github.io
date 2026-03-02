@@ -5,8 +5,10 @@ self.addEventListener("install", (event) => {
     const contentToCache: string[] = [
         "/",
         "./index.html",
-        "./WebLooper",
-        "./PlaylistCreator",
+        "./WebLooper/",
+        "./PlaylistCreator/",
+        "./FrameSkipper/",
+        "./FrameSkipper/script.js",
         "./Javascript/howler.js",
         "./WebLooper/WebLooper.js",
         "./PlaylistCreator/PlaylistCreator.js",
