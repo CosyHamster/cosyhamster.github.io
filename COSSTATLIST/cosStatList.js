@@ -583,6 +583,7 @@ function createFilter() {
     reverseLabel.setAttribute("data-labelType", "reverse");
     reverseLabel.title = "Show the creatures that don't match this filter!";
     reverseLabel.style.marginRight = "5px";
+    reverseLabel.style.whiteSpace = "nowrap";
     const reverseCheckbox = document.createElement("input");
     reverseCheckbox.type = "checkbox";
     reverseCheckbox.name = "reverseCheckbox";
@@ -590,6 +591,7 @@ function createFilter() {
     activeLabel.setAttribute("data-labelType", "active");
     activeLabel.title = "Enable / Disable this filter!";
     activeLabel.style.marginRight = "5px";
+    activeLabel.style.whiteSpace = "nowrap";
     const activeCheckbox = document.createElement("input");
     activeCheckbox.type = "checkbox";
     activeCheckbox.name = "activeCheckbox";
