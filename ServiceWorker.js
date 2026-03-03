@@ -6,30 +6,36 @@ self.addEventListener("install", event => {
     const contentToCache = [
         "/",
         "./index.html",
-        "./WebLooper/",
-        "./PlaylistCreator/",
-        "./FrameSkipper/",
-        "./FrameSkipper/script.js",
-        "./Javascript/howler.js",
-        "./WebLooper/WebLooper.js",
-        "./PlaylistCreator/PlaylistCreator.js",
+        "./manifest.webmanifest",
         "./CSS/background.css",
+        "./Javascript/howler.js",
+        "./WebLooper/",
+        "./WebLooper/WebLooper.js",
         "./WebLooper/WebLooper.css",
+        "./PlaylistCreator/",
+        "./PlaylistCreator/PlaylistCreator.js",
         "./PlaylistCreator/PlaylistCreator.css",
         "./PlaylistCreator/CompactMode.css",
+        "./FrameSkipper/",
+        "./FrameSkipper/script.js",
         "./Icons/UploadIcon.svg",
         "./Icons/SpeakerIcon.svg",
         "./Icons/SkipIcon.svg",
         "./Icons/ShuffleIcon.svg",
         "./Icons/SettingsIcon.svg",
         "./Icons/SeekIcon.svg",
+        "./Icons/play-button-arrowhead-svgrepo-com.svg",
+        "./Icons/pause-alt-svgrepo-com.svg",
         "./Icons/RepeatIcon.svg",
         "./Icons/Repeat1Icon.svg",
         "./Icons/PlaybackSpeedIcon.svg",
+        "./Icons/big-sheep-face.png",
         "./Icons/PageFavicon.ico",
         "./Icons/LoadingIcon.svg",
         "./Icons/HeadphonesIcon.svg",
-        "./Icons/CancelIcon.svg"
+        "./Icons/MoreMenuIcon.svg",
+        "./Icons/CancelIcon.svg",
+        "./Icons/TrashCan.svg"
     ];
     event.waitUntil(new Promise(async (resolve, reject) => {
         if (!cacheStorage)
@@ -60,7 +66,7 @@ self.addEventListener("fetch", (e) => {
                 resolve(response);
             }
         }, error => {
-            console.log("Resolving request with cache due to fetch error: " + error);
+            console.log(`Resolving request ${e.request} with cache due to ${error}`);
             if (!requestResolved) {
                 resolveRequest();
                 resolveUsingCache();
@@ -71,7 +77,7 @@ self.addEventListener("fetch", (e) => {
                 resolve(response);
             }, rejectReason => {
                 const error = "Cannot resolve using cache due to error " + rejectReason;
-                console.warn(error);
+                // console.warn(error);
                 reject(error);
             });
         }
