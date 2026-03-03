@@ -1,5 +1,3 @@
-import {clearTimeout} from "node:timers";
-
 const CACHE_NAME = 'CosyHamsterMusicPlayerOfflineCache';
 var cacheStorage: Cache;
 self.addEventListener("install", event => {
