@@ -1,0 +1,134 @@
+body{
+    width: 100%;
+    height: 100%;
+    margin: 0;
+}
+main{
+    width: 100%;
+    height: 100%;
+}
+
+.buttonChunk{
+    display:inline-block;
+}
+
+.spacer {
+    flex: 1 1 0%;
+}
+
+.text {
+    display: inline;
+    white-space: nowrap;
+    unicode-bidi: normal;
+}
+
+.prevent-select {
+    user-select: none;
+    pointer-events: visible;
+    -webkit-user-select: none;
+}
+
+.pullsOpen {
+    position: relative;
+    top: -40px;
+    width: 100%;
+    height: 100%;
+}
+.pullsOpen > div {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    bottom: 100%;
+    background: white;
+    transition: all 200ms ease;
+    @media (prefers-reduced-motion) {
+        transition-duration: 50ms;
+    }
+    visibility: hidden;
+    opacity: 0;
+    z-index: 4;
+}
+.pullsOpen:is(:hover, :focus-within) > div{
+    width: 100%;
+    height: 200px;
+    @media(max-height: calc( 200px + calc(2em + 1vw) )){ /* i cant use var(--mainTableControlsHeight) here */
+        height: calc(100dvh - var(--mainTableControlsHeight));
+    }
+    visibility: visible;
+    opacity: 1;
+}
+
+.clickableButton{
+    position: relative;
+    z-index: 0;
+    border-radius: 5px;
+    user-select: none;
+    -webkit-user-drag: none;
+    cursor: pointer;
+}
+.clickableButton:hover{ background-color: rgb(200, 200, 200); }
+.clickableButton:active{
+    transition-duration: 50ms;
+    background-color: rgb(255, 255, 255);
+    box-shadow: 0 5px 5px 0 rgba(0,0,0,0.24), 0 17px 50px 0 rgba(0,0,0,0.19);
+}
+
+#playButton {
+    width: 100%;
+    height: 100%;
+    background-image: url(../Icons/play-button-arrowhead-svgrepo-com.svg);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+#playButton.playing {
+    background-image: url("../Icons/pause-alt-svgrepo-com.svg"); /*https://www.svgrepo.com/svg/507380/pause-alt*/
+}
+.playBackIcon {
+    pointer-events: none;
+}
+
+.playbar {
+    --percentage: 0%;
+    width:calc(100% - 2px);
+    height:10px;
+    border: solid #858585 1px;
+    border-radius: 15px;
+    accent-color: white;
+    vertical-align: baseline;
+    background-image: linear-gradient(90deg, white var(--percentage), black var(--percentage));
+    flex: 1 1 0%;
+}
+
+.playbarHolder {
+    width:100%;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+}
+
+.volumeIcon {
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    filter: invert(1);
+    transition: 200ms;
+}
+.volumeIcon:has(+ div > div > input[data-value="0"]) {
+    filter: sepia(1) saturate(200);
+}
+.muted {
+    filter: sepia(1) saturate(200);
+}
+/*input[type="range"]{*/
+/*    appearance: none;*/
+/*}*/
+/*input[type="range"]::-webkit-slider-runnable-track {*/
+/*    --percentage: attr(value, type(<percentage>));*/
+/*    background: linear-gradient(90deg, white var(--percentage), black var(--percentage));*/
+/*}*/
+/*input[type="range"]::-webkit-slider-thumb {*/
+
+
+/*}*/

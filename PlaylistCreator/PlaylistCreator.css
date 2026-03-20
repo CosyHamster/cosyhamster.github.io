@@ -344,7 +344,7 @@ dialog::backdrop{
 }
 .largerSize{ max-width: 90%; }
 
-playbar {
+.playbar {
     --percentage: 0%;
     display: inline-block;
     accent-color: white;

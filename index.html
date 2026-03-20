@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <script>if(navigator.userAgent.includes("CrOS"))document.addEventListener("keydown",(event)=>{if(event.keyCode==119)window.addEventListener("beforeunload",(event) => {event.preventDefault();});});</script>
+    <script>if(navigator.userAgent.includes("CrOS"))document.addEventListener("keydown",(event)=>{if(event.keyCode==119)window.addEventListener("beforeunload",(event) => {event.preventDefault();});},{passive:true,once:true});</script>
     <title>Choose Player</title>
     <meta name="description" content="Choose to play music in a playlist or looper."/>
     <link rel="icon" href="Icons/PageFavicon.ico">
