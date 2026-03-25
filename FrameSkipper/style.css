@@ -121,6 +121,30 @@ main{
 .muted {
     filter: sepia(1) saturate(200);
 }
+
+#loadingFR{
+    position: fixed;
+    top: 0;
+    left: 0;
+    color: white;
+    background-color: rgba(185,185,185,0);
+    interactivity: inert;
+    opacity: 0;
+    transition: 1s;
+    width: 100%;
+    height: 100%;
+    z-index: 5;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+#loadingFR[data-active]{
+    background-color: rgba(185,185,185,.25);
+    interactivity: auto;
+    opacity: 1;
+}
+
 /*input[type="range"]{*/
 /*    appearance: none;*/
 /*}*/

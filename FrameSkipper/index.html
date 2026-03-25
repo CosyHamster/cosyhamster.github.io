@@ -1,85 +1,87 @@
-<html>
+<html lang="en">
 	<head>
 		<script>if(navigator.userAgent.includes("CrOS"))document.addEventListener("keydown",(event)=>{if(event.keyCode==119)window.addEventListener("beforeunload",(event) => {event.preventDefault();});},{passive:true,once:true});</script>
 		<link rel="stylesheet" href="style.css">
 		<script src="script.js" defer></script>
 		<link rel="icon" href="../Icons/PageFavicon.ico">
+		<title>Frame Skipper</title>
 	</head>
-	<body>
-		<main style="display: flex; flex-direction: column;">
-			<div style="z-index: 2; background-color: lightgrey; width: max-content; position: fixed; top: 0; left: 0; pointer-events: none; transform: translate(-9999px, 0px);" id="hoveredTimeDisplay"><div style="margin-left:1ch; margin-right:1ch; color: black; z-index: 2" class="prevent-select text"></div></div>
-			<video id="video" style="width: 100%; height: 100%; background-color: black;" inert></video>
-
-			<div id="videoControlsT" style="position: absolute; width:100%; background-color: rgba(0,0,0,.7);">
-				<div style="display: flex; flex-direction: row; width:100%; height:40px;">
-					<label tabindex="0" class="cell clickableButton tableBorder" title="Upload File" style="height:100%;">
-						<input type="file" accept="video/*" id="upload" style="display: none;">
-						<img style="width: 100%; height: 100%; pointer-events: none; filter: invert(1);" src="../Icons/UploadIcon.svg" alt="Upload"/>
-					</label>
-					<div class="spacer"></div>
-					<a tabindex="0" class="cell clickableButton tableBorder" title="Download Frame" style="height:100%;" id="downloadFrame" download>
-						<img style="width: 100%; height: 100%; pointer-events: none; filter: invert(1);" src="../Icons/DownloadFile.svg" alt="Download"/>
-					</a>
-					<div id="">
-						<div id="" tabindex="0" class="cell clickableButton tableBorder" title="Skip Back (Shift + P)" style="height:100%;">
-							<img style="width: 100%; height: 100%; pointer-events: none; filter: invert(1);" src="../Icons/CancelIcon.svg" alt="Fullscreen"/>
-						</div>
-					</div>
-				</div>
-
-				<div style="background-color: rgba(255,255,255,.5); width:100%; opacity: .5;">
-					<label class="buttonChunk" title="Skip Duration (time to next frame / 5). Setting this too high may unintentionally skip frames when seeking forward.">Skip Duration: <input type="number" id="skipDuration" value="0.001" step="0.0001" min="0.0001"></label>
-					<label class="buttonChunk" title="The time of the video's current frame (secs)">MediaTime: <input id="mediaTimeInput" type="number" value="0" step="0.0001"></label>
-					<div>
-					<span class="buttonChunk">
-						<label>Frame Rate: <input type="number" id="videoFrameRate" value="" step="any" min="0.0001"></label>
-					</span>
-					<span class="buttonChunk">
-						<button id="calcFrameNumber">Calc Frame Number</button>
-						<output id="outputFrame" name="currentFrame" for="videoFrameRate calcCurrentVideoFrame"></output>
-					</span>
-					</div>
-				</div>
+	<body style="--interactivity:inert;">
+		<main>
+			<div id="loadingFR">Determining Frame Rate</div>
+			<video id="video" style="width: 100%; height: 100%; background-color: black;"></video>
+			<div style="position: fixed; top: 0; left: 0; width: max-content; padding-left:1ch; padding-right:1ch; text-align: center; pointer-events: none; transform: translate(-9999px, 0px); z-index: 3; background-color: lightgrey; color: black;" id="hoveredTimeDisplay">
+				<div class="prevent-select text" style="display: block;"></div>
+				<div class="prevent-select text" style="display: block;"></div>
 			</div>
-			<div id="videoControlsB" style="position: absolute; top: 100%; transform: translateY(-100%); background-color: rgba(0,0,0,.7); width:100%;">
-				<div class="playbarHolder">
-					<span id="firstDurationLabel" style="margin-right: 1ch; color: white;" class="text" contenteditable="plaintext-only">00:00</span>
-					<span class="playbar"></span>
-					<span id="secondDurationLabel" style="margin-left: 1ch; color: white;" class="text">00:00</span>
+			<div id="ui" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+				<div id="videoControlsT" style="position: absolute; top:0; left:0; width:100%; background-color: rgba(0,0,0,.7); pointer-events: auto;">
+					<div style="display: flex; flex-direction: row; width:100%; height:40px;">
+						<label tabindex="0" class="cell clickableButton tableBorder" title="Upload File" style="height:100%;">
+							<input type="file" accept="video/*" id="upload" style="display: none;">
+							<img style="width: 100%; height: 100%; pointer-events: none; filter: invert(1);" src="../Icons/UploadIcon.svg" alt="Upload"/>
+						</label>
+						<div class="tableBorder text" style="height:100%; color: white; font-size: min(5cqw, 20px);">
+							Frame:
+							<span id="frameNumber" tabindex="0" contenteditable="plaintext-only" style="interactivity: var(--interactivity);">N/A</span>
+						</div>
+						<div class="spacer"></div>
+						<a tabindex="0" class="cell clickableButton tableBorder" title="Download Frame" style="height:100%;" id="downloadFrame" download>
+							<img style="width: 100%; height: 100%; pointer-events: none; filter: invert(1);" src="../Icons/DownloadFile.svg" alt="Download"/>
+						</a>
+						<div id="">
+							<div id="" tabindex="0" class="cell clickableButton tableBorder" title="Skip Back (Shift + P)" style="height:100%;">
+								<img style="width: 100%; height: 100%; pointer-events: none; filter: invert(1);" src="../Icons/CancelIcon.svg" alt="Fullscreen"/>
+							</div>
+						</div>
+					</div>
+
+					<div style="background-color: rgba(255,255,255,.5); width:100%; opacity: .5;">
+						<label class="buttonChunk" title="Skip Duration (time to next frame / 5). Setting this too high may unintentionally skip frames when seeking forward.">Skip Duration: <input type="number" id="skipDuration" value="0.001" step="0.0001" min="0.0001"></label>
+						<label class="buttonChunk" title="The time of the video's current frame (secs)">MediaTime: <input id="mediaTimeInput" type="number" value="0" step="0.0001"></label>
+						<label>Frame Rate: <input type="number" id="videoFrameRate" value="" step="any" min="0.0001"></label>
+					</div>
 				</div>
-				<div style="display: flex; flex-direction: row; width:100%; height:40px;">
-					<div title="Mute (M)" class="cell tableBorder" style="height:100%; max-width: 40px;">
-						<img src="../Icons/SpeakerIcon.svg" class="volumeIcon" alt="Fullscreen"/>
-						<div tabindex="0" id="volumePullsOpen" class="pullsOpen">
-							<div>
-								<input type="range" id="volumeSlider" max=1 min=0 value=1 step=0.0001 style="writing-mode: vertical-lr; direction: rtl; width: 100%; height: 100%; position: relative;">
+				<div id="videoControlsB" style="position: absolute; top: 100%; left:0; transform: translateY(-100%); background-color: rgba(0,0,0,.7); width:100%; pointer-events: auto;">
+					<div class="playbarHolder" style="interactivity: var(--interactivity);">
+						<span id="firstDurationLabel" style="margin-right: 1ch; color: white;" class="text" contenteditable="plaintext-only">00:00</span>
+						<span class="playbar"></span>
+						<span id="secondDurationLabel" style="margin-left: 1ch; color: white;" class="text">00:00</span>
+					</div>
+					<div style="display: flex; flex-direction: row; width:100%; height:40px;">
+						<div title="Mute (M)" class="cell tableBorder" style="height:100%; max-width: 40px;">
+							<img src="../Icons/SpeakerIcon.svg" class="volumeIcon" alt="Fullscreen"/>
+							<div tabindex="0" id="volumePullsOpen" class="pullsOpen">
+								<div>
+									<input type="range" id="volumeSlider" max=1 min=0 value=1 step=0.0001 style="writing-mode: vertical-lr; direction: rtl; width: 100%; height: 100%; position: relative;">
+								</div>
 							</div>
 						</div>
-					</div>
-					<div class="spacer"></div>
-					<div id="controls" style="justify-content: center; flex-grow: 1; height: 100%;">
-						<div style="display: flex; margin: auto; height: 100%; max-width: 1000px; flex-grow: 1;">
-							<div id="seekBackward" tabindex="0" class="cell clickableButton tableBorder" title="Skip Back (LeftArrow)" style="width: 100%; text-align: center;">
-								<img class="playBackIcon" width="30" height="30" style="width:50%; height:100%; object-fit: contain;filter: invert(1);" src="../Icons/FastForwardIcon.svg" alt="Previous Song"/>
-							</div>
-							<div id="skipBackward" tabindex="0" class="cell clickableButton tableBorder" title="Frame Skip Back ()" style="width: 100%;">
-								<img class="playBackIcon" width="60" height="30" style="width:100%; height:100%; filter: invert(1);" src="../Icons/ForwardIcon.svg" alt="Seek Backwards"/>
-							</div>
-							<div tabindex="0" class="cell clickableButton tableBorder" title="Play/Pause (Space | K)" style="width: 100%;">
-								<div id="playButton" style="filter: invert(1);"></div>
-							</div>
-							<div id="skipForward" tabindex="0" class="cell clickableButton tableBorder" title="Frame Skip Forward ()" style="width: 100%;">
-								<img class="playBackIcon" width="60" height="30" style="width:100%; height:100%; transform: scaleX(-1); filter: invert(1);" src="../Icons/ForwardIcon.svg" alt="Seek Forwards"/>
-							</div>
-							<div id="seekForward" tabindex="0" class="cell clickableButton tableBorder" title="Skip Forward (RightArrow)" style="width: 100%; text-align: center;">
-								<img class="playBackIcon" width="30" height="30" style="width:50%; height:100%; transform: scaleX(-1); filter: invert(1); object-fit: contain;" src="../Icons/FastForwardIcon.svg" alt="Next Song"/>
+						<div class="spacer"></div>
+						<div id="controls" style="justify-content: center; flex-grow: 1; height: 100%; interactivity: var(--interactivity);">
+							<div style="display: flex; margin: auto; height: 100%; max-width: 1000px; flex-grow: 1;">
+								<div id="seekBackward" tabindex="0" class="cell clickableButton tableBorder" title="Skip Back (LeftArrow)" style="width: 100%; text-align: center;">
+									<img class="playBackIcon" width="30" height="30" style="width:50%; height:100%; object-fit: contain;filter: invert(1);" src="../Icons/FastForwardIcon.svg" alt="Previous Song"/>
+								</div>
+								<div id="skipBackward" tabindex="0" class="cell clickableButton tableBorder" title="Frame Skip Back ()" style="width: 100%;">
+									<img class="playBackIcon" width="60" height="30" style="width:100%; height:100%; filter: invert(1);" src="../Icons/ForwardIcon.svg" alt="Seek Backwards"/>
+								</div>
+								<div tabindex="0" class="cell clickableButton tableBorder" title="Play/Pause (Space | K)" style="width: 100%;">
+									<div id="playButton" style="filter: invert(1);"></div>
+								</div>
+								<div id="skipForward" tabindex="0" class="cell clickableButton tableBorder" title="Frame Skip Forward ()" style="width: 100%;">
+									<img class="playBackIcon" width="60" height="30" style="width:100%; height:100%; transform: scaleX(-1); filter: invert(1);" src="../Icons/ForwardIcon.svg" alt="Seek Forwards"/>
+								</div>
+								<div id="seekForward" tabindex="0" class="cell clickableButton tableBorder" title="Skip Forward (RightArrow)" style="width: 100%; text-align: center;">
+									<img class="playBackIcon" width="30" height="30" style="width:50%; height:100%; transform: scaleX(-1); filter: invert(1); object-fit: contain;" src="../Icons/FastForwardIcon.svg" alt="Next Song"/>
+								</div>
 							</div>
 						</div>
-					</div>
-					<div class="spacer"></div>
-					<div id="modifiers1">
-						<div id="fullscreenButton" tabindex="0" class="cell clickableButton tableBorder" title="Skip Back (Shift + P)" style="height:100%;">
-							<img style="width: 100%; height: 100%; pointer-events: none; filter: invert(1);" src="../Icons/CancelIcon.svg" alt="Fullscreen"/>
+						<div class="spacer"></div>
+						<div id="modifiers1">
+							<div id="fullscreenButton" tabindex="0" class="cell clickableButton tableBorder" title="Skip Back (Shift + P)" style="height:100%;">
+								<img style="width: 100%; height: 100%; pointer-events: none; filter: invert(1);" src="../Icons/CancelIcon.svg" alt="Fullscreen"/>
+							</div>
 						</div>
 					</div>
 				</div>
