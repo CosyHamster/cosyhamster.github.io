@@ -1,7 +1,5 @@
-var PREFERRED_ITERS = 5;
-
 /** Splits inputted seconds into hours, minutes, & seconds. toString() returns the time in digital format.
-  * @param seconds number */
+  * @param {number} seconds */
 function secondsToTimestamp(seconds) {
 	this.seconds = numberToDigitalTimeString(Math.floor(seconds % 60))
 
@@ -17,69 +15,42 @@ function numberToDigitalTimeString(number) {
 	return String(number).padStart(2, "0");
 }
 
-var inert = false;
 /** @type HTMLCanvasElement */
 const screenshotCanvas = document.createElement("canvas");
 const screenshotCanvasCtx = screenshotCanvas.getContext("2d");
 
-const LOADING_FR_OVERLAY = document.getElementById("loadingFR");
-const fileUpload = document.getElementById("upload");
-const skipDuration = document.getElementById("skipDuration");
-/** @type HTMLInputElement */
-const inputMediaTime = document.getElementById("mediaTimeInput");
-/** @type HTMLInputElement */
-const inputFrameRate = document.getElementById("videoFrameRate");
-/** @type HTMLSpanElement */
-const FRAME_INPUT = document.getElementById("frameNumber");
-/** @type HTMLVideoElement */
-const video = document.getElementById("video");
-/** @type string */
-let videoSrc = null;
-let saveVideoNamePrefix = "";
-/** @type FrameSeeking */
-var frameSeek = null;
-var seeking = 0;
-var iters = 0;
-var currentMediaTime = 0;
-var frameRate = null;
-/** @type (frameCount:number) -> void */
-var frameRateDeterminedCallback = null;
-/** @type null | (framerate: number) => null */
-let resolveWithVideoFrameRate = null;
+var inert = false;
+/** @type HTMLDivElement */ const LOADING_FR_OVERLAY = document.getElementById("loadingFR");
+/** @type HTMLInputElement */ const FILE_UPLOAD = document.getElementById("upload");
+/** @type HTMLInputElement */ const INPUT_MEDIATIME = document.getElementById("mediaTimeInput");
+/** @type HTMLInputElement */ const INPUT_FRAME_RATE = document.getElementById("videoFrameRate");
+/** @type number */ var frameRate = null;
+/** @type number */ let finalMediaTime = null;
+/** @type RegExp */ const NUMBERS_ONLY_REGEX = /\D/g;
+/** @type HTMLSpanElement */ const FRAME_INPUT = document.getElementById("frameNumber");
+/** @type number */ var currentMediaTime = 0;
+/** @type HTMLVideoElement */ const video = document.getElementById("video");
+/** @type string */ let videoSrc = null;
+/** @type string */ let saveVideoNamePrefix = "";
+/** @type FrameSeeking */ var frameSeek = null;
+/** @type {(frameCount:number) => void} */ var frameRateDeterminedCallback = null;
 
-/** @type Window */
-var storedWindow;
-/** @type Window */
-var curWin = window;
-/** @type Document */
-var curDoc = document;
+/** @type Window */ var storedWindow;
+/** @type Window */ var curWin = window;
+/** @type Document */ var curDoc = document;
 
-/** @type HTMLAnchorElement */
-const DOWNLOAD_BUTTON = document.getElementById("downloadFrame");
-/** @type HTMLDivElement */
-const UI = document.getElementById("ui");
-/** @type HTMLDivElement */
-const VIDEO_CONTROLS_BOTTOM = document.getElementById("videoControlsB");
-/** @type HTMLDivElement */
-const PLAY_BUTTON = document.getElementById("playButton");
-/** @type HTMLInputElement */
-const VOLUME_SLIDER = document.getElementById("volumeSlider");
-/** @type HTMLDivElement */
-const PLAY_BAR = document.getElementsByClassName("playbar")[0];
-/** @type HTMLDivElement */
-const HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay');
-/** @type HTMLSpanElement */
-const CURRENT_TIME_LABEL = document.getElementById("firstDurationLabel");
-/** @type HTMLDivElement */
-const MEDIA_CONTROLS = document.getElementById("controls");
-/** @type HTMLDivElement */
-const SKIP_FORWARD = document.getElementById("skipForward");
-/** @type HTMLDivElement */
-const SKIP_BACKWARD = document.getElementById("skipBackward");
-/** @type HTMLDivElement */
-const SEEK_BACKWARD = document.getElementById('seekBackward');
-/** @type HTMLDivElement */
-const SEEK_FORWARD = document.getElementById('seekForward');
+/** @type HTMLAnchorElement */ const DOWNLOAD_BUTTON = document.getElementById("downloadFrame");
+/** @type HTMLDivElement */ const UI = document.getElementById("ui");
+/** @type HTMLDivElement */ const PLAY_BUTTON = document.getElementById("playButton");
+/** @type HTMLInputElement */ const VOLUME_SLIDER = document.getElementById("volumeSlider");
+/** @type HTMLImageElement */ const VOLUME_ICON = document.getElementById("volumeIcon");
+/** @type HTMLDivElement */ const PLAY_BAR = document.getElementsByClassName("playbar")[0];
+/** @type HTMLDivElement */ const HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay');
+/** @type HTMLSpanElement */ const CURRENT_TIME_LABEL = document.getElementById("firstDurationLabel");
+/** @type HTMLDivElement */ const SKIP_FORWARD = document.getElementById("skipForward");
+/** @type HTMLDivElement */ const SKIP_BACKWARD = document.getElementById("skipBackward");
+/** @type HTMLDivElement */ const SEEK_BACKWARD = document.getElementById('seekBackward');
+/** @type HTMLDivElement */ const SEEK_FORWARD = document.getElementById('seekForward');
 
 // Source - https://stackoverflow.com/a/60055110
 // Posted by trincot, modified by community. See post 'Timeline' for change history
@@ -116,28 +87,6 @@ class Deque {
 	}
 }
 
-// demo
-let deque = new Deque();
-console.log(deque.peekFront()); // undefined
-deque.addFront(1);
-console.log(deque.peekBack()); // 1
-deque.addFront(2);
-console.log(deque.removeBack()); // 1
-deque.addFront(3);
-deque.addFront(4);
-console.log(deque.peekBack()); // 2
-deque.addBack(5);
-deque.addBack(6);
-console.log(deque.peekBack()); // 6
-console.log(deque.removeFront()); // 4
-console.log(deque.removeFront()); // 3
-console.log(deque.removeFront()); // 2
-console.log(deque.removeFront()); // 5
-console.log(deque.removeFront()); // 6
-console.log(deque.removeFront()); // undefined
-
-
-
 function setup(){
 	// setButtonsDisabled(true);
 	registerClickEvent(PLAY_BUTTON.parentElement, togglePause)();
@@ -171,8 +120,9 @@ function setup(){
 	registerClickEvent(DOWNLOAD_BUTTON, (event) => {
 		screenshotCanvasCtx.drawImage(video, 0, 0);
 		DOWNLOAD_BUTTON.href = screenshotCanvas.toDataURL("image/png");
-		DOWNLOAD_BUTTON.download = `${saveVideoNamePrefix}_videoframe_${round2(calcFrameNumber(currentMediaTime))}.png`;
+		DOWNLOAD_BUTTON.download = `${saveVideoNamePrefix}_videoframe_${round1(calcFrameNumber(currentMediaTime))}.png`;
 	})();
+	registerKeyDownEvent(FILE_UPLOAD.labels[0], () => FILE_UPLOAD.click());
 
 	video.requestVideoFrameCallback(onVideoFrame);
 
@@ -191,13 +141,13 @@ function togglePause(){
 
 /** @param seekDirection number */
 function seek(seekDirection){
-	currentMediaTime += 5 * seekDirection + 0.0001;
+	currentMediaTime = Math.min(Math.max(currentMediaTime+(5 * seekDirection + 0.0001), 0), video.duration);
 	video.currentTime = currentMediaTime;
 	frameSeek.onSeekedManually(currentMediaTime);
 }
 
 /** @param {File} file */
-async function uploadFile(file){
+function uploadFile(file){
 	setButtonsDisabled(true);
 	video.pause();
 	const separationIndex = file.name.lastIndexOf('.');
@@ -210,18 +160,18 @@ async function uploadFile(file){
 	videoSrc = URL.createObjectURL(file);
 	frameSeek = new FrameSeeking(videoSrc);
 	LOADING_FR_OVERLAY.toggleAttribute("data-active", true);
-	await waitForStableFrameRate();
-
-	video.addEventListener("loadeddata", () => {
-		screenshotCanvas.width = video.videoWidth;
-		screenshotCanvas.height = video.videoHeight;
-		setButtonsDisabled(false);
-		LOADING_FR_OVERLAY.toggleAttribute("data-active", false);
-	}, {passive: true, once: true});
-	video.src = videoSrc;
+	waitForFrameRate().then(() => {
+		video.addEventListener("loadeddata", () => {
+			screenshotCanvas.width = video.videoWidth;
+			screenshotCanvas.height = video.videoHeight;
+			setButtonsDisabled(false);
+			LOADING_FR_OVERLAY.toggleAttribute("data-active", false);
+		}, {passive: true, once: true});
+		video.src = videoSrc;
+	});
 }
 
-function waitForStableFrameRate(){
+function waitForFrameRate(){
 	return new Promise(resolve => {
 		frameRateDeterminedCallback = resolve;
 	});
@@ -261,6 +211,8 @@ class FrameSeeking {
 		this.forwardFrameSeek.destroy();
 		this.backwardFrameSeek.destroy();
 		this.frameRateSeek.destroy();
+		frameRate = null;
+		finalMediaTime = null;
 	}
 
 	onSeekedManually(newTime) {
@@ -269,6 +221,8 @@ class FrameSeeking {
 			this.forwardFrameSeek.beginExecutor(newTime);
 			this.backwardFrameSeek.beginExecutor(newTime);
 		}
+
+		timeUpdateUnofficial();
 	}
 
 	forward(){
@@ -278,6 +232,7 @@ class FrameSeeking {
 			this.backwardFrameSeek.addLeftMediaTime(currentMediaTime);
 			currentMediaTime = nextMediaTime;
 			video.currentTime = nextMediaTime+0.0001; //add a slight amount to avoid rounding errors with the previous frame
+			timeUpdateUnofficial();
 		}
 	}
 
@@ -288,10 +243,12 @@ class FrameSeeking {
 			this.forwardFrameSeek.addLeftMediaTime(currentMediaTime);
 			currentMediaTime = prevMediaTime;
 			video.currentTime = prevMediaTime+0.0001; //add a slight amount to avoid rounding errors with the previous frame
-		} else if(round2(calcFrameNumber(currentMediaTime)) == 1){
+			timeUpdateUnofficial();
+		} else if(round1(calcFrameNumber(currentMediaTime)) == 1 && video.currentTime != 0){
 			this.forwardFrameSeek.addLeftMediaTime(currentMediaTime);
 			currentMediaTime = 0;
 			video.currentTime = 0;
+			timeUpdateUnofficial();
 		}
 	}
 }
@@ -311,7 +268,7 @@ class FrameSeek {
 		this.instVideo.src = src;
 	}
 
-	async beginExecutor(mediaTime){
+	beginExecutor(mediaTime){
 		if(!this.abortController){
 			this.abortController = new SimpleAbortController();
 			this.queuedMediaTime = null;
@@ -335,7 +292,6 @@ class FrameSeek {
 	executor(mediaTime){
 		console.log(this.toString() + " executor");
 		this.requestID = this.instVideo.requestVideoFrameCallback(this.firstFrameCallback);
-		this.instVideo.currentTime = mediaTime;
 	}
 
 	/** @param {DOMHighResTimeStamp} now
@@ -356,15 +312,16 @@ class FrameSeek {
 		this.mediaTimes.addBack(mediaTime);
 	}
 
-	async onExecutorAborted() {
-		console.log(this.toString() + " aborted");
+	onExecutorAborted() {
 		this.instVideo.pause();
 		this.mediaTimes = new Deque();
-		await new Promise(resolve => setTimeout(resolve, 250)); //provide the video time to rest
-		this.abortController = null;
-		if(this.queuedMediaTime !== null){
-			this.beginExecutor(this.queuedMediaTime);
-		}
+		new Promise(resolve => setTimeout(resolve, 255)).then(() => {
+			console.log(this.toString() + " aborted");
+			this.abortController = null;
+			if(this.queuedMediaTime !== null){
+				this.beginExecutor(this.queuedMediaTime);
+			}
+		}); //provide the video time to rest
 	}
 }
 
@@ -376,6 +333,7 @@ class ForwardFrameSeek extends FrameSeek {
 	}
 
 	beginExecutor(mediaTime){
+		if(round4(mediaTime) >= round4(finalMediaTime)) return;
 		if(!this.abortController){
 			this.abortController = new SimpleAbortController();
 			this.queuedMediaTime = null;
@@ -393,16 +351,25 @@ class ForwardFrameSeek extends FrameSeek {
 	}
 
 	destroy(){
-		this.instVideo.cancelVideoFrameCallback(this.requestID);
 		this.instVideo.removeEventListener("ended",this.onVideoEnded,{passive:true});
+		this.instVideo.cancelVideoFrameCallback(this.requestID);
 		this.abortController = null;
+	}
+
+
+	executor(mediaTime) {
+		super.executor(mediaTime);
+		if(round4(this.instVideo.currentTime) === round4(mediaTime))
+			this.instVideo.currentTime = mediaTime+0.0001;
+		else
+			this.instVideo.currentTime = mediaTime;
 	}
 
 	/** @param {DOMHighResTimeStamp} now
 	 * @param {VideoFrameCallbackMetadata} metadata */
 	firstFrameCallback(now, metadata) {
 		if(this.abortController.aborted){ this.onExecutorAborted(); return; }
-		// this.addRightMediaTime(metadata.mediaTime);
+		this.addRightMediaTime(metadata.mediaTime);
 		this.requestID = this.instVideo.requestVideoFrameCallback(this.frameCallback);
 		this.instVideo.playbackRate = Math.max(0.0625*(60/frameRate), 0.0625); //goes faster when framerate is lower (30 fps is 2x (0.125))
 		this.instVideo.play();
@@ -418,12 +385,20 @@ class ForwardFrameSeek extends FrameSeek {
 
 	onVideoEnded(){
 		this.abortController.callback = this.onExecutorAborted;
-		this.instVideo.cancelVideoFrameCallback(this.requestID);
+		this.instVideo.load();
 	}
 
 	addRightMediaTime(mediaTime){
-		if(mediaTime > video.currentTime){
+		if(mediaTime > currentMediaTime){
 			this.mediaTimes.addFront(mediaTime);
+		}
+	}
+
+	onExecutorAborted() {
+		if(!this.abortController.acknowledged()){
+			this.abortController.acknowledge();
+			this.instVideo.cancelVideoFrameCallback(this.requestID);
+			super.onExecutorAborted();
 		}
 	}
 
@@ -440,7 +415,7 @@ class BackwardFrameSeek extends FrameSeek {
 
 	/** @param {number} mediaTime */
 	beginExecutor(mediaTime){
-		if(mediaTime == 0) return;
+		if(mediaTime == 0 || round4(mediaTime) >= round4(finalMediaTime)) return;
 		if(!this.abortController){
 			this.abortController = new SimpleAbortController();
 			this.queuedMediaTime = null;
@@ -461,11 +436,20 @@ class BackwardFrameSeek extends FrameSeek {
 
 	}
 
+
+	executor(mediaTime) {
+		super.executor(mediaTime);
+		if(round4(this.instVideo.currentTime) === round4(mediaTime))
+			this.instVideo.currentTime = mediaTime-0.0001;
+		else
+			this.instVideo.currentTime = mediaTime;
+	}
+
 	/** @param {DOMHighResTimeStamp} now
 	 * @param {VideoFrameCallbackMetadata} metadata */
 	firstFrameCallback(now, metadata) {
 		if(this.abortController.aborted){ this.onExecutorAborted(); return; }
-		// this.addRightMediaTime(metadata.mediaTime);
+		this.addRightMediaTime(metadata.mediaTime);
 		this.currentMediaTime = metadata.mediaTime;
 		this.requestID = this.instVideo.requestVideoFrameCallback(this.frameCallback);
 		this.instVideo.currentTime = metadata.mediaTime-0.0001;
@@ -482,23 +466,21 @@ class BackwardFrameSeek extends FrameSeek {
 	}
 
 	addRightMediaTime(mediaTime){
-		if(mediaTime < video.currentTime){
+		if(mediaTime < currentMediaTime){
 			this.mediaTimes.addFront(mediaTime);
 		}
 
 		this.currentMediaTime = mediaTime;
 	}
 
-	async onExecutorAborted() { //identical to base method to avoid delays between calling async functions
-		console.log(this.toString() + " aborted");
-		this.instVideo.cancelVideoFrameCallback(this.requestID);
-		this.currentMediaTime = null;
-		this.mediaTimes = new Deque();
-		await new Promise(resolve => setTimeout(resolve, 250)); //provide the video time to rest
-		this.abortController = null;
-		if(this.queuedMediaTime){
-			this.beginExecutor(this.queuedMediaTime);
-		}
+	onExecutorAborted() {
+		// if(!this.abortController.acknowledged()){
+			// this.abortController.acknowledge();
+			// this.instVideo.cancelVideoFrameCallback(this.requestID);
+		this.abortController.acknowledge();
+			this.currentMediaTime = null;
+			super.onExecutorAborted();
+		// }
 	}
 
 	toString(){
@@ -525,6 +507,27 @@ class FrameRateSeek {
 
 		this.requestID = this.instVideo.requestVideoFrameCallback(this.firstFrameCallback);
 		this.instVideo.src = src;
+
+		let fRequestID = null;
+		/** @type HTMLVideoElement */
+		let finalFrameVideo = document.createElement("video");
+		finalFrameVideo.muted = true;
+
+		finalFrameVideo.requestVideoFrameCallback((now, metadata) => {
+			fRequestID = finalFrameVideo.requestVideoFrameCallback(function repeat(now, metadata) {
+				fRequestID = finalFrameVideo.requestVideoFrameCallback(repeat);
+				finalMediaTime = metadata.mediaTime;
+			});
+			finalFrameVideo.currentTime = finalFrameVideo.duration-5;
+			finalFrameVideo.play();
+		});
+		finalFrameVideo.addEventListener("ended", () => {
+			new Promise(resolve => setTimeout(resolve, 2000)).then(() => {
+				finalFrameVideo.cancelVideoFrameCallback(fRequestID);
+				finalFrameVideo = null;
+			});
+		}, {passive: true, once: true});
+		finalFrameVideo.src = src;
 	}
 
 	destroy(){
@@ -587,14 +590,14 @@ class FrameRateSeek {
 			// frameDiffs.push(diff);
 			this.averageFrameDiff = ((this.averageFrameDiff*this.frameCount)+diff)/(++this.frameCount)
 			frameRate = 1 / this.averageFrameDiff;
-			inputFrameRate.valueAsNumber = frameRate;
+			INPUT_FRAME_RATE.valueAsNumber = frameRate;
 		}
 
 		const dropped = this.instVideo.getVideoPlaybackQuality().totalVideoFrames-metadata.presentedFrames-3;
 		if(dropped){ //for some reason, dropped frames is always a difference of 3. waiting to be proven wrong.
-			inputFrameRate.style.color = "red";
-			inputFrameRate.title = `${dropped} frames were dropped due to lag in the framerate calculation. This result may be incorrect.`;
-			inputFrameRate.labels[0].title = `${dropped} frames were dropped due to lag in the framerate calculation. This result may be incorrect.`;
+			INPUT_FRAME_RATE.style.color = "red";
+			INPUT_FRAME_RATE.title = `${dropped} frames were dropped due to lag in the framerate calculation. This result may be incorrect.`;
+			INPUT_FRAME_RATE.labels[0].title = `${dropped} frames were dropped due to lag in the framerate calculation. This result may be incorrect.`;
 		}
 	}
 
@@ -604,31 +607,37 @@ class FrameRateSeek {
 }
 
 class SimpleAbortController {
-	aborted = false;
+	aborted = 0;
 	callback = function(){};
-	reset(){ this.aborted = false; }
+	reset(){ this.aborted = 0; }
 	abort(){
 		if(!this.aborted){
-			this.aborted = true;
+			this.aborted = 1;
 			this.callback();
 		}
 	}
+	acknowledge(){
+		this.aborted = 2;
+	}
+	acknowledged(){
+		return this.aborted == 2;
+	}
 }
 
-fileUpload.addEventListener("change", () => {
+FILE_UPLOAD.addEventListener("change", () => {
 	if(!inert)
-		uploadFile(fileUpload.files[0]);
-	fileUpload.value = null;
+		uploadFile(FILE_UPLOAD.files[0]);
+	FILE_UPLOAD.value = null;
 }, true);
 window.addEventListener("dragover", (event) => {
 	if(event.dataTransfer.types.includes("Files") && !inert)
 		event.preventDefault();
 });
 window.addEventListener("drop", (event) => {
-	const dataTransfer = event.dataTransfer;
-	if(dataTransfer.files && !inert) {
+	const fileList = event.dataTransfer.files;
+	if(fileList && !inert) {
 		event.preventDefault();
-		uploadFile(dataTransfer.files[0]);
+		uploadFile(fileList[0]);
 	}
 });
 
@@ -696,9 +705,9 @@ curWin.addEventListener("keypress", keyEvent => {
 				seek(1);
 				keyEvent.preventDefault();
 				break;
-			// case "m":
-			// 	MUTE_BUTTON.click();
-			// 	break;
+			case "m":
+				video.muted = !video.muted;
+				VOLUME_ICON.classList.toggle("muted", video.muted);
 		}
 	}
 });
@@ -708,35 +717,23 @@ function timeUpdate() {
 	PLAY_BAR.style.setProperty("--percentage", String(Math.min(currentTime / video.duration, 1) * 100) + '%');
 	CURRENT_TIME_LABEL.innerText = secondsToTimestamp(currentTime);
 }
-
-// function videoFrameAdvanced(now, metadata){
-// 	console.log(`iters: ${iters}; currentTime: ${video.currentTime}; prevMediaTime: ${currentMediaTime}; mediaTime: ${metadata.mediaTime}`);
-// 	skipDuration.valueAsNumber = (skipDuration.valueAsNumber*iters)/PREFERRED_ITERS;
-// 	if(iters >= PREFERRED_ITERS){
-// 		if(resolveWithVideoFrameRate != null){
-// 			resolveWithVideoFrameRate(1/(metadata.mediaTime-currentMediaTime));
-// 		}
-// 		currentMediaTime = metadata.mediaTime;
-// 		inputMediaTime.valueAsNumber = metadata.mediaTime;
-// 		setButtonsDisabled(false);
-// 		seeking = 0;
-// 		iters = 0;
-// 	} else {
-// 		console.log(`Not enough iterations. Restarting to ${currentMediaTime}`);
-// 		video.currentTime = currentMediaTime;
-// 		iters = 0;
-// 	}
-// }
+function timeUpdateUnofficial() {
+	PLAY_BAR.style.setProperty("--percentage", String(Math.min(currentMediaTime / video.duration, 1) * 100) + '%');
+	CURRENT_TIME_LABEL.innerText = secondsToTimestamp(currentMediaTime);
+	FRAME_INPUT.textContent = String(round1(calcFrameNumber(currentMediaTime)));
+	FRAME_INPUT.style.color = "#aaaaaa";
+}
 
 function onVideoFrame(now, metadata){
 	video.requestVideoFrameCallback(onVideoFrame);
 	currentMediaTime = metadata.mediaTime;
-	FRAME_INPUT.textContent = String(round2(calcFrameNumber(currentMediaTime)));
-	inputMediaTime.valueAsNumber = currentMediaTime;
+	FRAME_INPUT.textContent = String(round1(calcFrameNumber(currentMediaTime)));
+	FRAME_INPUT.style.color = "#ffffff";
+	INPUT_MEDIATIME.valueAsNumber = currentMediaTime;
 }
 function calcFrameNumber(mediaTime){
 	if(!frameRate){
-		inputFrameRate.focus();
+		INPUT_FRAME_RATE.focus();
 		return 0;
 	}
 	const frameNumber = mediaTime*frameRate;
@@ -744,6 +741,9 @@ function calcFrameNumber(mediaTime){
 	return frameNumber;
 }
 
+function round1(num) {
+	return Math.round(num*10)/10;
+}
 function round2(num) {
 	return Math.round(num*100)/100;
 }
@@ -757,15 +757,14 @@ function round4(num) {
 function setButtonsDisabled(disabled){
 	inert = disabled;
 	document.body.style.setProperty("--interactivity", disabled ? "inert" : "auto");
-	video.inert = disabled;
 }
 
-inputFrameRate.addEventListener("change", () => {
-	frameRate = inputFrameRate.valueAsNumber;
+INPUT_FRAME_RATE.addEventListener("change", () => {
+	frameRate = INPUT_FRAME_RATE.valueAsNumber;
 });
 
-inputMediaTime.addEventListener("change", () => {
-	video.currentTime = inputMediaTime.valueAsNumber;
+INPUT_MEDIATIME.addEventListener("change", () => {
+	video.currentTime = INPUT_MEDIATIME.valueAsNumber;
 }, true);
 
 /** Registers a click event which calls the specified function. Call the returned function to add a keyboard event.
@@ -838,9 +837,9 @@ function progressBarSeek(mouse, seekVideo) {
 	const progressBarDomRect = PLAY_BAR.getBoundingClientRect();
 	let seekToTime = Math.max(offsetX * (video.duration / progressBarDomRect.width), 0);
 	const frameNumber = Math.floor(calcFrameNumber(seekToTime));
-	seekToTime = calcMediaTimeAtFrame(frameNumber)+0.0001;
+	seekToTime = calcMediaTimeAtFrame(frameNumber);
 	if(seekVideo) {
-		video.currentTime = seekToTime;
+		video.currentTime = seekToTime+0.0001;
 		frameSeek.onSeekedManually(seekToTime);
 	} else {
 		HOVERED_TIME_DISPLAY.children[0].textContent = String(secondsToTimestamp(seekToTime));
@@ -856,26 +855,47 @@ function removeHoveredTimeDisplay(){
 /** @param {InputEvent} event */
 FRAME_INPUT.addEventListener("beforeinput", (event) => {
 	console.log(event);
+	if(!videoSrc || !frameRate){
+		event.preventDefault();
+	}
+
 	switch (event.inputType){
 		case "insertLineBreak":
 			event.preventDefault();
-
-			video.pause();
-			const currentTime = calcMediaTimeAtFrame(Number(FRAME_INPUT.textContent));
-			video.currentTime = currentTime+0.0001;
-			frameSeek.onSeekedManually(currentTime+0.0001);
+			submitFrameInput();
+			break;
+		case "insertText":
+			if(isNaN(event.data)){
+				event.preventDefault();
+			}
+			break;
 	}
 });
 FRAME_INPUT.addEventListener("input", (event) => {
-	const numbersOnly = FRAME_INPUT.textContent.replace(/\D/g, "");
+	const numbersOnly = FRAME_INPUT.textContent.replace(NUMBERS_ONLY_REGEX, "");
 	if(numbersOnly !== FRAME_INPUT.textContent){
 		FRAME_INPUT.textContent = numbersOnly;
 		fixCursorOnFrameInput();
 	}
 });
+// FRAME_INPUT.addEventListener("keydown", (event) => {
+// 	switch (event.key){
+// 		case "ArrowUp":
+// 			break;
+// 		case "ArrowDown":
+// 			break;
+// 	}
+// });
+function submitFrameInput(){
+	video.pause();
+	const currentTime = calcMediaTimeAtFrame(Number(FRAME_INPUT.textContent));
+	currentMediaTime = currentTime;
+	video.currentTime = currentTime+0.0001;
+	frameSeek.onSeekedManually(currentTime);
+}
 function fixCursorOnFrameInput(){
 	const selection = window.getSelection();
-	selection.empty();
+	selection.removeAllRanges();
 	const range = new Range();
 	range.selectNodeContents(FRAME_INPUT);
 	range.collapse(false);

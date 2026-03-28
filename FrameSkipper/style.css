@@ -108,17 +108,17 @@ main{
     align-items: baseline;
 }
 
-.volumeIcon {
+#volumeIcon {
     width: 100%;
     height: 100%;
     pointer-events: none;
     filter: invert(1);
     transition: 200ms;
 }
-.volumeIcon:has(+ div > div > input[data-value="0"]) {
+#volumeIcon:has(+ div > div > input[data-value="0"]) {
     filter: sepia(1) saturate(200);
 }
-.muted {
+#volumeIcon.muted {
     filter: sepia(1) saturate(200);
 }
 
