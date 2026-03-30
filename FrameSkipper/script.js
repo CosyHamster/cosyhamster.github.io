@@ -915,8 +915,12 @@ function timeInputBeforeInput(event, submitCallback, isUnallowedTest) {
 			break;
 	}
 }
+function charIsNumeric(char) {
+	const codePoint = char.codePointAt(0);
+	return codePoint >= 48 && codePoint <= 57;
+}
 function charIsNotNumeric(char) {
-	return char.codePointAt(0)-48 > 9;
+	return !charIsNumeric(char);
 }
 FRAME_INPUT.addEventListener("beforeinput", (event) => timeInputBeforeInput(event, submitFrameInput, charIsNotNumeric));
 FRAME_INPUT.addEventListener("input", (event) => {

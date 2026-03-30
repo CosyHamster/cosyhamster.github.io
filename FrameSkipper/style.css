@@ -150,7 +150,16 @@ main{
 }
 #moreMenuDropdown div{
     width: 100%;
+    padding: 0.5em 0px;
 }
+/*#moreMenuDropdown div:first-child{*/
+/*    padding-top: 1em;*/
+/*    padding-bottom: 0.5em;*/
+/*}*/
+/*#moreMenuDropdown div:last-child{*/
+/*    padding-top: 0.5em;*/
+/*    padding-bottom: 1em;*/
+/*}*/
 
 
 
