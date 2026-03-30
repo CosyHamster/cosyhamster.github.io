@@ -113,7 +113,7 @@ main{
     height: 100%;
     pointer-events: none;
     filter: invert(1);
-    transition: 200ms;
+    transition: filter 200ms;
 }
 #volumeIcon:has(+ div > div > input[data-value="0"]) {
     filter: sepia(1) saturate(200);
@@ -121,6 +121,38 @@ main{
 #volumeIcon.muted {
     filter: sepia(1) saturate(200);
 }
+
+/*I can't just style the element ID since I want clickableButton to be able to modify background-color */
+.moreMenuButton{
+    background-color: black;
+    appearance: none;
+    padding: 0;
+    border: 0;
+}
+#moreMenuDropdown{
+    position: absolute;
+    transform: translateX(-100%);
+    left: anchor(right); /* 100% */
+    top: anchor(bottom);
+    z-index: 3;
+    padding: 5px 2px;
+    margin: 0;
+    color: #212529;
+    background-color: white;
+    text-align: left;
+    background-clip: padding-box;
+    border: 1px solid rgba(0,0,0,0.15);
+    border-radius: 2px;
+    pointer-events: auto;
+}
+#moreMenuDropdown[data-open]{
+    display: block;
+}
+#moreMenuDropdown div{
+    width: 100%;
+}
+
+
 
 #loadingFR{
     position: fixed;

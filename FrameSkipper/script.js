@@ -27,6 +27,7 @@ var inert = false;
 /** @type number */ var frameRate = null;
 /** @type number */ let finalMediaTime = null;
 /** @type RegExp */ const NUMBERS_ONLY_REGEX = /\D/g;
+/** @type RegExp */ const TIME_ONLY_REGEX = /[^\d:]/g;
 /** @type HTMLSpanElement */ const FRAME_INPUT = document.getElementById("frameNumber");
 /** @type number */ var currentMediaTime = 0;
 /** @type HTMLVideoElement */ const video = document.getElementById("video");
@@ -141,9 +142,10 @@ function togglePause(){
 
 /** @param seekDirection number */
 function seek(seekDirection){
-	currentMediaTime = Math.min(Math.max(currentMediaTime+(5 * seekDirection + 0.0001), 0), video.duration);
-	video.currentTime = currentMediaTime;
-	frameSeek.onSeekedManually(currentMediaTime);
+	const newTime = Math.min(Math.max(currentMediaTime+(5 * seekDirection + 0.0001), 0), video.duration);
+	currentMediaTime = newTime-0.0001;
+	video.currentTime = newTime;
+	frameSeek.onSeekedManually(newTime);
 }
 
 /** @param {File} file */
@@ -249,6 +251,15 @@ class FrameSeeking {
 			currentMediaTime = 0;
 			video.currentTime = 0;
 			timeUpdateUnofficial();
+		} else if(!BackwardFrameSeek.ACTIVE){
+			if(this.forwardFrameSeek.getLeftMediaTime() !== currentMediaTime){
+				this.forwardFrameSeek.addLeftMediaTime(currentMediaTime);
+				video.currentTime = currentMediaTime-0.0001;
+
+				const currentFrameNumber = Number(FRAME_INPUT.textContent);
+				timeUpdateUnofficial();
+				FRAME_INPUT.textContent = String(currentFrameNumber-1);
+			}
 		}
 	}
 }
@@ -312,6 +323,10 @@ class FrameSeek {
 		this.mediaTimes.addBack(mediaTime);
 	}
 
+	getLeftMediaTime(mediaTime){
+		return this.mediaTimes.peekBack();
+	}
+
 	onExecutorAborted() {
 		this.instVideo.pause();
 		this.mediaTimes = new Deque();
@@ -333,7 +348,7 @@ class ForwardFrameSeek extends FrameSeek {
 	}
 
 	beginExecutor(mediaTime){
-		if(round4(mediaTime) >= round4(finalMediaTime)) return;
+		if(videoIsEnded(mediaTime)) return;
 		if(!this.abortController){
 			this.abortController = new SimpleAbortController();
 			this.queuedMediaTime = null;
@@ -369,6 +384,9 @@ class ForwardFrameSeek extends FrameSeek {
 	 * @param {VideoFrameCallbackMetadata} metadata */
 	firstFrameCallback(now, metadata) {
 		if(this.abortController.aborted){ this.onExecutorAborted(); return; }
+		if(videoIsEnded(metadata.mediaTime)){
+			this.abortController.callback = () => {this.instVideo.load(); this.onExecutorAborted();}; //guard against the video freezing due to chrome bug
+		}
 		this.addRightMediaTime(metadata.mediaTime);
 		this.requestID = this.instVideo.requestVideoFrameCallback(this.frameCallback);
 		this.instVideo.playbackRate = Math.max(0.0625*(60/frameRate), 0.0625); //goes faster when framerate is lower (30 fps is 2x (0.125))
@@ -408,6 +426,7 @@ class ForwardFrameSeek extends FrameSeek {
 }
 
 class BackwardFrameSeek extends FrameSeek {
+	static ACTIVE = false;
 	/** @type number | null */ currentMediaTime = null;
 	constructor(src) {
 		super(src);
@@ -415,7 +434,7 @@ class BackwardFrameSeek extends FrameSeek {
 
 	/** @param {number} mediaTime */
 	beginExecutor(mediaTime){
-		if(mediaTime == 0 || round4(mediaTime) >= round4(finalMediaTime)) return;
+		if(mediaTime == 0 || videoIsEnded(mediaTime)) return;
 		if(!this.abortController){
 			this.abortController = new SimpleAbortController();
 			this.queuedMediaTime = null;
@@ -438,6 +457,11 @@ class BackwardFrameSeek extends FrameSeek {
 
 
 	executor(mediaTime) {
+		if(!BackwardFrameSeek.ACTIVE){
+			this.abortController.callback = this.onExecutorAborted;
+			return;
+		}
+
 		super.executor(mediaTime);
 		if(round4(this.instVideo.currentTime) === round4(mediaTime))
 			this.instVideo.currentTime = mediaTime-0.0001;
@@ -655,11 +679,23 @@ video.addEventListener("loadstart", () => {
 	PLAY_BUTTON.classList.remove("playing");
 }, {passive: true});
 video.addEventListener("timeupdate", timeUpdate, {passive: true});
-video.addEventListener("seeking", timeUpdate, {passive: true});
-video.addEventListener("durationchange", () => document.getElementById("secondDurationLabel").innerText = secondsToTimestamp(video.duration), {passive: true});
+// video.addEventListener("seeking", timeUpdate, {passive: true});
+video.addEventListener("durationchange", () => document.getElementById("secondDurationLabel").textContent = secondsToTimestamp(video.duration), {passive: true});
 video.addEventListener("click", toggleUI, {passive: true});
 video.addEventListener("dblclick", toggleFullscreen, {passive: true});
 document.getElementById("fullscreenButton").addEventListener("click", toggleFullscreen, {passive: true});
+
+function timeUpdate() {
+	const currentTime = video.currentTime;
+	PLAY_BAR.style.setProperty("--percentage", String(Math.min(currentTime / video.duration, 1) * 100) + '%');
+	CURRENT_TIME_LABEL.textContent = secondsToTimestamp(currentTime);
+}
+function timeUpdateUnofficial() {
+	PLAY_BAR.style.setProperty("--percentage", String(Math.min(currentMediaTime / video.duration, 1) * 100) + '%');
+	CURRENT_TIME_LABEL.textContent = secondsToTimestamp(currentMediaTime);
+	FRAME_INPUT.textContent = String(round1(calcFrameNumber(currentMediaTime)));
+	FRAME_INPUT.style.color = "#aaaaaa";
+}
 
 function toggleUI(){
 	if(videoSrc){
@@ -680,18 +716,20 @@ function toggleFullscreen(){
 	}
 }
 
-CURRENT_TIME_LABEL.addEventListener("input", console.log);
-
 PLAY_BAR.addEventListener('pointerenter', (pointer) => progressBarSeek(pointer, false), { passive: true })
 PLAY_BAR.addEventListener('pointerdown', (pointer) => { if(pointer.button === 0) progressBarSeek(pointer, true); }, { passive: true })
 PLAY_BAR.addEventListener('pointermove', (pointer) => progressBarSeek(pointer, false), { passive: true })
 PLAY_BAR.addEventListener('pointerleave', (pointer) => removeHoveredTimeDisplay(), { passive: true })
 
-curWin.addEventListener("keypress", keyEvent => {
+curWin.addEventListener("keydown", keyEvent => {
+	const activeElement = document.activeElement;
+	if(!activeElement || activeElement instanceof HTMLInputElement || activeElement.contentEditable == "plaintext-only")
+		return;
+
 	const keyLower = keyEvent.key.toLowerCase();
 	const compressed = (Number(keyEvent.shiftKey)/*1*/)+(Number(keyEvent.ctrlKey)<<1/*2*/)+(Number(keyEvent.altKey)<<2/*4*/)+(Number(keyEvent.metaKey)<<3/*8*/);
-	if(compressed === 0){
-		switch(keyLower){
+	if(compressed == 0){
+		switch(keyLower) {
 			case " ": //space
 			case "k":
 				togglePause();
@@ -708,21 +746,26 @@ curWin.addEventListener("keypress", keyEvent => {
 			case "m":
 				video.muted = !video.muted;
 				VOLUME_ICON.classList.toggle("muted", video.muted);
+				keyEvent.preventDefault();
+				break;
+			case "f":
+				toggleFullscreen();
+				keyEvent.preventDefault();
+				break;
+			}
+		} else if(compressed == 1){
+			switch(keyLower){
+				case "arrowleft":
+					frameSeek.backward();
+					keyEvent.preventDefault();
+					break;
+				case "arrowright":
+					frameSeek.forward();
+					keyEvent.preventDefault();
+					break;
 		}
 	}
 });
-
-function timeUpdate() {
-	const currentTime = video.currentTime;
-	PLAY_BAR.style.setProperty("--percentage", String(Math.min(currentTime / video.duration, 1) * 100) + '%');
-	CURRENT_TIME_LABEL.innerText = secondsToTimestamp(currentTime);
-}
-function timeUpdateUnofficial() {
-	PLAY_BAR.style.setProperty("--percentage", String(Math.min(currentMediaTime / video.duration, 1) * 100) + '%');
-	CURRENT_TIME_LABEL.innerText = secondsToTimestamp(currentMediaTime);
-	FRAME_INPUT.textContent = String(round1(calcFrameNumber(currentMediaTime)));
-	FRAME_INPUT.style.color = "#aaaaaa";
-}
 
 function onVideoFrame(now, metadata){
 	video.requestVideoFrameCallback(onVideoFrame);
@@ -839,8 +882,9 @@ function progressBarSeek(mouse, seekVideo) {
 	const frameNumber = Math.floor(calcFrameNumber(seekToTime));
 	seekToTime = calcMediaTimeAtFrame(frameNumber);
 	if(seekVideo) {
+		currentMediaTime = seekToTime;
 		video.currentTime = seekToTime+0.0001;
-		frameSeek.onSeekedManually(seekToTime);
+		frameSeek.onSeekedManually(seekToTime+0.0001);
 	} else {
 		HOVERED_TIME_DISPLAY.children[0].textContent = String(secondsToTimestamp(seekToTime));
 		HOVERED_TIME_DISPLAY.children[1].textContent = String(frameNumber);
@@ -853,56 +897,79 @@ function removeHoveredTimeDisplay(){
 }
 
 /** @param {InputEvent} event */
-FRAME_INPUT.addEventListener("beforeinput", (event) => {
-	console.log(event);
+function timeInputBeforeInput(event, submitCallback, isUnallowedTest) {
 	if(!videoSrc || !frameRate){
 		event.preventDefault();
 	}
 
+	console.log(event.inputType)
 	switch (event.inputType){
 		case "insertLineBreak":
 			event.preventDefault();
-			submitFrameInput();
+			submitCallback();
 			break;
 		case "insertText":
-			if(isNaN(event.data)){
+			if(isUnallowedTest(event.data)){
 				event.preventDefault();
 			}
 			break;
 	}
-});
+}
+function charIsNotNumeric(char) {
+	return char.codePointAt(0)-48 > 9;
+}
+FRAME_INPUT.addEventListener("beforeinput", (event) => timeInputBeforeInput(event, submitFrameInput, charIsNotNumeric));
 FRAME_INPUT.addEventListener("input", (event) => {
 	const numbersOnly = FRAME_INPUT.textContent.replace(NUMBERS_ONLY_REGEX, "");
 	if(numbersOnly !== FRAME_INPUT.textContent){
 		FRAME_INPUT.textContent = numbersOnly;
-		fixCursorOnFrameInput();
+		fixCursorOnInput(FRAME_INPUT);
 	}
 });
-// FRAME_INPUT.addEventListener("keydown", (event) => {
-// 	switch (event.key){
-// 		case "ArrowUp":
-// 			break;
-// 		case "ArrowDown":
-// 			break;
-// 	}
-// });
+CURRENT_TIME_LABEL.addEventListener("beforeinput", (event) => timeInputBeforeInput(event, submitTimeInput, (value) => charIsNotNumeric(value) && value != ':'));
+CURRENT_TIME_LABEL.addEventListener("input", (event) => {
+	const timeOnly = CURRENT_TIME_LABEL.textContent.replace(TIME_ONLY_REGEX, "");
+	if(timeOnly !== CURRENT_TIME_LABEL.textContent){
+		CURRENT_TIME_LABEL.textContent = timeOnly;
+		fixCursorOnInput(CURRENT_TIME_LABEL);
+	}
+});
+
 function submitFrameInput(){
 	video.pause();
 	const currentTime = calcMediaTimeAtFrame(Number(FRAME_INPUT.textContent));
 	currentMediaTime = currentTime;
 	video.currentTime = currentTime+0.0001;
-	frameSeek.onSeekedManually(currentTime);
+	frameSeek.onSeekedManually(currentTime+0.0001);
 }
-function fixCursorOnFrameInput(){
+const timeInputMultipliers = [1, 60, 60*60, 60*60*24];
+function submitTimeInput(){
+	video.pause();
+	let newTime = 0;
+	const timeSegments = CURRENT_TIME_LABEL.textContent.split(':').reverse();
+	for(let i = 0; i < Math.min(timeSegments.length, timeInputMultipliers.length); i++){
+		newTime += timeSegments[i]*timeInputMultipliers[i];
+	}
+	const frameNumber = Math.floor(calcFrameNumber(newTime));
+	const frameTime = calcMediaTimeAtFrame(frameNumber);
+
+	currentMediaTime = frameTime;
+	video.currentTime = frameTime+0.0001;
+	frameSeek.onSeekedManually(frameTime+0.0001);
+}
+function fixCursorOnInput(input){
 	const selection = window.getSelection();
 	selection.removeAllRanges();
 	const range = new Range();
-	range.selectNodeContents(FRAME_INPUT);
+	range.selectNodeContents(input);
 	range.collapse(false);
 	selection.addRange(range);
 }
 function calcMediaTimeAtFrame(frameNumber){
 	return frameNumber/frameRate;
+}
+function videoIsEnded(mediaTime){
+	return round4(mediaTime) >= round4(finalMediaTime);
 }
 
 setup();

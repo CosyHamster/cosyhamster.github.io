@@ -30,8 +30,15 @@
 							<img style="width: 100%; height: 100%; pointer-events: none; filter: invert(1);" src="../Icons/DownloadFile.svg" alt="Download"/>
 						</a>
 						<div>
-							<div id="moreMenu" tabindex="0" class="cell clickableButton tableBorder" title="More" style="height:100%;">
-								<img style="width: 100%; height: 100%; pointer-events: none; filter: invert(1);" src="../Icons/MoreMenuIcon.svg" alt="More"/>
+							<div style="height:100%;">
+								<button tabindex="0" class="clickableButton moreMenuButton" title="More" id="moreMenuButton" popovertarget="moreMenuDropdown">
+									<img style="width: 100%; height: 100%; pointer-events: none; filter: invert(1);" src="../Icons/MoreMenuIcon.svg" alt="More"/>
+								</button>
+								<div id="moreMenuDropdown" anchor="moreMenuButton" popover="auto">
+									<div class="clickableButton">Test</div>
+									<div class="clickableButton">TestWasd</div>
+									<div class="clickableButton">TestWasdWasd</div>
+								</div>
 							</div>
 						</div>
 					</div>
@@ -42,9 +49,9 @@
 					</div>
 				</div>
 				<div id="videoControlsB" style="position: absolute; top: 100%; left:0; transform: translateY(-100%); background-color: rgba(0,0,0,.7); width:100%; pointer-events: auto;">
-					<div class="playbarHolder" style="interactivity: var(--interactivity);">
+					<div class="playbarHolder">
 						<span id="firstDurationLabel" style="margin-right: 1ch; color: white;" class="text" contenteditable="plaintext-only">00:00</span>
-						<span class="playbar"></span>
+						<span class="playbar" style="interactivity: var(--interactivity);"></span>
 						<span id="secondDurationLabel" style="margin-left: 1ch; color: white;" class="text">00:00</span>
 					</div>
 					<div style="display: flex; flex-direction: row; width:100%; height:40px;">
