@@ -326,6 +326,7 @@ dialog::backdrop{
     text-overflow: clip;
     overflow: scroll /*hidden*/;
     white-space: nowrap;
+    scrollbar-width: none;
     /* max-width: 75vw; 45.5ch */
 }
 .songName{

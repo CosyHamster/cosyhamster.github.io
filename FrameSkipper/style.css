@@ -22,13 +22,13 @@ main{
     unicode-bidi: normal;
 }
 
-.scrollableText::-webkit-scrollbar{ display: none; }
 .scrollableText{
     display: inline-block;
     font-family: Cambria, serif;
     text-overflow: clip;
     overflow: scroll /*hidden*/;
     white-space: nowrap;
+    scrollbar-width: none;
     /* max-width: 75vw; 45.5ch */
 }
 
