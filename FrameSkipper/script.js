@@ -20,6 +20,7 @@ const screenshotCanvas = document.createElement("canvas");
 const screenshotCanvasCtx = screenshotCanvas.getContext("2d");
 
 var inert = false;
+/** @type HTMLDivElement */ const VIDEO_TITLE_DISPLAY = document.getElementById("videoTitle");
 /** @type HTMLDivElement */ const LOADING_FR_OVERLAY = document.getElementById("loadingFR");
 /** @type HTMLInputElement */ const FILE_UPLOAD = document.getElementById("upload");
 /** @type HTMLInputElement */ const INPUT_MEDIATIME = document.getElementById("mediaTimeInput");
@@ -152,16 +153,16 @@ function seek(seekDirection){
 function uploadFile(file){
 	setButtonsDisabled(true);
 	video.pause();
-	const separationIndex = file.name.lastIndexOf('.');
-	saveVideoNamePrefix = separationIndex != -1 ? file.name.substring(0, separationIndex) : file.name;
 	if(videoSrc){
 		URL.revokeObjectURL(videoSrc);
 		frameSeek.destroy();
 	}
 
+	const separationIndex = file.name.lastIndexOf('.');
+	saveVideoNamePrefix = separationIndex != -1 ? file.name.substring(0, separationIndex) : file.name;
+	VIDEO_TITLE_DISPLAY.textContent = saveVideoNamePrefix;
+
 	videoSrc = URL.createObjectURL(file);
-	frameSeek = new FrameSeeking(videoSrc);
-	LOADING_FR_OVERLAY.toggleAttribute("data-active", true);
 	waitForFrameRate().then(() => {
 		video.addEventListener("loadeddata", () => {
 			screenshotCanvas.width = video.videoWidth;
@@ -171,6 +172,9 @@ function uploadFile(file){
 		}, {passive: true, once: true});
 		video.src = videoSrc;
 	});
+
+	LOADING_FR_OVERLAY.toggleAttribute("data-active", true);
+	frameSeek = new FrameSeeking(videoSrc);
 }
 
 function waitForFrameRate(){
@@ -228,6 +232,7 @@ class FrameSeeking {
 	}
 
 	forward(){
+		if(!video.paused){ video.pause(); return; }
 		let nextMediaTime = this.forwardFrameSeek.popLeftMediaTime();
 		if(nextMediaTime === currentMediaTime) nextMediaTime = this.forwardFrameSeek.popLeftMediaTime();
 		if(nextMediaTime){
@@ -239,6 +244,7 @@ class FrameSeeking {
 	}
 
 	backward(){
+		if(!video.paused){ video.pause(); return; }
 		let prevMediaTime = this.backwardFrameSeek.popLeftMediaTime();
 		if(prevMediaTime === currentMediaTime) prevMediaTime = this.forwardFrameSeek.popLeftMediaTime();
 		if(prevMediaTime){
