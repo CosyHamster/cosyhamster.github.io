@@ -23,13 +23,15 @@ var inert = false;
 /** @type HTMLDivElement */ const VIDEO_TITLE_DISPLAY = document.getElementById("videoTitle");
 /** @type HTMLDivElement */ const LOADING_FR_OVERLAY = document.getElementById("loadingFR");
 /** @type HTMLInputElement */ const FILE_UPLOAD = document.getElementById("upload");
-/** @type HTMLInputElement */ const INPUT_MEDIATIME = document.getElementById("mediaTimeInput");
-/** @type HTMLInputElement */ const INPUT_FRAME_RATE = document.getElementById("videoFrameRate");
+/** @type HTMLSpanElement */ const CURRENT_TIME_INPUT = document.getElementById("firstDurationLabel");
+/** @type HTMLSpanElement */ const INPUT_COLOR_CONTAINER = document.getElementById("inputColorContainer");
+/** @type HTMLDivElement */ const MEDIA_TIME_INPUT = document.getElementById("mediaTimeInput");
+/** @type HTMLSpanElement */ const FRAME_INPUT = document.getElementById("frameNumber");
+/** @type HTMLInputElement */ const FRAME_RATE_INPUT = document.getElementById("videoFrameRate");
 /** @type number */ var frameRate = null;
 /** @type number */ let finalMediaTime = null;
-/** @type RegExp */ const NUMBERS_ONLY_REGEX = /\D/g;
-/** @type RegExp */ const TIME_ONLY_REGEX = /[^\d:]/g;
-/** @type HTMLSpanElement */ const FRAME_INPUT = document.getElementById("frameNumber");
+/** @type RegExp */ const NUMBERS_ONLY_REGEX = /[^\d.]/g;
+/** @type RegExp */ const TIME_ONLY_REGEX = /[^\d:.]/g;
 /** @type number */ var currentMediaTime = 0;
 /** @type HTMLVideoElement */ const video = document.getElementById("video");
 /** @type string */ let videoSrc = null;
@@ -41,6 +43,11 @@ var inert = false;
 /** @type Window */ var curWin = window;
 /** @type Document */ var curDoc = document;
 
+/** @type HTMLDivElement */ const LOOP_BAR = document.getElementById("loopBar");
+/** @type HTMLDivElement */ const LOOP_BAR_TRACK = document.getElementById("loopBarTrack");
+/** @type HTMLDivElement */ const LOOP_START_DRAGGER = document.getElementById("drag1");
+/** @type HTMLDivElement */ const LOOP_END_DRAGGER = document.getElementById("drag2");
+
 /** @type HTMLAnchorElement */ const DOWNLOAD_BUTTON = document.getElementById("downloadFrame");
 /** @type HTMLDivElement */ const UI = document.getElementById("ui");
 /** @type HTMLDivElement */ const PLAY_BUTTON = document.getElementById("playButton");
@@ -48,7 +55,6 @@ var inert = false;
 /** @type HTMLImageElement */ const VOLUME_ICON = document.getElementById("volumeIcon");
 /** @type HTMLDivElement */ const PLAY_BAR = document.getElementsByClassName("playbar")[0];
 /** @type HTMLDivElement */ const HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay');
-/** @type HTMLSpanElement */ const CURRENT_TIME_LABEL = document.getElementById("firstDurationLabel");
 /** @type HTMLDivElement */ const SKIP_FORWARD = document.getElementById("skipForward");
 /** @type HTMLDivElement */ const SKIP_BACKWARD = document.getElementById("skipBackward");
 /** @type HTMLDivElement */ const SEEK_BACKWARD = document.getElementById('seekBackward');
@@ -143,9 +149,9 @@ function togglePause(){
 
 /** @param seekDirection number */
 function seek(seekDirection){
-	const newTime = Math.min(Math.max(currentMediaTime+(5 * seekDirection + 0.0001), 0), video.duration);
-	currentMediaTime = newTime-0.0001;
-	video.currentTime = newTime;
+	const newTime = Math.min(Math.max(currentMediaTime+(5 * seekDirection), 0), video.duration);
+	currentMediaTime = newTime;
+	video.currentTime = newTime+0.0001;
 	frameSeek.onSeekedManually(newTime);
 }
 
@@ -159,8 +165,8 @@ function uploadFile(file){
 	}
 
 	const separationIndex = file.name.lastIndexOf('.');
-	saveVideoNamePrefix = separationIndex != -1 ? file.name.substring(0, separationIndex) : file.name;
-	VIDEO_TITLE_DISPLAY.textContent = saveVideoNamePrefix;
+	VIDEO_TITLE_DISPLAY.textContent = separationIndex != -1 ? file.name.substring(0, separationIndex) : file.name;
+	saveVideoNamePrefix = VIDEO_TITLE_DISPLAY.textContent.substring(0, 28);
 
 	videoSrc = URL.createObjectURL(file);
 	waitForFrameRate().then(() => {
@@ -187,12 +193,42 @@ class FrameSeeking {
 	/** @type ForwardFrameSeek */ forwardFrameSeek;
 	/** @type BackwardFrameSeek */ backwardFrameSeek;
 	/** @type FrameRateSeek */ frameRateSeek;
+	/** @type AB */ ab;
+	/** @type boolean */ abEnabled;
 	timeoutID = null;
 	constructor(src) {
 		this.forwardFrameSeek = new ForwardFrameSeek(src);
 		this.backwardFrameSeek = new BackwardFrameSeek(src);
 		this.frameRateSeek = new FrameRateSeek(src);
 	}
+
+	enableAB(){
+		frameSeek.ab ??= new AB(0, video.duration);
+		document.body.style.setProperty("--abLoopDisplay", "block");
+		this.abEnabled = true;
+	}
+
+	disableAB(){
+		document.body.style.setProperty("--abLoopDisplay", "none");
+		this.abEnabled = false;
+	}
+
+	destroyAB(){
+		document.body.style.setProperty("--abLoopDisplay", "none");
+		LOOP_START_DRAGGER.style.setProperty("--progress", "0%");
+		LOOP_END_DRAGGER.style.setProperty("--progress", "100%");
+		this.abEnabled = false;
+		this.ab = null;
+	}
+
+	toggleAB() {
+		if(this.abEnabled){
+			this.disableAB();
+		} else if(video.duration){
+			this.enableAB();
+		}
+	}
+
 
 	queueStartFrameSeek(timeProvider, delay){
 		this.timeoutID = setTimeout(() => {
@@ -217,6 +253,7 @@ class FrameSeeking {
 		this.forwardFrameSeek.destroy();
 		this.backwardFrameSeek.destroy();
 		this.frameRateSeek.destroy();
+		this.destroyAB();
 		frameRate = null;
 		finalMediaTime = null;
 	}
@@ -620,19 +657,29 @@ class FrameRateSeek {
 			// frameDiffs.push(diff);
 			this.averageFrameDiff = ((this.averageFrameDiff*this.frameCount)+diff)/(++this.frameCount)
 			frameRate = 1 / this.averageFrameDiff;
-			INPUT_FRAME_RATE.valueAsNumber = frameRate;
+			FRAME_RATE_INPUT.valueAsNumber = frameRate;
 		}
 
 		const dropped = this.instVideo.getVideoPlaybackQuality().totalVideoFrames-metadata.presentedFrames-3;
 		if(dropped){ //for some reason, dropped frames is always a difference of 3. waiting to be proven wrong.
-			INPUT_FRAME_RATE.style.color = "red";
-			INPUT_FRAME_RATE.title = `${dropped} frames were dropped due to lag in the framerate calculation. This result may be incorrect.`;
-			INPUT_FRAME_RATE.labels[0].title = `${dropped} frames were dropped due to lag in the framerate calculation. This result may be incorrect.`;
+			FRAME_RATE_INPUT.style.color = "red";
+			FRAME_RATE_INPUT.title = `${dropped} frames were dropped due to lag in the framerate calculation. This result may be incorrect.`;
+			FRAME_RATE_INPUT.labels[0].title = `${dropped} frames were dropped due to lag in the framerate calculation. This result may be incorrect.`;
 		}
 	}
 
 	toString(){
 		return "FrameRateSeek";
+	}
+}
+
+class AB{
+	loopBeginMediaTime = 0;
+	loopEndMediaTime = 0;
+
+	constructor(beginMediaTime, endMediaTime) {
+		this.loopBeginMediaTime = beginMediaTime;
+		this.loopEndMediaTime = endMediaTime;
 	}
 }
 
@@ -694,13 +741,14 @@ document.getElementById("fullscreenButton").addEventListener("click", toggleFull
 function timeUpdate() {
 	const currentTime = video.currentTime;
 	PLAY_BAR.style.setProperty("--percentage", String(Math.min(currentTime / video.duration, 1) * 100) + '%');
-	CURRENT_TIME_LABEL.textContent = secondsToTimestamp(currentTime);
+	setEditableTextContent(CURRENT_TIME_INPUT, secondsToTimestamp(currentTime));
 }
 function timeUpdateUnofficial() {
 	PLAY_BAR.style.setProperty("--percentage", String(Math.min(currentMediaTime / video.duration, 1) * 100) + '%');
-	CURRENT_TIME_LABEL.textContent = secondsToTimestamp(currentMediaTime);
+	CURRENT_TIME_INPUT.textContent = secondsToTimestamp(currentMediaTime);
+	MEDIA_TIME_INPUT.textContent = String(currentMediaTime);
 	FRAME_INPUT.textContent = String(round1(calcFrameNumber(currentMediaTime)));
-	FRAME_INPUT.style.color = "#aaaaaa";
+	INPUT_COLOR_CONTAINER.style.setProperty("--color", "#aaaaaa");
 }
 
 function toggleUI(){
@@ -749,6 +797,14 @@ curWin.addEventListener("keydown", keyEvent => {
 				seek(1);
 				keyEvent.preventDefault();
 				break;
+			case ",":
+				frameSeek.backward();
+				keyEvent.preventDefault();
+				break;
+			case ".":
+				frameSeek.forward();
+				keyEvent.preventDefault();
+				break;
 			case "m":
 				video.muted = !video.muted;
 				VOLUME_ICON.classList.toggle("muted", video.muted);
@@ -761,10 +817,13 @@ curWin.addEventListener("keydown", keyEvent => {
 			}
 		} else if(compressed == 1){
 			switch(keyLower){
+				case "q":
+				case "p":
 				case "arrowleft":
 					frameSeek.backward();
 					keyEvent.preventDefault();
 					break;
+				case "n":
 				case "arrowright":
 					frameSeek.forward();
 					keyEvent.preventDefault();
@@ -776,17 +835,27 @@ curWin.addEventListener("keydown", keyEvent => {
 function onVideoFrame(now, metadata){
 	video.requestVideoFrameCallback(onVideoFrame);
 	currentMediaTime = metadata.mediaTime;
-	FRAME_INPUT.textContent = String(round1(calcFrameNumber(currentMediaTime)));
-	FRAME_INPUT.style.color = "#ffffff";
-	INPUT_MEDIATIME.valueAsNumber = currentMediaTime;
+	setEditableTextContent(MEDIA_TIME_INPUT, String(currentMediaTime));
+	setEditableTextContent(FRAME_INPUT, String(round1(calcFrameNumber(currentMediaTime))));
+	INPUT_COLOR_CONTAINER.style.setProperty("--color", "#ffffff");
+
+	if(frameSeek.abEnabled){
+		const ab = frameSeek.ab;
+		if(metadata.mediaTime >= ab.loopEndMediaTime){
+			currentMediaTime = ab.loopBeginMediaTime;
+			video.currentTime = currentMediaTime+0.0001;
+			frameSeek.onSeekedManually(currentMediaTime+0.0001);
+		}
+	}
 }
+
 function calcFrameNumber(mediaTime){
 	if(!frameRate){
-		INPUT_FRAME_RATE.focus();
+		FRAME_RATE_INPUT.focus();
 		return 0;
 	}
 	const frameNumber = mediaTime*frameRate;
-	console.log("RAW: " + String(frameNumber));
+	// console.log("RAW: " + String(frameNumber));
 	return frameNumber;
 }
 
@@ -808,13 +877,9 @@ function setButtonsDisabled(disabled){
 	document.body.style.setProperty("--interactivity", disabled ? "inert" : "auto");
 }
 
-INPUT_FRAME_RATE.addEventListener("change", () => {
-	frameRate = INPUT_FRAME_RATE.valueAsNumber;
+FRAME_RATE_INPUT.addEventListener("change", () => {
+	frameRate = FRAME_RATE_INPUT.valueAsNumber;
 });
-
-INPUT_MEDIATIME.addEventListener("change", () => {
-	video.currentTime = INPUT_MEDIATIME.valueAsNumber;
-}, true);
 
 /** Registers a click event which calls the specified function. Call the returned function to add a keyboard event.
  *  @param element EventTarget | string
@@ -904,7 +969,7 @@ function removeHoveredTimeDisplay(){
 
 /** @param {InputEvent} event */
 function timeInputBeforeInput(event, submitCallback, isUnallowedTest) {
-	if(!videoSrc || !frameRate){
+	if(inert || !videoSrc){
 		event.preventDefault();
 	}
 
@@ -928,7 +993,13 @@ function charIsNumeric(char) {
 function charIsNotNumeric(char) {
 	return !charIsNumeric(char);
 }
-FRAME_INPUT.addEventListener("beforeinput", (event) => timeInputBeforeInput(event, submitFrameInput, charIsNotNumeric));
+function charMatchesTimeRegex(char) {
+	return char.match(TIME_ONLY_REGEX);
+}
+function charMatchesNumberRegex(char) {
+	return char.match(NUMBERS_ONLY_REGEX);
+}
+FRAME_INPUT.addEventListener("beforeinput", (event) => timeInputBeforeInput(event, submitFrameInput, charMatchesNumberRegex));
 FRAME_INPUT.addEventListener("input", (event) => {
 	const numbersOnly = FRAME_INPUT.textContent.replace(NUMBERS_ONLY_REGEX, "");
 	if(numbersOnly !== FRAME_INPUT.textContent){
@@ -936,12 +1007,20 @@ FRAME_INPUT.addEventListener("input", (event) => {
 		fixCursorOnInput(FRAME_INPUT);
 	}
 });
-CURRENT_TIME_LABEL.addEventListener("beforeinput", (event) => timeInputBeforeInput(event, submitTimeInput, (value) => charIsNotNumeric(value) && value != ':'));
-CURRENT_TIME_LABEL.addEventListener("input", (event) => {
-	const timeOnly = CURRENT_TIME_LABEL.textContent.replace(TIME_ONLY_REGEX, "");
-	if(timeOnly !== CURRENT_TIME_LABEL.textContent){
-		CURRENT_TIME_LABEL.textContent = timeOnly;
-		fixCursorOnInput(CURRENT_TIME_LABEL);
+CURRENT_TIME_INPUT.addEventListener("beforeinput", (event) => timeInputBeforeInput(event, submitTimeInput, charMatchesTimeRegex));
+CURRENT_TIME_INPUT.addEventListener("input", (event) => {
+	const timeOnly = CURRENT_TIME_INPUT.textContent.replace(TIME_ONLY_REGEX, "");
+	if(timeOnly !== CURRENT_TIME_INPUT.textContent){
+		CURRENT_TIME_INPUT.textContent = timeOnly;
+		fixCursorOnInput(CURRENT_TIME_INPUT);
+	}
+});
+MEDIA_TIME_INPUT.addEventListener("beforeinput", (event) => timeInputBeforeInput(event, submitMediaTimeInput, charMatchesNumberRegex));
+MEDIA_TIME_INPUT.addEventListener("input", (event) => {
+	const timeOnly = MEDIA_TIME_INPUT.textContent.replace(NUMBERS_ONLY_REGEX, "");
+	if(timeOnly !== MEDIA_TIME_INPUT.textContent){
+		MEDIA_TIME_INPUT.textContent = timeOnly;
+		fixCursorOnInput(MEDIA_TIME_INPUT);
 	}
 });
 
@@ -956,7 +1035,7 @@ const timeInputMultipliers = [1, 60, 60*60, 60*60*24];
 function submitTimeInput(){
 	video.pause();
 	let newTime = 0;
-	const timeSegments = CURRENT_TIME_LABEL.textContent.split(':').reverse();
+	const timeSegments = CURRENT_TIME_INPUT.textContent.split(':').reverse();
 	for(let i = 0; i < Math.min(timeSegments.length, timeInputMultipliers.length); i++){
 		newTime += timeSegments[i]*timeInputMultipliers[i];
 	}
@@ -967,6 +1046,20 @@ function submitTimeInput(){
 	video.currentTime = frameTime+0.0001;
 	frameSeek.onSeekedManually(frameTime+0.0001);
 }
+function submitMediaTimeInput(){
+	video.pause();
+	currentMediaTime = Number(MEDIA_TIME_INPUT.textContent);
+	video.currentTime = currentMediaTime+0.0001;
+	frameSeek.onSeekedManually(currentMediaTime+0.0001);
+}
+
+function setEditableTextContent(element, string){
+	element.textContent = string;
+	if(document.activeElement === element){
+		fixCursorOnInput(element);
+	}
+}
+
 function fixCursorOnInput(input){
 	const selection = window.getSelection();
 	selection.removeAllRanges();
@@ -975,11 +1068,179 @@ function fixCursorOnInput(input){
 	range.collapse(false);
 	selection.addRange(range);
 }
+
 function calcMediaTimeAtFrame(frameNumber){
 	return frameNumber/frameRate;
 }
+
 function videoIsEnded(mediaTime){
 	return round4(mediaTime) >= round4(finalMediaTime);
 }
+
+
+
+document.getElementById("toggleLoopBar").addEventListener("click", () => {
+	if(!frameSeek) return;
+	frameSeek.toggleAB();
+});
+
+LOOP_START_DRAGGER.addEventListener("pointerdown", (mouse) => {
+	LOOP_START_DRAGGER.setPointerCapture(mouse.pointerId);
+});
+LOOP_START_DRAGGER.addEventListener("pointermove", (mouse) => {
+	if(LOOP_START_DRAGGER.hasPointerCapture(mouse.pointerId)){
+		const mouseX = mouse.clientX;
+		const rect = LOOP_BAR_TRACK.getBoundingClientRect();
+		const progress = clamp((mouseX - rect.left) * (1 / rect.width), 0, 1);
+		LOOP_START_DRAGGER.style.setProperty("--progress", `${progress*100}%`);
+
+		let frameNumber = Math.floor(round1(calcFrameNumber(video.duration * progress)));
+		let mediaTime = calcMediaTimeAtFrame(frameNumber);
+		if(mediaTime > frameSeek.ab.loopEndMediaTime){
+			mediaTime = frameSeek.ab.loopEndMediaTime;
+			frameNumber = round1(calcFrameNumber(mediaTime));
+		}
+		showTimeDisplayPointerEvent(mediaTime, frameNumber, mouse, rect);
+		frameSeek.ab.loopBeginMediaTime = mediaTime;
+	}
+});
+LOOP_START_DRAGGER.addEventListener("keydown", (keyboard) => {
+	let frameNumber;
+	let mediaTime;
+	switch (keyboard.key){
+		case "ArrowLeft":
+			keyboard.preventDefault();
+			keyboard.stopPropagation();
+			frameNumber = round1(calcFrameNumber(frameSeek.ab.loopBeginMediaTime))-1;
+			mediaTime = calcMediaTimeAtFrame(frameNumber);
+			if(mediaTime < 0){
+				return;
+			}
+			break;
+		case "ArrowRight":
+			keyboard.preventDefault();
+			keyboard.stopPropagation();
+			frameNumber = round1(calcFrameNumber(frameSeek.ab.loopBeginMediaTime))+1;
+			mediaTime = calcMediaTimeAtFrame(frameNumber);
+			if(mediaTime > frameSeek.ab.loopEndMediaTime){
+				return;
+			}
+			break;
+		default:
+			return;
+	}
+
+	LOOP_START_DRAGGER.style.setProperty("--progress", `${mediaTime/video.duration*100}%`);
+	showTimeDisplayPointerEvent1(mediaTime, frameNumber, LOOP_START_DRAGGER);
+	frameSeek.ab.loopBeginMediaTime = mediaTime;
+});
+LOOP_START_DRAGGER.addEventListener("pointerenter", (mouse) => {
+	showTimeDisplayPointerEvent1(frameSeek.ab.loopBeginMediaTime, null, LOOP_START_DRAGGER);
+});
+LOOP_START_DRAGGER.addEventListener("focus", (mouse) => {
+	showTimeDisplayPointerEvent1(frameSeek.ab.loopBeginMediaTime, null, LOOP_START_DRAGGER);
+});
+LOOP_START_DRAGGER.addEventListener("pointerleave", removeHoveredTimeDisplay);
+LOOP_START_DRAGGER.addEventListener("blur", removeHoveredTimeDisplay);
+document.getElementById("setAHere").addEventListener("click", () => {
+	let mediaTime = currentMediaTime;
+	if(mediaTime > frameSeek.ab.loopEndMediaTime){
+		mediaTime = frameSeek.ab.loopEndMediaTime;
+	}
+
+	LOOP_START_DRAGGER.style.setProperty("--progress", `${mediaTime/video.duration*100}%`);
+	frameSeek.ab.loopBeginMediaTime = mediaTime;
+});
+
+
+
+LOOP_END_DRAGGER.addEventListener("pointerdown", (mouse) => {
+	LOOP_END_DRAGGER.setPointerCapture(mouse.pointerId);
+});
+LOOP_END_DRAGGER.addEventListener("pointermove", (mouse) => {
+	if(LOOP_END_DRAGGER.hasPointerCapture(mouse.pointerId)){
+		const mouseX = mouse.clientX;
+		const rect = LOOP_BAR_TRACK.getBoundingClientRect();
+		const progress = clamp((mouseX - rect.left) * (1 / rect.width), 0, 1);
+		LOOP_END_DRAGGER.style.setProperty("--progress", `${progress*100}%`);
+
+		let frameNumber = Math.floor(round1(calcFrameNumber(video.duration * progress)));
+		let mediaTime = calcMediaTimeAtFrame(frameNumber);
+		if(mediaTime < frameSeek.ab.loopBeginMediaTime){
+			mediaTime = frameSeek.ab.loopBeginMediaTime;
+			frameNumber = round1(calcFrameNumber(mediaTime));
+		}
+		showTimeDisplayPointerEvent(mediaTime, frameNumber, mouse, rect);
+		frameSeek.ab.loopEndMediaTime = mediaTime;
+	}
+});
+LOOP_END_DRAGGER.addEventListener("keydown", (keyboard) => {
+	let frameNumber;
+	let mediaTime;
+	switch (keyboard.key){
+		case "ArrowLeft":
+			keyboard.preventDefault();
+			keyboard.stopPropagation();
+			frameNumber = round1(calcFrameNumber(frameSeek.ab.loopEndMediaTime))-1;
+			mediaTime = calcMediaTimeAtFrame(frameNumber);
+			if(mediaTime < frameSeek.ab.loopBeginMediaTime){
+				return;
+			}
+			break;
+		case "ArrowRight":
+			keyboard.preventDefault();
+			keyboard.stopPropagation();
+			frameNumber = round1(calcFrameNumber(frameSeek.ab.loopEndMediaTime))+1;
+			mediaTime = calcMediaTimeAtFrame(frameNumber);
+			if(mediaTime > video.duration){
+				return;
+			}
+			break;
+		default:
+			return;
+	}
+
+	LOOP_END_DRAGGER.style.setProperty("--progress", `${mediaTime/video.duration*100}%`);
+	showTimeDisplayPointerEvent1(mediaTime, frameNumber, LOOP_END_DRAGGER);
+	frameSeek.ab.loopEndMediaTime = mediaTime;
+});
+LOOP_END_DRAGGER.addEventListener("pointerenter", (mouse) => {
+	showTimeDisplayPointerEvent1(frameSeek.ab.loopEndMediaTime, null, LOOP_END_DRAGGER);
+});
+LOOP_END_DRAGGER.addEventListener("focus", (mouse) => {
+	showTimeDisplayPointerEvent1(frameSeek.ab.loopEndMediaTime, null, LOOP_END_DRAGGER);
+});
+LOOP_END_DRAGGER.addEventListener("pointerleave", removeHoveredTimeDisplay);
+LOOP_END_DRAGGER.addEventListener("blur", removeHoveredTimeDisplay);
+document.getElementById("setBHere").addEventListener("click", () => {
+	let mediaTime = currentMediaTime;
+	if(mediaTime < frameSeek.ab.loopBeginMediaTime){
+		mediaTime = frameSeek.ab.loopBeginMediaTime;
+	}
+
+	LOOP_END_DRAGGER.style.setProperty("--progress", `${mediaTime/video.duration*100}%`);
+	frameSeek.ab.loopEndMediaTime = mediaTime;
+});
+
+
+
+function showTimeDisplayPointerEvent(mediaTime, frameNumber, mouse, rect) {
+	HOVERED_TIME_DISPLAY.children[0].textContent = String(secondsToTimestamp(mediaTime));
+	HOVERED_TIME_DISPLAY.children[1].textContent = String(frameNumber);
+	HOVERED_TIME_DISPLAY.style.transform = `translate(calc(${clamp(mouse.clientX, rect.left, rect.right)}px - 50%), ${rect.top - 40}px)`;
+}
+
+function showTimeDisplayPointerEvent1(mediaTime, frameNumber, element) {
+	frameNumber ??= round1(calcFrameNumber(mediaTime));
+	const rect = element.getBoundingClientRect();
+	HOVERED_TIME_DISPLAY.children[0].textContent = String(secondsToTimestamp(mediaTime));
+	HOVERED_TIME_DISPLAY.children[1].textContent = String(frameNumber);
+	HOVERED_TIME_DISPLAY.style.transform = `translate(calc(${rect.left}px - 50%), ${rect.top - 40}px)`;
+}
+
+function clamp(val, min, max) {
+	return Math.min(Math.max(val, min), max);
+}
+
 
 setup();

@@ -110,7 +110,7 @@ main{
     flex: 1 1 0%;
 }
 
-.playbarHolder {
+.playbarContainer {
     width:100%;
     margin-bottom: 10px;
     display: flex;
@@ -134,7 +134,7 @@ main{
 
 /*I can't just style the element ID since I want clickableButton to be able to modify background-color */
 .moreMenuButton{
-    background-color: black;
+    background-color: inherit;
     appearance: none;
     padding: 0;
     border: 0;

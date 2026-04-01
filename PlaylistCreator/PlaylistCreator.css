@@ -319,7 +319,6 @@ dialog::backdrop{
     font-weight: bold;
     color:black;
 }
-.scrollableText::-webkit-scrollbar{ display: none; }
 .scrollableText{
     display: inline-block;
     font-family: Cambria, serif;

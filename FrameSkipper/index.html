@@ -6,7 +6,7 @@
 		<link rel="icon" href="../Icons/PageFavicon.ico">
 		<title>Frame Skipper</title>
 	</head>
-	<body style="--interactivity:inert;">
+	<body style="--interactivity:inert; --abLoopDisplay:none;">
 		<main>
 			<div id="loadingFR">Determining Frame Rate</div>
 			<video id="video" style="width: 100%; height: 100%; background-color: black;"></video>
@@ -21,9 +21,10 @@
 							<input type="file" accept="video/*" id="upload" style="display: none;">
 							<img style="width: 100%; height: 100%; pointer-events: none; filter: invert(1);" src="../Icons/UploadIcon.svg" alt="Upload"/>
 						</label>
-						<div class="tableBorder text" style="height:100%; color: white; font-size: min(5cqw, 20px);">
+						<div class="tableBorder text" id="inputColorContainer" style="height:100%; color: white; font-size: min(5cqw, 18px); --color: #ffffff;">
 							Frame:
-							<span id="frameNumber" tabindex="0" contenteditable="plaintext-only" inputmode="numeric" style="">N/A</span>
+							<span id="frameNumber" tabindex="0" contenteditable="plaintext-only" inputmode="numeric" style="color: var(--color);">N/A</span>
+							<div title="The time of the video's current frame (secs)" id="mediaTimeInput" tabindex="0" inputmode="numeric" contenteditable="plaintext-only" style="color: var(--color);">N/A</div>
 						</div>
 						<div class="spacer scrollableText" style="color: white; margin: 0 1em; white-space: normal;" id="videoTitle"></div>
 						<a tabindex="0" class="cell clickableButton tableBorder" title="Download Frame" style="height:100%;" id="downloadFrame" download>
@@ -35,24 +36,31 @@
 									<img style="width: 100%; height: 100%; pointer-events: none; filter: invert(1);" src="../Icons/MoreMenuIcon.svg" alt="More"/>
 								</button>
 								<div id="moreMenuDropdown" anchor="moreMenuButton" popover="auto">
-									<div class="clickableButton">Test</div>
-									<div class="clickableButton">TestWasd</div>
-									<div class="clickableButton">TestWasdWasd</div>
+									<div class="" tabindex="1"><label>Frame Rate: <input type="number" id="videoFrameRate" value="" step="any" min="0.0001"></label></div>
+									<div id="toggleLoopBar" class="clickableButton" tabindex="1">Toggle AB Looping</div>
+									<div id="setAHere" class="clickableButton" tabindex="1" style="display: var(--abLoopDisplay);">Set A Here</div>
+									<div id="setBHere" class="clickableButton" tabindex="1" style="display: var(--abLoopDisplay);">Set B Here</div>
 								</div>
 							</div>
 						</div>
 					</div>
-
-					<div style="background-color: rgba(255,255,255,.5); width:100%; opacity: .5;">
-						<label class="buttonChunk" title="The time of the video's current frame (secs)">MediaTime: <input id="mediaTimeInput" type="number" value="0" step="0.0001"></label>
-						<label>Frame Rate: <input type="number" id="videoFrameRate" value="" step="any" min="0.0001"></label>
-					</div>
+<!--					<div style="background-color: rgba(255,255,255,.5); width:100%; opacity: .5;">-->
+<!--						<label class="buttonChunk" title="The time of the video's current frame (secs)">MediaTime: <input id="mediaTimeInput" type="number" value="0" step="0.0001"></label>-->
+<!--						<label class="buttonChunk">Frame Rate: <input type="number" id="videoFrameRate" value="" step="any" min="0.0001"></label>-->
+<!--					</div>-->
 				</div>
 				<div id="videoControlsB" style="position: absolute; top: 100%; left:0; transform: translateY(-100%); background-color: rgba(0,0,0,.7); width:100%; pointer-events: auto;">
-					<div class="playbarHolder">
+					<div class="playbarContainer">
 						<span id="firstDurationLabel" style="margin-right: 1ch; color: white;" class="text" contenteditable="plaintext-only">00:00</span>
-						<span class="playbar" style="interactivity: var(--interactivity);"></span>
+						<span class="playbar" style="interactivity: var(--interactivity); anchor-name: --bar;"></span>
 						<span id="secondDurationLabel" style="margin-left: 1ch; color: white;" class="text">00:00</span>
+						<div id="loopBar" style="position: absolute; position-anchor: --bar; left: anchor(left); width: anchor-size(width); transform: translateY(-100%); height: 20px; display: var(--abLoopDisplay);">
+							<div id="loopBarTrack" style="position: absolute; left: 4px; width: calc(100% - 8px); height: 100%;">
+								<div id="drag1" tabindex="0" style="position: absolute; height: 100%; width: 8px; background-color: gold; --progress: 0%; left: var(--progress); transform: translateX(-50%); z-index: 2; anchor-name: --drag1; /*transform: translateX(calc(-1 * var(--progress)))*/"></div>
+								<div id="drag2" tabindex="0" style="position: absolute; height: 100%; width: 8px; background-color: gold; --progress: 100%; left: var(--progress); transform: translateX(-50%); z-index: 2; anchor-name: --drag2; /*transform: translateX(calc(-1 * var(--progress)))*/"></div>
+							</div>
+							<div id="yellowBar" style="position: absolute; left: anchor(--drag1 0%); right: anchor(--drag2 0%); top: 50%; transform: translateY(-50%); height: 5px; background-color: gold; z-index: 1; /*transform: translateX(calc(-1 * var(--progress)))*/"></div>
+						</div>
 					</div>
 					<div style="display: flex; flex-direction: row; width:100%; height:40px;">
 						<div title="Mute (M)" class="cell tableBorder" style="height:100%; max-width: 40px;">
@@ -69,13 +77,13 @@
 								<div id="seekBackward" tabindex="0" class="cell clickableButton tableBorder" title="Skip Back (LeftArrow)" style="width: 100%; text-align: center;">
 									<img class="playBackIcon" width="30" height="30" style="width:50%; height:100%; object-fit: contain;filter: invert(1);" src="../Icons/FastForwardIcon.svg" alt="Previous Song"/>
 								</div>
-								<div id="skipBackward" tabindex="0" class="cell clickableButton tableBorder" title="Frame Skip Back ()" style="width: 100%;">
+								<div id="skipBackward" tabindex="0" class="cell clickableButton tableBorder" title="Frame Skip Back (Shift + LeftArrow)" style="width: 100%;">
 									<img class="playBackIcon" width="60" height="30" style="width:100%; height:100%; filter: invert(1);" src="../Icons/ForwardIcon.svg" alt="Seek Backwards"/>
 								</div>
 								<div tabindex="0" class="cell clickableButton tableBorder" title="Play/Pause (Space | K)" style="width: 100%;">
 									<div id="playButton" style="filter: invert(1);"></div>
 								</div>
-								<div id="skipForward" tabindex="0" class="cell clickableButton tableBorder" title="Frame Skip Forward ()" style="width: 100%;">
+								<div id="skipForward" tabindex="0" class="cell clickableButton tableBorder" title="Frame Skip Forward (Shift + RightArrow)" style="width: 100%;">
 									<img class="playBackIcon" width="60" height="30" style="width:100%; height:100%; transform: scaleX(-1); filter: invert(1);" src="../Icons/ForwardIcon.svg" alt="Seek Forwards"/>
 								</div>
 								<div id="seekForward" tabindex="0" class="cell clickableButton tableBorder" title="Skip Forward (RightArrow)" style="width: 100%; text-align: center;">
@@ -85,7 +93,7 @@
 						</div>
 						<div class="spacer"></div>
 						<div id="modifiers1">
-							<div id="fullscreenButton" tabindex="0" class="cell clickableButton tableBorder" title="Fullscreen" style="height:100%;">
+							<div id="fullscreenButton" tabindex="0" class="cell clickableButton tableBorder" title="Fullscreen (F)" style="height:100%;">
 								<img style="width: 100%; height: 100%; pointer-events: none; filter: invert(1);" src="../Icons/arrows-angle-expand.svg" alt="Fullscreen"/>
 							</div>
 						</div>
