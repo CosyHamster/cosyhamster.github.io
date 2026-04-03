@@ -2,13 +2,13 @@
 	<head>
 		<script>if(navigator.userAgent.includes("CrOS"))document.addEventListener("keydown",(event)=>{if(event.keyCode==119)window.addEventListener("beforeunload",(event) => {event.preventDefault();});},{passive:true,once:true});</script>
 		<link rel="stylesheet" href="style.css">
-		<script src="script.js" defer></script>
+		<script type="module" src="script.js" defer></script>
 		<link rel="icon" href="../Icons/PageFavicon.ico">
 		<title>Frame Skipper</title>
 	</head>
 	<body style="--interactivity:inert; --abLoopDisplay:none;">
 		<main>
-			<div id="loadingFR">Determining Frame Rate</div>
+			<div id="loadingFR"><div>Determining Frame Rate<progress id="loadingPercentage" max="1" value="0" style="width: 50%; display: block; margin: 0 auto 0 auto;"></progress></div></div>
 			<video id="video" style="width: 100%; height: 100%; background-color: black;"></video>
 			<div style="position: fixed; top: 0; left: 0; width: max-content; padding-left:1ch; padding-right:1ch; text-align: center; pointer-events: none; transform: translate(-9999px, 0px); z-index: 3; background-color: lightgrey; color: black;" id="hoveredTimeDisplay">
 				<div class="prevent-select text" style="display: block;"></div>
@@ -36,10 +36,11 @@
 									<img style="width: 100%; height: 100%; pointer-events: none; filter: invert(1);" src="../Icons/MoreMenuIcon.svg" alt="More"/>
 								</button>
 								<div id="moreMenuDropdown" anchor="moreMenuButton" popover="auto">
-									<div class="" tabindex="1"><label>Frame Rate: <input type="number" id="videoFrameRate" value="" step="any" min="0.0001"></label></div>
+									<div class="" tabindex="1"><label>Frame Rate: <input type="number" id="videoFrameRate" tabindex="1" value="" step="any" min="0.0001"></label></div>
 									<div id="toggleLoopBar" class="clickableButton" tabindex="1">Toggle AB Looping</div>
 									<div id="setAHere" class="clickableButton" tabindex="1" style="display: var(--abLoopDisplay);">Set A Here</div>
 									<div id="setBHere" class="clickableButton" tabindex="1" style="display: var(--abLoopDisplay);">Set B Here</div>
+									<div tabindex="1">Using <a tabindex="1" href="https://github.com/gpac/mp4box.js/" target="_blank">MP4Box</a></div>
 								</div>
 							</div>
 						</div>
@@ -54,12 +55,10 @@
 						<span id="firstDurationLabel" style="margin-right: 1ch; color: white;" class="text" contenteditable="plaintext-only">00:00</span>
 						<span class="playbar" style="interactivity: var(--interactivity); anchor-name: --bar;"></span>
 						<span id="secondDurationLabel" style="margin-left: 1ch; color: white;" class="text">00:00</span>
-						<div id="loopBar" style="position: absolute; position-anchor: --bar; left: anchor(left); width: anchor-size(width); transform: translateY(-100%); height: 20px; display: var(--abLoopDisplay);">
-							<div id="loopBarTrack" style="position: absolute; left: 4px; width: calc(100% - 8px); height: 100%;">
-								<div id="drag1" tabindex="0" style="position: absolute; height: 100%; width: 8px; background-color: gold; --progress: 0%; left: var(--progress); transform: translateX(-50%); z-index: 2; anchor-name: --drag1; /*transform: translateX(calc(-1 * var(--progress)))*/"></div>
-								<div id="drag2" tabindex="0" style="position: absolute; height: 100%; width: 8px; background-color: gold; --progress: 100%; left: var(--progress); transform: translateX(-50%); z-index: 2; anchor-name: --drag2; /*transform: translateX(calc(-1 * var(--progress)))*/"></div>
-							</div>
-							<div id="yellowBar" style="position: absolute; left: anchor(--drag1 0%); right: anchor(--drag2 0%); top: 50%; transform: translateY(-50%); height: 5px; background-color: gold; z-index: 1; /*transform: translateX(calc(-1 * var(--progress)))*/"></div>
+						<div id="loopBarTrack" style="position: absolute; position-anchor: --bar; left: calc(anchor(left) + 4px); width: calc(anchor-size(width) - 8px); height: 20px; transform: translateY(-100%); display: var(--abLoopDisplay); interactivity: var(--interactivity);">
+							<div id="drag1" tabindex="0" style="position: absolute; height: 100%; width: 8px; background-color: gold; --progress: 0%; left: var(--progress); transform: translateX(-50%); z-index: 2; anchor-name: --drag1;"></div>
+							<div id="drag2" tabindex="0" style="position: absolute; height: 100%; width: 8px; background-color: gold; --progress: 100%; left: var(--progress); transform: translateX(-50%); z-index: 2; anchor-name: --drag2;"></div>
+							<div id="yellowBar" style="position: absolute; left: anchor(--drag1 left); right: anchor(--drag2 left); top: 50%; transform: translateY(-50%); height: 5px; background-color: gold; z-index: 1;"></div>
 						</div>
 					</div>
 					<div style="display: flex; flex-direction: row; width:100%; height:40px;">

@@ -1,15 +1,23 @@
+// import("../Javascript/mp4box.all.js").catch((error) => {
+// 	console.warn(error);
+// 	let howlerScript = document.createElement('script');
+// 	howlerScript.src = "../Javascript/mp4box.all.js";
+// 	document.head.appendChild(howlerScript);
+// });
+import * as MP4Box from "../Javascript/mp4box.all.js";
+
 /** Splits inputted seconds into hours, minutes, & seconds. toString() returns the time in digital format.
   * @param {number} seconds */
 function secondsToTimestamp(seconds) {
-	this.seconds = numberToDigitalTimeString(Math.floor(seconds % 60))
+	let secondString = numberToDigitalTimeString(Math.floor(seconds % 60))
 
-	this.minutes = Math.floor(seconds / 60)
-	this.hours = Math.floor(this.minutes / 60)
-	this.minutes = numberToDigitalTimeString(this.minutes - this.hours * 60);
-	this.hours = numberToDigitalTimeString(this.hours);
+	let minuteString = Math.floor(seconds / 60)
+	let hourString = Math.floor(minuteString / 60)
+	minuteString = numberToDigitalTimeString(minuteString - hourString * 60);
+	hourString = numberToDigitalTimeString(hourString);
 
-	if(this.hours === "00") return `${this.minutes}:${this.seconds}`;
-	return `${this.hours}:${this.minutes}:${this.seconds}`;
+	if(hourString === "00") return `${minuteString}:${secondString}`;
+	return `${hourString}:${minuteString}:${secondString}`;
 }
 function numberToDigitalTimeString(number) {
 	return String(number).padStart(2, "0");
@@ -19,23 +27,24 @@ function numberToDigitalTimeString(number) {
 const screenshotCanvas = document.createElement("canvas");
 const screenshotCanvasCtx = screenshotCanvas.getContext("2d");
 
+const BUFFER_SIZE = 1024*1024*15;
+const MOE = 0.015;
 var inert = false;
 /** @type HTMLDivElement */ const VIDEO_TITLE_DISPLAY = document.getElementById("videoTitle");
-/** @type HTMLDivElement */ const LOADING_FR_OVERLAY = document.getElementById("loadingFR");
+/** @type HTMLDivElement */ const LOADING_OVERLAY = document.getElementById("loadingFR");
+/** @type HTMLProgressElement */ const LOADING_PERCENTAGE = document.getElementById("loadingPercentage");
 /** @type HTMLInputElement */ const FILE_UPLOAD = document.getElementById("upload");
 /** @type HTMLSpanElement */ const CURRENT_TIME_INPUT = document.getElementById("firstDurationLabel");
-/** @type HTMLSpanElement */ const INPUT_COLOR_CONTAINER = document.getElementById("inputColorContainer");
+/** @type HTMLSpanElement */ const COLOR_CONTAINER = document.getElementById("inputColorContainer");
 /** @type HTMLDivElement */ const MEDIA_TIME_INPUT = document.getElementById("mediaTimeInput");
 /** @type HTMLSpanElement */ const FRAME_INPUT = document.getElementById("frameNumber");
 /** @type HTMLInputElement */ const FRAME_RATE_INPUT = document.getElementById("videoFrameRate");
-/** @type number */ var frameRate = null;
-/** @type number */ let finalMediaTime = null;
 /** @type RegExp */ const NUMBERS_ONLY_REGEX = /[^\d.]/g;
 /** @type RegExp */ const TIME_ONLY_REGEX = /[^\d:.]/g;
-/** @type number */ var currentMediaTime = 0;
 /** @type HTMLVideoElement */ const video = document.getElementById("video");
 /** @type string */ let videoSrc = null;
 /** @type string */ let saveVideoNamePrefix = "";
+/** @type number */ var currentMediaTime = 0;
 /** @type FrameSeeking */ var frameSeek = null;
 /** @type {(frameCount:number) => void} */ var frameRateDeterminedCallback = null;
 
@@ -43,10 +52,9 @@ var inert = false;
 /** @type Window */ var curWin = window;
 /** @type Document */ var curDoc = document;
 
-/** @type HTMLDivElement */ const LOOP_BAR = document.getElementById("loopBar");
 /** @type HTMLDivElement */ const LOOP_BAR_TRACK = document.getElementById("loopBarTrack");
-/** @type HTMLDivElement */ const LOOP_START_DRAGGER = document.getElementById("drag1");
-/** @type HTMLDivElement */ const LOOP_END_DRAGGER = document.getElementById("drag2");
+/** @type HTMLDivElement */ const LOOP_START_BAR = document.getElementById("drag1");
+/** @type HTMLDivElement */ const LOOP_END_BAR = document.getElementById("drag2");
 
 /** @type HTMLAnchorElement */ const DOWNLOAD_BUTTON = document.getElementById("downloadFrame");
 /** @type HTMLDivElement */ const UI = document.getElementById("ui");
@@ -128,7 +136,7 @@ function setup(){
 	registerClickEvent(DOWNLOAD_BUTTON, (event) => {
 		screenshotCanvasCtx.drawImage(video, 0, 0);
 		DOWNLOAD_BUTTON.href = screenshotCanvas.toDataURL("image/png");
-		DOWNLOAD_BUTTON.download = `${saveVideoNamePrefix}_videoframe_${round1(calcFrameNumber(currentMediaTime))}.png`;
+		DOWNLOAD_BUTTON.download = `${saveVideoNamePrefix}_videoframe_${round1(frameSeek.calcFrameNumber(currentMediaTime))}.png`;
 	})();
 	registerKeyDownEvent(FILE_UPLOAD.labels[0], () => FILE_UPLOAD.click());
 
@@ -151,7 +159,7 @@ function togglePause(){
 function seek(seekDirection){
 	const newTime = Math.min(Math.max(currentMediaTime+(5 * seekDirection), 0), video.duration);
 	currentMediaTime = newTime;
-	video.currentTime = newTime+0.0001;
+	video.currentTime = newTime+MOE;
 	frameSeek.onSeekedManually(newTime);
 }
 
@@ -169,18 +177,16 @@ function uploadFile(file){
 	saveVideoNamePrefix = VIDEO_TITLE_DISPLAY.textContent.substring(0, 28);
 
 	videoSrc = URL.createObjectURL(file);
-	waitForFrameRate().then(() => {
-		video.addEventListener("loadeddata", () => {
-			screenshotCanvas.width = video.videoWidth;
-			screenshotCanvas.height = video.videoHeight;
-			setButtonsDisabled(false);
-			LOADING_FR_OVERLAY.toggleAttribute("data-active", false);
-		}, {passive: true, once: true});
-		video.src = videoSrc;
+	LOADING_OVERLAY.toggleAttribute("data-active", true);
+	console.time("loadFR");
+	getVideoFrameTimes(file).then(timeStamps => {
+		frameSeek = new FrameSeekingModern(timeStamps);
+		loadVideoPlayer();
+	}).catch((error) => {
+		console.log("MP4Box error: ", error);
+		waitForFrameRate().then(loadVideoPlayer);
+		frameSeek = new FrameSeekingFallback(videoSrc);
 	});
-
-	LOADING_FR_OVERLAY.toggleAttribute("data-active", true);
-	frameSeek = new FrameSeeking(videoSrc);
 }
 
 function waitForFrameRate(){
@@ -189,14 +195,253 @@ function waitForFrameRate(){
 	});
 }
 
+function loadVideoPlayer(){
+	console.timeEnd("loadFR");
+	video.addEventListener("loadeddata", () => {
+		screenshotCanvas.width = video.videoWidth;
+		screenshotCanvas.height = video.videoHeight;
+		setButtonsDisabled(false);
+		LOADING_OVERLAY.toggleAttribute("data-active", false);
+	}, {passive: true, once: true});
+	video.src = videoSrc;
+}
+
 class FrameSeeking {
+	/** @type number */ frameRate;
+	/** @type AB */ ab;
+	/** @type boolean */ abEnabled;
+
+	enableAB(){}
+
+	disableAB(){}
+
+	toggleAB(){}
+
+	destroyAB(){}
+
+
+	queueStartFrameSeek(timeProvider, delay){}
+
+	startFrameSeek(time){}
+
+	stopFrameSeek(){}
+
+	destroy(){}
+
+	onSeekedManually(newTime){}
+
+	forward(){}
+
+	backward(){}
+
+	getSeekDataFromProgress(progress){}
+
+	calcMediaTimeAtFrame(frameNumber){}
+
+	getFrameNumber(mediaTime){}
+
+	calcFrameNumber(mediaTime){}
+
+	videoIsEnded(mediaTime){}
+
+	incrementAPosition(){}
+
+	decrementAPosition(){}
+
+	setAMediaTime(mediaTime){}
+
+	incrementBPosition(){}
+
+	decrementBPosition(){}
+
+	setBMediaTime(mediaTime){}
+}
+
+class FrameSeekingModern extends FrameSeeking {
+	/** @type number[] */ timestamps;
+
+	/** @param timestamps {number[]} */
+	constructor(timestamps) {
+		super();
+		let prevVal = null;
+		this.timestamps = timestamps.sort((a,b) => a-b).filter(val => {const oldVal = prevVal; prevVal = val; return val != oldVal; }, this);
+		// console.log("Frame timestamps (seconds):", );
+		this.determineFrameRate(15, this.timestamps.length-5);
+	}
+
+	determineFrameRate(startIndex,endIndex){
+		let accumulation = 0
+		for(let i = startIndex+1; i < endIndex; i++){
+			accumulation += this.timestamps[i] - this.timestamps[i-1];
+		}
+
+		const framesProcessed = endIndex-startIndex-1;
+		this.frameRate = 1/(accumulation/framesProcessed);
+		FRAME_RATE_INPUT.valueAsNumber = this.frameRate;
+	}
+
+	enableAB(){
+		frameSeek.ab ??= new AB(0, video.duration, 0, this.timestamps[this.timestamps.length-1]);
+		document.body.style.setProperty("--abLoopDisplay", "block");
+		this.abEnabled = true;
+	}
+
+	disableAB(){
+		document.body.style.setProperty("--abLoopDisplay", "none");
+		this.abEnabled = false;
+	}
+
+	toggleAB() {
+		if(this.abEnabled){
+			this.disableAB();
+		} else if(video.duration){
+			this.enableAB();
+		}
+	}
+
+	destroyAB(){
+		document.body.style.setProperty("--abLoopDisplay", "none");
+		LOOP_START_BAR.style.setProperty("--progress", "0%");
+		LOOP_END_BAR.style.setProperty("--progress", "100%");
+		this.abEnabled = false;
+		this.ab = null;
+	}
+
+
+	destroy() {
+		this.destroyAB();
+		this.frameRate = null;
+	}
+
+	onSeekedManually(newTime) {
+		timeUpdateUnofficial();
+	}
+
+	forward(){
+		if(!video.paused){ video.pause(); return; }
+		const currentFrameNumber = binarySearchLenient(this.timestamps, currentMediaTime);
+		const nextMediaTime = this.timestamps?.[currentFrameNumber+1];
+		if(nextMediaTime){
+			currentMediaTime = nextMediaTime;
+			video.currentTime = nextMediaTime+MOE;
+			this.onSeekedManually(nextMediaTime+MOE);
+		}
+	}
+
+	backward(){
+		if(!video.paused){ video.pause(); return; }
+		const currentFrameNumber = binarySearchLenient(this.timestamps, currentMediaTime);
+		const prevMediaTime = this.timestamps?.[currentFrameNumber-1];
+		if(prevMediaTime){
+			currentMediaTime = prevMediaTime;
+			video.currentTime = prevMediaTime+MOE;
+			this.onSeekedManually(prevMediaTime+MOE);
+		}
+	}
+
+	getSeekDataFromProgress(progress){
+		const index = binarySearchLenient(this.timestamps, progress*video.duration);
+		return [this.timestamps[index], index];
+	}
+
+	calcMediaTimeAtFrame(frameNumber){
+		return this.timestamps[frameNumber];
+	}
+
+	getFrameNumber(mediaTime){
+		return binarySearch(this.timestamps, mediaTime);
+	}
+
+	calcFrameNumber(mediaTime){
+		return binarySearchLenient(this.timestamps, mediaTime);
+	}
+
+	videoIsEnded(mediaTime){
+		return round4(mediaTime) >= round4(this.timestamps[this.timestamps.length-1]);
+	}
+
+	incrementAPosition(){
+		const frameNumber = this.ab.loopBeginFrameNumber+1;
+		if(frameNumber > this.ab.loopEndFrameNumber){
+			return [null, null];
+		}
+
+		const mediaTime = this.calcMediaTimeAtFrame(frameNumber);
+		this.ab.loopBeginMediaTime = mediaTime;
+		this.ab.loopBeginFrameNumber = frameNumber;
+		return [mediaTime, frameNumber];
+	}
+
+	decrementAPosition(){
+		const frameNumber = this.ab.loopBeginFrameNumber-1;
+		if(frameNumber < 0){
+			return [null, null];
+		}
+
+		const mediaTime = this.calcMediaTimeAtFrame(frameNumber);
+		this.ab.loopBeginMediaTime = mediaTime;
+		this.ab.loopBeginFrameNumber = frameNumber;
+		return [mediaTime, frameNumber];
+	}
+
+	setAMediaTime(mediaTime){
+		let frameNumber = this.calcFrameNumber(mediaTime);
+		mediaTime = this.timestamps[clamp(frameNumber, 0, this.timestamps.length-1)];
+		if(mediaTime > this.ab.loopEndMediaTime){
+			mediaTime = this.ab.loopEndMediaTime;
+			frameNumber = this.calcFrameNumber(mediaTime);
+		}
+		this.ab.loopBeginMediaTime = mediaTime;
+		this.ab.loopBeginFrameNumber = frameNumber;
+		return [mediaTime, frameNumber];
+	}
+
+	incrementBPosition(){
+		const frameNumber = this.ab.loopEndFrameNumber+1;
+		if(frameNumber == this.timestamps.length){
+			return [null, null];
+		}
+
+		const mediaTime = this.calcMediaTimeAtFrame(frameNumber);
+		this.ab.loopEndMediaTime = mediaTime;
+		this.ab.loopEndFrameNumber = frameNumber;
+		return [mediaTime, frameNumber];
+	}
+
+	decrementBPosition(){
+		const frameNumber = this.ab.loopEndFrameNumber-1;
+		if(frameNumber < this.ab.loopBeginFrameNumber){
+			return [null, null];
+		}
+
+		const mediaTime = this.calcMediaTimeAtFrame(frameNumber);
+		this.ab.loopEndMediaTime = mediaTime;
+		this.ab.loopEndFrameNumber = frameNumber;
+		return [mediaTime, frameNumber];
+	}
+
+	setBMediaTime(mediaTime){
+		let frameNumber = this.calcFrameNumber(mediaTime);
+		mediaTime = this.timestamps[clamp(frameNumber, 0, this.timestamps.length-1)];
+		if(mediaTime < this.ab.loopBeginMediaTime){
+			mediaTime = this.ab.loopBeginMediaTime;
+			frameNumber = this.calcFrameNumber(mediaTime);
+		}
+		this.ab.loopEndMediaTime = mediaTime;
+		this.ab.loopEndFrameNumber = frameNumber;
+		return [mediaTime, frameNumber];
+	}
+}
+
+class FrameSeekingFallback extends FrameSeeking {
 	/** @type ForwardFrameSeek */ forwardFrameSeek;
 	/** @type BackwardFrameSeek */ backwardFrameSeek;
 	/** @type FrameRateSeek */ frameRateSeek;
-	/** @type AB */ ab;
-	/** @type boolean */ abEnabled;
+	/** @type number */ finalMediaTime = null;
 	timeoutID = null;
+
 	constructor(src) {
+		super();
 		this.forwardFrameSeek = new ForwardFrameSeek(src);
 		this.backwardFrameSeek = new BackwardFrameSeek(src);
 		this.frameRateSeek = new FrameRateSeek(src);
@@ -215,8 +460,8 @@ class FrameSeeking {
 
 	destroyAB(){
 		document.body.style.setProperty("--abLoopDisplay", "none");
-		LOOP_START_DRAGGER.style.setProperty("--progress", "0%");
-		LOOP_END_DRAGGER.style.setProperty("--progress", "100%");
+		LOOP_START_BAR.style.setProperty("--progress", "0%");
+		LOOP_END_BAR.style.setProperty("--progress", "100%");
 		this.abEnabled = false;
 		this.ab = null;
 	}
@@ -254,8 +499,8 @@ class FrameSeeking {
 		this.backwardFrameSeek.destroy();
 		this.frameRateSeek.destroy();
 		this.destroyAB();
-		frameRate = null;
-		finalMediaTime = null;
+		this.frameRate = null;
+		this.finalMediaTime = null;
 	}
 
 	onSeekedManually(newTime) {
@@ -275,7 +520,7 @@ class FrameSeeking {
 		if(nextMediaTime){
 			this.backwardFrameSeek.addLeftMediaTime(currentMediaTime);
 			currentMediaTime = nextMediaTime;
-			video.currentTime = nextMediaTime+0.0001; //add a slight amount to avoid rounding errors with the previous frame
+			video.currentTime = nextMediaTime+MOE; //add a slight amount to avoid rounding errors with the previous frame
 			timeUpdateUnofficial();
 		}
 	}
@@ -287,9 +532,9 @@ class FrameSeeking {
 		if(prevMediaTime){
 			this.forwardFrameSeek.addLeftMediaTime(currentMediaTime);
 			currentMediaTime = prevMediaTime;
-			video.currentTime = prevMediaTime+0.0001; //add a slight amount to avoid rounding errors with the previous frame
+			video.currentTime = prevMediaTime+MOE; //add a slight amount to avoid rounding errors with the previous frame
 			timeUpdateUnofficial();
-		} else if(round1(calcFrameNumber(currentMediaTime)) == 1 && video.currentTime != 0){
+		} else if(round1(this.calcFrameNumber(currentMediaTime)) == 1 && video.currentTime != 0){
 			this.forwardFrameSeek.addLeftMediaTime(currentMediaTime);
 			currentMediaTime = 0;
 			video.currentTime = 0;
@@ -297,7 +542,7 @@ class FrameSeeking {
 		} else if(!BackwardFrameSeek.ACTIVE){
 			if(this.forwardFrameSeek.getLeftMediaTime() !== currentMediaTime){
 				this.forwardFrameSeek.addLeftMediaTime(currentMediaTime);
-				video.currentTime = currentMediaTime-0.0001;
+				video.currentTime = currentMediaTime-MOE;
 
 				const currentFrameNumber = Number(FRAME_INPUT.textContent);
 				timeUpdateUnofficial();
@@ -305,12 +550,100 @@ class FrameSeeking {
 			}
 		}
 	}
+
+	getSeekDataFromProgress(progress){
+		const frameNumber = Math.floor(round1(this.calcFrameNumber(progress*video.duration)));
+		const mediaTime = this.calcMediaTimeAtFrame(frameNumber);
+		return [mediaTime, frameNumber];
+	}
+
+	calcMediaTimeAtFrame(frameNumber){
+		return frameNumber/this.frameRate;
+	}
+
+	getFrameNumber(mediaTime){
+		return this.calcFrameNumber(mediaTime);
+	}
+
+	calcFrameNumber(mediaTime){
+		return mediaTime*this.frameRate;
+	}
+
+	videoIsEnded(mediaTime){
+		return round4(mediaTime) >= round4(this.finalMediaTime);
+	}
+
+	incrementAPosition(){
+		const frameNumber = round1(this.calcFrameNumber(this.ab.loopBeginMediaTime))+1;
+		const mediaTime = this.calcMediaTimeAtFrame(frameNumber);
+		if(mediaTime > this.ab.loopEndMediaTime){
+			return [null, null];
+		}
+		this.ab.loopBeginMediaTime = mediaTime;
+		this.ab.loopBeginFrameNumber = frameNumber;
+		return [mediaTime, frameNumber];
+	}
+
+	decrementAPosition(){
+		const frameNumber = round1(frameSeek.calcFrameNumber(frameSeek.ab.loopBeginMediaTime))-1;
+		const mediaTime = frameSeek.calcMediaTimeAtFrame(frameNumber);
+		if(mediaTime < 0){
+			return [null, null];
+		}
+		this.ab.loopBeginMediaTime = mediaTime;
+		this.ab.loopBeginFrameNumber = frameNumber;
+		return [mediaTime, frameNumber];
+	}
+
+	setAMediaTime(mediaTime){
+		let frameNumber = Math.floor(round1(this.calcFrameNumber(mediaTime)));
+		mediaTime = this.calcMediaTimeAtFrame(frameNumber);
+		if(mediaTime > this.ab.loopEndMediaTime){
+			mediaTime = this.ab.loopEndMediaTime;
+			frameNumber = round1(this.calcFrameNumber(mediaTime));
+		}
+		this.ab.loopBeginMediaTime = mediaTime;
+		return [mediaTime, frameNumber];
+	}
+
+	incrementBPosition(){
+		const frameNumber = round1(this.calcFrameNumber(this.ab.loopEndMediaTime))+1;
+		const mediaTime = this.calcMediaTimeAtFrame(frameNumber);
+		if(mediaTime > video.duration){
+			return [null, null];
+		}
+		this.ab.loopEndMediaTime = mediaTime;
+		this.ab.loopEndFrameNumber = frameNumber;
+		return [mediaTime, frameNumber];
+	}
+
+	decrementBPosition(){
+		const frameNumber = round1(this.calcFrameNumber(this.ab.loopEndMediaTime))-1;
+		const mediaTime = this.calcMediaTimeAtFrame(frameNumber);
+		if(mediaTime < this.ab.loopBeginMediaTime){
+			return [null, null];
+		}
+		this.ab.loopEndMediaTime = mediaTime;
+		this.ab.loopEndFrameNumber = frameNumber;
+		return [mediaTime, frameNumber];
+	}
+
+	setBMediaTime(mediaTime){
+		let frameNumber = Math.floor(round1(this.calcFrameNumber(mediaTime)));
+		mediaTime = this.calcMediaTimeAtFrame(frameNumber);
+		if(mediaTime < this.ab.loopBeginMediaTime){
+			mediaTime = this.ab.loopBeginMediaTime;
+			frameNumber = round1(this.calcFrameNumber(mediaTime));
+		}
+		this.ab.loopEndMediaTime = mediaTime;
+		return [mediaTime, frameNumber];
+	}
 }
 
 class FrameSeek {
 	/** @type number | null */ queuedMediaTime = null;
 	/** @type number | null */ requestID = null;
-	/** @type SimpleAbortController */ abortController = null;
+	/** @type FrameSeekAbortController */ abortController = null;
 	/** @type HTMLVideoElement */ instVideo = null;
 	mediaTimes = new Deque();
 	constructor(src) {
@@ -324,7 +657,7 @@ class FrameSeek {
 
 	beginExecutor(mediaTime){
 		if(!this.abortController){
-			this.abortController = new SimpleAbortController();
+			this.abortController = new FrameSeekAbortController();
 			this.queuedMediaTime = null;
 			this.executor(mediaTime);
 		} else {
@@ -391,9 +724,9 @@ class ForwardFrameSeek extends FrameSeek {
 	}
 
 	beginExecutor(mediaTime){
-		if(videoIsEnded(mediaTime)) return;
+		if(frameSeek.videoIsEnded(mediaTime)) return;
 		if(!this.abortController){
-			this.abortController = new SimpleAbortController();
+			this.abortController = new FrameSeekAbortController();
 			this.queuedMediaTime = null;
 			this.executor(mediaTime);
 		} else {
@@ -418,7 +751,7 @@ class ForwardFrameSeek extends FrameSeek {
 	executor(mediaTime) {
 		super.executor(mediaTime);
 		if(round4(this.instVideo.currentTime) === round4(mediaTime))
-			this.instVideo.currentTime = mediaTime+0.0001;
+			this.instVideo.currentTime = mediaTime+MOE;
 		else
 			this.instVideo.currentTime = mediaTime;
 	}
@@ -427,12 +760,12 @@ class ForwardFrameSeek extends FrameSeek {
 	 * @param {VideoFrameCallbackMetadata} metadata */
 	firstFrameCallback(now, metadata) {
 		if(this.abortController.aborted){ this.onExecutorAborted(); return; }
-		if(videoIsEnded(metadata.mediaTime)){
+		if(frameSeek.videoIsEnded(metadata.mediaTime)){
 			this.abortController.callback = () => {this.instVideo.load(); this.onExecutorAborted();}; //guard against the video freezing due to chrome bug
 		}
 		this.addRightMediaTime(metadata.mediaTime);
 		this.requestID = this.instVideo.requestVideoFrameCallback(this.frameCallback);
-		this.instVideo.playbackRate = Math.max(0.0625*(60/frameRate), 0.0625); //goes faster when framerate is lower (30 fps is 2x (0.125))
+		this.instVideo.playbackRate = Math.max(0.0625*(60/frameSeek.frameRate), 0.0625); //goes faster when framerate is lower (30 fps is 2x (0.125))
 		this.instVideo.play();
 	}
 
@@ -467,7 +800,6 @@ class ForwardFrameSeek extends FrameSeek {
 		return "ForwardFrameSeek";
 	}
 }
-
 class BackwardFrameSeek extends FrameSeek {
 	static ACTIVE = false;
 	/** @type number | null */ currentMediaTime = null;
@@ -477,9 +809,9 @@ class BackwardFrameSeek extends FrameSeek {
 
 	/** @param {number} mediaTime */
 	beginExecutor(mediaTime){
-		if(mediaTime == 0 || videoIsEnded(mediaTime)) return;
+		if(mediaTime == 0 || frameSeek.videoIsEnded(mediaTime)) return;
 		if(!this.abortController){
-			this.abortController = new SimpleAbortController();
+			this.abortController = new FrameSeekAbortController();
 			this.queuedMediaTime = null;
 			this.executor(mediaTime);
 		} else {
@@ -507,7 +839,7 @@ class BackwardFrameSeek extends FrameSeek {
 
 		super.executor(mediaTime);
 		if(round4(this.instVideo.currentTime) === round4(mediaTime))
-			this.instVideo.currentTime = mediaTime-0.0001;
+			this.instVideo.currentTime = mediaTime-MOE;
 		else
 			this.instVideo.currentTime = mediaTime;
 	}
@@ -519,7 +851,7 @@ class BackwardFrameSeek extends FrameSeek {
 		this.addRightMediaTime(metadata.mediaTime);
 		this.currentMediaTime = metadata.mediaTime;
 		this.requestID = this.instVideo.requestVideoFrameCallback(this.frameCallback);
-		this.instVideo.currentTime = metadata.mediaTime-0.0001;
+		this.instVideo.currentTime = metadata.mediaTime-MOE;
 	}
 
 	/** @param {DOMHighResTimeStamp} now
@@ -529,7 +861,7 @@ class BackwardFrameSeek extends FrameSeek {
 		if(metadata.mediaTime === this.currentMediaTime){ this.abortController.callback = this.onExecutorAborted; return; }
 		this.addRightMediaTime(metadata.mediaTime);
 		this.requestID = this.instVideo.requestVideoFrameCallback(this.frameCallback);
-		this.instVideo.currentTime = metadata.mediaTime-0.0001;
+		this.instVideo.currentTime = metadata.mediaTime-MOE;
 	}
 
 	addRightMediaTime(mediaTime){
@@ -554,10 +886,9 @@ class BackwardFrameSeek extends FrameSeek {
 		return "BackwardFrameSeek";
 	}
 }
-
 class FrameRateSeek {
 	/** @type number | null */ requestID = null;
-	/** @type SimpleAbortController */ abortController = new SimpleAbortController();
+	/** @type FrameSeekAbortController */ abortController = new FrameSeekAbortController();
 	/** @type HTMLVideoElement */ instVideo = null;
 	averageFrameDiff = 0;
 	frameCount = 0;
@@ -583,7 +914,8 @@ class FrameRateSeek {
 		finalFrameVideo.requestVideoFrameCallback((now, metadata) => {
 			fRequestID = finalFrameVideo.requestVideoFrameCallback(function repeat(now, metadata) {
 				fRequestID = finalFrameVideo.requestVideoFrameCallback(repeat);
-				finalMediaTime = metadata.mediaTime;
+				// noinspection JSUnusedGlobalSymbols
+				frameSeek.finalMediaTime = metadata.mediaTime;
 			});
 			finalFrameVideo.currentTime = finalFrameVideo.duration-5;
 			finalFrameVideo.play();
@@ -608,7 +940,7 @@ class FrameRateSeek {
 	/** @param {DOMHighResTimeStamp} now
 	 * @param {VideoFrameCallbackMetadata} metadata */
 	firstFrameCallback(now, metadata) {
-		if(this.abortController.aborted){ this.onExecutorAborted(); return; }
+		if(this.abortController.aborted){ this.destroy(); return; }
 		this.lastMediaTime = metadata.mediaTime;
 		this.lastFrameNum = metadata.presentedFrames;
 		this.beginTime = now;
@@ -656,8 +988,8 @@ class FrameRateSeek {
 		) {
 			// frameDiffs.push(diff);
 			this.averageFrameDiff = ((this.averageFrameDiff*this.frameCount)+diff)/(++this.frameCount)
-			frameRate = 1 / this.averageFrameDiff;
-			FRAME_RATE_INPUT.valueAsNumber = frameRate;
+			frameSeek.frameRate = 1 / this.averageFrameDiff;
+			FRAME_RATE_INPUT.valueAsNumber = frameSeek.frameRate;
 		}
 
 		const dropped = this.instVideo.getVideoPlaybackQuality().totalVideoFrames-metadata.presentedFrames-3;
@@ -672,18 +1004,20 @@ class FrameRateSeek {
 		return "FrameRateSeek";
 	}
 }
+class AB {
+	loopBeginMediaTime;
+	loopBeginFrameNumber = 0; //only used by modern FrameSeek
+	loopEndMediaTime;
+	loopEndFrameNumber = -1; //only used by modern FrameSeek
 
-class AB{
-	loopBeginMediaTime = 0;
-	loopEndMediaTime = 0;
-
-	constructor(beginMediaTime, endMediaTime) {
+	constructor(beginMediaTime, endMediaTime, firstFrameNumber = 0, finalFrameNumber = -1) {
 		this.loopBeginMediaTime = beginMediaTime;
 		this.loopEndMediaTime = endMediaTime;
+		this.loopBeginFrameNumber = firstFrameNumber;
+		this.loopEndFrameNumber = finalFrameNumber;
 	}
 }
-
-class SimpleAbortController {
+class FrameSeekAbortController {
 	aborted = 0;
 	callback = function(){};
 	reset(){ this.aborted = 0; }
@@ -706,13 +1040,76 @@ FILE_UPLOAD.addEventListener("change", () => {
 		uploadFile(FILE_UPLOAD.files[0]);
 	FILE_UPLOAD.value = null;
 }, true);
+
+/** @param file {File} */
+function getVideoFrameTimes(file) {
+	return new Promise((resolve, reject) => {
+		let mp4Box = MP4Box.createFile();
+		let timestamps = [];
+		let videoTrackId = null;
+		let timescale = null;
+
+		mp4Box.onError = function(e) {
+			console.log("mp4box failed to parse data.");
+			reject(e);
+		};
+		mp4Box.onMoovStart = function () {
+			// console.log("Starting to receive File Information");
+		};
+		mp4Box.onReady = function(info) {
+			console.log(info.mime);
+			const videoTrack = info.videoTracks?.[0];
+			if (!videoTrack) {
+				reject(new Error("No video track found"));
+				return;
+			}
+			mp4Box.onSamples = (trackId, user, samples) => {
+				for (const sample of samples) {
+					const pts = (sample.cts ?? sample.dts) / timescale;
+					timestamps.push(pts);
+				}
+			};
+
+			videoTrackId = videoTrack.id;
+			timescale = videoTrack.timescale;
+			mp4Box.setExtractionOptions(videoTrackId, null, {nbSamples: 1_000_000});
+			mp4Box.start();
+		};
+
+		let offset = 0;
+		let reader = new FileReader();
+		reader.addEventListener("error", reject, {passive: true});
+		reader.addEventListener("load", (e) => {
+			const buffer = reader.result;
+			buffer.fileStart = offset;
+			offset = mp4Box.appendBuffer(buffer);
+
+			if (offset < file.size || !offset) {
+				readNextChunk();
+			} else {
+				mp4Box.flush();
+				resolve(timestamps);
+				mp4Box = null;
+				reader = null;
+			}
+		}, {passive: true});
+
+		function readNextChunk() {
+			LOADING_PERCENTAGE.value = offset / file.size;
+			const slice = file.slice(offset, offset+BUFFER_SIZE);
+			reader.readAsArrayBuffer(slice);
+		}
+		readNextChunk();
+	});
+}
+
 window.addEventListener("dragover", (event) => {
 	if(event.dataTransfer.types.includes("Files") && !inert)
 		event.preventDefault();
 });
 window.addEventListener("drop", (event) => {
 	const fileList = event.dataTransfer.files;
-	if(fileList && !inert) {
+	if(fileList.length && !inert) { //an empty FileList is truthy, for some reason
 		event.preventDefault();
 		uploadFile(fileList[0]);
 	}
@@ -723,8 +1120,6 @@ video.addEventListener("play", () => {
 	frameSeek.stopFrameSeek();
 }, {passive: true});
 video.addEventListener("pause", () => {
-	console.log(video.currentTime)
-	console.log(currentMediaTime)
 	PLAY_BUTTON.classList.remove("playing");
 	frameSeek.queueStartFrameSeek(() => currentMediaTime, 100);
 }, {passive: true});
@@ -734,9 +1129,17 @@ video.addEventListener("loadstart", () => {
 video.addEventListener("timeupdate", timeUpdate, {passive: true});
 // video.addEventListener("seeking", timeUpdate, {passive: true});
 video.addEventListener("durationchange", () => document.getElementById("secondDurationLabel").textContent = secondsToTimestamp(video.duration), {passive: true});
-video.addEventListener("click", toggleUI, {passive: true});
+video.addEventListener("click", () => {if(videoSrc)toggleUI();}, {passive: true});
 video.addEventListener("dblclick", toggleFullscreen, {passive: true});
-document.getElementById("fullscreenButton").addEventListener("click", toggleFullscreen, {passive: true});
+video.addEventListener("ended", () => {
+	if(frameSeek.abEnabled) {
+		currentMediaTime = frameSeek.ab.loopBeginMediaTime;
+		video.currentTime = currentMediaTime+MOE;
+		frameSeek.onSeekedManually(currentMediaTime+MOE);
+		video.play();
+	}
+}, {passive: true});
+registerClickEvent(document.getElementById("fullscreenButton"), toggleFullscreen)();
 
 function timeUpdate() {
 	const currentTime = video.currentTime;
@@ -746,20 +1149,18 @@ function timeUpdate() {
 function timeUpdateUnofficial() {
 	PLAY_BAR.style.setProperty("--percentage", String(Math.min(currentMediaTime / video.duration, 1) * 100) + '%');
 	CURRENT_TIME_INPUT.textContent = secondsToTimestamp(currentMediaTime);
-	MEDIA_TIME_INPUT.textContent = String(currentMediaTime);
-	FRAME_INPUT.textContent = String(round1(calcFrameNumber(currentMediaTime)));
-	INPUT_COLOR_CONTAINER.style.setProperty("--color", "#aaaaaa");
+	MEDIA_TIME_INPUT.textContent = String(round6(currentMediaTime)); //avoid excessive decimals from inserted mediaTime
+	FRAME_INPUT.textContent = String(round1(frameSeek.calcFrameNumber(currentMediaTime)));
+	COLOR_CONTAINER.style.setProperty("--color", "#aaaaaa");
 }
 
 function toggleUI(){
-	if(videoSrc){
-		if(UI.inert){
-			UI.style.visibility = "visible";
-			UI.inert = false;
-		} else {
-			UI.style.visibility = "hidden";
-			UI.inert = true;
-		}
+	if(UI.inert){
+		UI.style.visibility = "visible";
+		UI.inert = false;
+	} else {
+		UI.style.visibility = "hidden";
+		UI.inert = true;
 	}
 }
 function toggleFullscreen(){
@@ -777,11 +1178,12 @@ PLAY_BAR.addEventListener('pointerleave', (pointer) => removeHoveredTimeDisplay(
 
 curWin.addEventListener("keydown", keyEvent => {
 	const activeElement = document.activeElement;
-	if(!activeElement || activeElement instanceof HTMLInputElement || activeElement.contentEditable == "plaintext-only")
+	// noinspection JSUnresolvedReference
+	if(!activeElement || activeElement instanceof HTMLInputElement || activeElement?.contentEditable == "plaintext-only")
 		return;
 
 	const keyLower = keyEvent.key.toLowerCase();
-	const compressed = (Number(keyEvent.shiftKey)/*1*/)+(Number(keyEvent.ctrlKey)<<1/*2*/)+(Number(keyEvent.altKey)<<2/*4*/)+(Number(keyEvent.metaKey)<<3/*8*/);
+	/** @type number */ const compressed = (Number(keyEvent.shiftKey)/*1*/)+(Number(keyEvent.ctrlKey)<<1/*2*/)+(Number(keyEvent.altKey)<<2/*4*/)+(Number(keyEvent.metaKey)<<3/*8*/);
 	if(compressed == 0){
 		switch(keyLower) {
 			case " ": //space
@@ -805,6 +1207,10 @@ curWin.addEventListener("keydown", keyEvent => {
 				frameSeek.forward();
 				keyEvent.preventDefault();
 				break;
+			case "s":
+				keyEvent.preventDefault();
+				DOWNLOAD_BUTTON.click();
+				break;
 			case "m":
 				video.muted = !video.muted;
 				VOLUME_ICON.classList.toggle("muted", video.muted);
@@ -814,20 +1220,31 @@ curWin.addEventListener("keydown", keyEvent => {
 				toggleFullscreen();
 				keyEvent.preventDefault();
 				break;
-			}
-		} else if(compressed == 1){
-			switch(keyLower){
-				case "q":
-				case "p":
-				case "arrowleft":
-					frameSeek.backward();
-					keyEvent.preventDefault();
-					break;
-				case "n":
-				case "arrowright":
-					frameSeek.forward();
-					keyEvent.preventDefault();
-					break;
+			case "b":
+				toggleUI();
+				keyEvent.preventDefault();
+				break;
+		}
+	} else if(compressed == 1){
+		switch(keyLower) {
+			case "q":
+			case "p":
+			case "arrowleft":
+				frameSeek.backward();
+				keyEvent.preventDefault();
+				break;
+			case "n":
+			case "arrowright":
+				frameSeek.forward();
+				keyEvent.preventDefault();
+				break;
+		}
+	} else if(compressed == 2){
+		switch(keyLower) {
+			case "s":
+				keyEvent.preventDefault();
+				DOWNLOAD_BUTTON.click();
+				break;
 		}
 	}
 });
@@ -836,27 +1253,17 @@ function onVideoFrame(now, metadata){
 	video.requestVideoFrameCallback(onVideoFrame);
 	currentMediaTime = metadata.mediaTime;
 	setEditableTextContent(MEDIA_TIME_INPUT, String(currentMediaTime));
-	setEditableTextContent(FRAME_INPUT, String(round1(calcFrameNumber(currentMediaTime))));
-	INPUT_COLOR_CONTAINER.style.setProperty("--color", "#ffffff");
+	setEditableTextContent(FRAME_INPUT, String(round1(frameSeek.calcFrameNumber(currentMediaTime))));
+	COLOR_CONTAINER.style.setProperty("--color", "#ffffff");
 
 	if(frameSeek.abEnabled){
 		const ab = frameSeek.ab;
-		if(metadata.mediaTime >= ab.loopEndMediaTime){
+		if(round2(metadata.mediaTime) >= round2(ab.loopEndMediaTime)){
 			currentMediaTime = ab.loopBeginMediaTime;
-			video.currentTime = currentMediaTime+0.0001;
-			frameSeek.onSeekedManually(currentMediaTime+0.0001);
+			video.currentTime = currentMediaTime+MOE;
+			frameSeek.onSeekedManually(currentMediaTime+MOE);
 		}
 	}
-}
-
-function calcFrameNumber(mediaTime){
-	if(!frameRate){
-		FRAME_RATE_INPUT.focus();
-		return 0;
-	}
-	const frameNumber = mediaTime*frameRate;
-	// console.log("RAW: " + String(frameNumber));
-	return frameNumber;
 }
 
 function round1(num) {
@@ -871,6 +1278,9 @@ function round3(num) {
 function round4(num) {
 	return Math.round(num*10000)/10000;
 }
+function round6(num) {
+	return Math.round(num*1000000)/1000000;
+}
 
 function setButtonsDisabled(disabled){
 	inert = disabled;
@@ -878,7 +1288,7 @@ function setButtonsDisabled(disabled){
 }
 
 FRAME_RATE_INPUT.addEventListener("change", () => {
-	frameRate = FRAME_RATE_INPUT.valueAsNumber;
+	frameSeek.frameRate = FRAME_RATE_INPUT.valueAsNumber;
 });
 
 /** Registers a click event which calls the specified function. Call the returned function to add a keyboard event.
@@ -919,7 +1329,7 @@ async function togglePictureInPicture() {
 }
 
 async function enterPictureInPicture() {
-	// @ts-ignore
+	// noinspection JSUnresolvedReference
 	storedWindow = await documentPictureInPicture.requestWindow({width: 450, height: 450, disallowReturnToOpener: false, preferInitialWindowPlacement: false});
 	curWin = storedWindow;
 	curDoc = storedWindow.document;
@@ -949,15 +1359,14 @@ function progressBarSeek(mouse, seekVideo) {
 
 	const offsetX = mouse.offsetX;
 	const progressBarDomRect = PLAY_BAR.getBoundingClientRect();
-	let seekToTime = Math.max(offsetX * (video.duration / progressBarDomRect.width), 0);
-	const frameNumber = Math.floor(calcFrameNumber(seekToTime));
-	seekToTime = calcMediaTimeAtFrame(frameNumber);
+	const progress = Math.max(offsetX / progressBarDomRect.width, 0);
+	const [mediaTime, frameNumber] = frameSeek.getSeekDataFromProgress(progress);
 	if(seekVideo) {
-		currentMediaTime = seekToTime;
-		video.currentTime = seekToTime+0.0001;
-		frameSeek.onSeekedManually(seekToTime+0.0001);
+		currentMediaTime = mediaTime;
+		video.currentTime = mediaTime+MOE;
+		frameSeek.onSeekedManually(mediaTime+MOE);
 	} else {
-		HOVERED_TIME_DISPLAY.children[0].textContent = String(secondsToTimestamp(seekToTime));
+		HOVERED_TIME_DISPLAY.children[0].textContent = String(secondsToTimestamp(mediaTime));
 		HOVERED_TIME_DISPLAY.children[1].textContent = String(frameNumber);
 		HOVERED_TIME_DISPLAY.style.transform = `translate(calc(${mouse.x}px - 50%), ${progressBarDomRect.top-40}px)`;
 	}
@@ -1026,10 +1435,10 @@ MEDIA_TIME_INPUT.addEventListener("input", (event) => {
 
 function submitFrameInput(){
 	video.pause();
-	const currentTime = calcMediaTimeAtFrame(Number(FRAME_INPUT.textContent));
+	const currentTime = frameSeek.calcMediaTimeAtFrame(Number(FRAME_INPUT.textContent));
 	currentMediaTime = currentTime;
-	video.currentTime = currentTime+0.0001;
-	frameSeek.onSeekedManually(currentTime+0.0001);
+	video.currentTime = currentTime+MOE;
+	frameSeek.onSeekedManually(currentTime+MOE);
 }
 const timeInputMultipliers = [1, 60, 60*60, 60*60*24];
 function submitTimeInput(){
@@ -1039,18 +1448,18 @@ function submitTimeInput(){
 	for(let i = 0; i < Math.min(timeSegments.length, timeInputMultipliers.length); i++){
 		newTime += timeSegments[i]*timeInputMultipliers[i];
 	}
-	const frameNumber = Math.floor(calcFrameNumber(newTime));
-	const frameTime = calcMediaTimeAtFrame(frameNumber);
+	const frameNumber = Math.floor(round1(frameSeek.calcFrameNumber(newTime)));
+	const frameTime = frameSeek.calcMediaTimeAtFrame(frameNumber);
 
 	currentMediaTime = frameTime;
-	video.currentTime = frameTime+0.0001;
-	frameSeek.onSeekedManually(frameTime+0.0001);
+	video.currentTime = frameTime+MOE;
+	frameSeek.onSeekedManually(frameTime+MOE);
 }
 function submitMediaTimeInput(){
 	video.pause();
 	currentMediaTime = Number(MEDIA_TIME_INPUT.textContent);
-	video.currentTime = currentMediaTime+0.0001;
-	frameSeek.onSeekedManually(currentMediaTime+0.0001);
+	video.currentTime = currentMediaTime+MOE;
+	frameSeek.onSeekedManually(currentMediaTime+MOE);
 }
 
 function setEditableTextContent(element, string){
@@ -1069,159 +1478,114 @@ function fixCursorOnInput(input){
 	selection.addRange(range);
 }
 
-function calcMediaTimeAtFrame(frameNumber){
-	return frameNumber/frameRate;
-}
-
-function videoIsEnded(mediaTime){
-	return round4(mediaTime) >= round4(finalMediaTime);
-}
 
 
-
-document.getElementById("toggleLoopBar").addEventListener("click", () => {
-	if(!frameSeek) return;
+registerClickEvent(document.getElementById("toggleLoopBar"), () => {
+	if(!frameSeek || inert) return;
 	frameSeek.toggleAB();
-});
+})();
 
-LOOP_START_DRAGGER.addEventListener("pointerdown", (mouse) => {
-	LOOP_START_DRAGGER.setPointerCapture(mouse.pointerId);
-});
-LOOP_START_DRAGGER.addEventListener("pointermove", (mouse) => {
-	if(LOOP_START_DRAGGER.hasPointerCapture(mouse.pointerId)){
+LOOP_START_BAR.addEventListener("pointerdown", (mouse) => {
+	LOOP_START_BAR.setPointerCapture(mouse.pointerId);
+}, {passive: true});
+LOOP_START_BAR.addEventListener("pointermove", (mouse) => {
+	if(LOOP_START_BAR.hasPointerCapture(mouse.pointerId)){
 		const mouseX = mouse.clientX;
 		const rect = LOOP_BAR_TRACK.getBoundingClientRect();
 		const progress = clamp((mouseX - rect.left) * (1 / rect.width), 0, 1);
-		LOOP_START_DRAGGER.style.setProperty("--progress", `${progress*100}%`);
+		LOOP_START_BAR.style.setProperty("--progress", `${progress*100}%`);
 
-		let frameNumber = Math.floor(round1(calcFrameNumber(video.duration * progress)));
-		let mediaTime = calcMediaTimeAtFrame(frameNumber);
-		if(mediaTime > frameSeek.ab.loopEndMediaTime){
-			mediaTime = frameSeek.ab.loopEndMediaTime;
-			frameNumber = round1(calcFrameNumber(mediaTime));
-		}
+		const [mediaTime, frameNumber] = frameSeek.setAMediaTime(video.duration * progress);
 		showTimeDisplayPointerEvent(mediaTime, frameNumber, mouse, rect);
-		frameSeek.ab.loopBeginMediaTime = mediaTime;
 	}
-});
-LOOP_START_DRAGGER.addEventListener("keydown", (keyboard) => {
+}, {passive: true});
+LOOP_START_BAR.addEventListener("keydown", (keyboard) => {
 	let frameNumber;
 	let mediaTime;
 	switch (keyboard.key){
 		case "ArrowLeft":
 			keyboard.preventDefault();
 			keyboard.stopPropagation();
-			frameNumber = round1(calcFrameNumber(frameSeek.ab.loopBeginMediaTime))-1;
-			mediaTime = calcMediaTimeAtFrame(frameNumber);
-			if(mediaTime < 0){
-				return;
-			}
+			[mediaTime, frameNumber] = frameSeek.decrementAPosition();
 			break;
 		case "ArrowRight":
 			keyboard.preventDefault();
 			keyboard.stopPropagation();
-			frameNumber = round1(calcFrameNumber(frameSeek.ab.loopBeginMediaTime))+1;
-			mediaTime = calcMediaTimeAtFrame(frameNumber);
-			if(mediaTime > frameSeek.ab.loopEndMediaTime){
-				return;
-			}
+			[mediaTime, frameNumber] = frameSeek.incrementAPosition();
 			break;
 		default:
 			return;
 	}
 
-	LOOP_START_DRAGGER.style.setProperty("--progress", `${mediaTime/video.duration*100}%`);
-	showTimeDisplayPointerEvent1(mediaTime, frameNumber, LOOP_START_DRAGGER);
-	frameSeek.ab.loopBeginMediaTime = mediaTime;
-});
-LOOP_START_DRAGGER.addEventListener("pointerenter", (mouse) => {
-	showTimeDisplayPointerEvent1(frameSeek.ab.loopBeginMediaTime, null, LOOP_START_DRAGGER);
-});
-LOOP_START_DRAGGER.addEventListener("focus", (mouse) => {
-	showTimeDisplayPointerEvent1(frameSeek.ab.loopBeginMediaTime, null, LOOP_START_DRAGGER);
-});
-LOOP_START_DRAGGER.addEventListener("pointerleave", removeHoveredTimeDisplay);
-LOOP_START_DRAGGER.addEventListener("blur", removeHoveredTimeDisplay);
-document.getElementById("setAHere").addEventListener("click", () => {
-	let mediaTime = currentMediaTime;
-	if(mediaTime > frameSeek.ab.loopEndMediaTime){
-		mediaTime = frameSeek.ab.loopEndMediaTime;
+	if(mediaTime !== null && frameNumber !== null){
+		LOOP_START_BAR.style.setProperty("--progress", `${mediaTime/video.duration*100}%`);
+		showTimeDisplayPointerEvent1(mediaTime, frameNumber, LOOP_START_BAR);
 	}
-
-	LOOP_START_DRAGGER.style.setProperty("--progress", `${mediaTime/video.duration*100}%`);
-	frameSeek.ab.loopBeginMediaTime = mediaTime;
 });
+LOOP_START_BAR.addEventListener("pointerenter", (mouse) => {
+	showTimeDisplayPointerEvent1(frameSeek.ab.loopBeginMediaTime, null, LOOP_START_BAR);
+}, {passive: true});
+LOOP_START_BAR.addEventListener("focus", (mouse) => {
+	showTimeDisplayPointerEvent1(frameSeek.ab.loopBeginMediaTime, null, LOOP_START_BAR);
+}, {passive: true});
+LOOP_START_BAR.addEventListener("pointerleave", removeHoveredTimeDisplay, {passive: true});
+LOOP_START_BAR.addEventListener("blur", removeHoveredTimeDisplay, {passive: true});
+registerClickEvent(document.getElementById("setAHere"), () => {
+	const [mediaTime, frameNumber] = frameSeek.setAMediaTime(currentMediaTime);
+	LOOP_START_BAR.style.setProperty("--progress", `${mediaTime/video.duration*100}%`);
+})();
 
 
 
-LOOP_END_DRAGGER.addEventListener("pointerdown", (mouse) => {
-	LOOP_END_DRAGGER.setPointerCapture(mouse.pointerId);
+LOOP_END_BAR.addEventListener("pointerdown", (mouse) => {
+	LOOP_END_BAR.setPointerCapture(mouse.pointerId);
 });
-LOOP_END_DRAGGER.addEventListener("pointermove", (mouse) => {
-	if(LOOP_END_DRAGGER.hasPointerCapture(mouse.pointerId)){
+LOOP_END_BAR.addEventListener("pointermove", (mouse) => {
+	if(LOOP_END_BAR.hasPointerCapture(mouse.pointerId)){
 		const mouseX = mouse.clientX;
 		const rect = LOOP_BAR_TRACK.getBoundingClientRect();
 		const progress = clamp((mouseX - rect.left) * (1 / rect.width), 0, 1);
-		LOOP_END_DRAGGER.style.setProperty("--progress", `${progress*100}%`);
+		LOOP_END_BAR.style.setProperty("--progress", `${progress*100}%`);
 
-		let frameNumber = Math.floor(round1(calcFrameNumber(video.duration * progress)));
-		let mediaTime = calcMediaTimeAtFrame(frameNumber);
-		if(mediaTime < frameSeek.ab.loopBeginMediaTime){
-			mediaTime = frameSeek.ab.loopBeginMediaTime;
-			frameNumber = round1(calcFrameNumber(mediaTime));
-		}
+		const [mediaTime, frameNumber] = frameSeek.setBMediaTime(video.duration * progress);
 		showTimeDisplayPointerEvent(mediaTime, frameNumber, mouse, rect);
-		frameSeek.ab.loopEndMediaTime = mediaTime;
 	}
 });
-LOOP_END_DRAGGER.addEventListener("keydown", (keyboard) => {
-	let frameNumber;
+LOOP_END_BAR.addEventListener("keydown", (keyboard) => {
 	let mediaTime;
+	let frameNumber;
 	switch (keyboard.key){
 		case "ArrowLeft":
 			keyboard.preventDefault();
 			keyboard.stopPropagation();
-			frameNumber = round1(calcFrameNumber(frameSeek.ab.loopEndMediaTime))-1;
-			mediaTime = calcMediaTimeAtFrame(frameNumber);
-			if(mediaTime < frameSeek.ab.loopBeginMediaTime){
-				return;
-			}
+			[mediaTime, frameNumber] = frameSeek.decrementBPosition();
 			break;
 		case "ArrowRight":
 			keyboard.preventDefault();
 			keyboard.stopPropagation();
-			frameNumber = round1(calcFrameNumber(frameSeek.ab.loopEndMediaTime))+1;
-			mediaTime = calcMediaTimeAtFrame(frameNumber);
-			if(mediaTime > video.duration){
-				return;
-			}
+			[mediaTime, frameNumber] = frameSeek.incrementBPosition();
 			break;
 		default:
 			return;
 	}
 
-	LOOP_END_DRAGGER.style.setProperty("--progress", `${mediaTime/video.duration*100}%`);
-	showTimeDisplayPointerEvent1(mediaTime, frameNumber, LOOP_END_DRAGGER);
-	frameSeek.ab.loopEndMediaTime = mediaTime;
-});
-LOOP_END_DRAGGER.addEventListener("pointerenter", (mouse) => {
-	showTimeDisplayPointerEvent1(frameSeek.ab.loopEndMediaTime, null, LOOP_END_DRAGGER);
-});
-LOOP_END_DRAGGER.addEventListener("focus", (mouse) => {
-	showTimeDisplayPointerEvent1(frameSeek.ab.loopEndMediaTime, null, LOOP_END_DRAGGER);
-});
-LOOP_END_DRAGGER.addEventListener("pointerleave", removeHoveredTimeDisplay);
-LOOP_END_DRAGGER.addEventListener("blur", removeHoveredTimeDisplay);
-document.getElementById("setBHere").addEventListener("click", () => {
-	let mediaTime = currentMediaTime;
-	if(mediaTime < frameSeek.ab.loopBeginMediaTime){
-		mediaTime = frameSeek.ab.loopBeginMediaTime;
+	if(mediaTime !== null && frameNumber !== null){
+		LOOP_END_BAR.style.setProperty("--progress", `${mediaTime/video.duration*100}%`);
+		showTimeDisplayPointerEvent1(mediaTime, frameNumber, LOOP_END_BAR);
 	}
-
-	LOOP_END_DRAGGER.style.setProperty("--progress", `${mediaTime/video.duration*100}%`);
-	frameSeek.ab.loopEndMediaTime = mediaTime;
 });
-
+LOOP_END_BAR.addEventListener("pointerenter", (mouse) => {
+	showTimeDisplayPointerEvent1(frameSeek.ab.loopEndMediaTime, null, LOOP_END_BAR);
+});
+LOOP_END_BAR.addEventListener("focus", (mouse) => {
+	showTimeDisplayPointerEvent1(frameSeek.ab.loopEndMediaTime, null, LOOP_END_BAR);
+});
+LOOP_END_BAR.addEventListener("pointerleave", removeHoveredTimeDisplay);
+LOOP_END_BAR.addEventListener("blur", removeHoveredTimeDisplay);
+registerClickEvent(document.getElementById("setBHere"), () => {
+	const [mediaTime, frameNumber] = frameSeek.setBMediaTime(currentMediaTime);
+	LOOP_END_BAR.style.setProperty("--progress", `${mediaTime/video.duration*100}%`);
+})();
 
 
 function showTimeDisplayPointerEvent(mediaTime, frameNumber, mouse, rect) {
@@ -1231,7 +1595,7 @@ function showTimeDisplayPointerEvent(mediaTime, frameNumber, mouse, rect) {
 }
 
 function showTimeDisplayPointerEvent1(mediaTime, frameNumber, element) {
-	frameNumber ??= round1(calcFrameNumber(mediaTime));
+	frameNumber ??= round1(frameSeek.calcFrameNumber(mediaTime));
 	const rect = element.getBoundingClientRect();
 	HOVERED_TIME_DISPLAY.children[0].textContent = String(secondsToTimestamp(mediaTime));
 	HOVERED_TIME_DISPLAY.children[1].textContent = String(frameNumber);
@@ -1242,5 +1606,79 @@ function clamp(val, min, max) {
 	return Math.min(Math.max(val, min), max);
 }
 
+function binarySearch(arr, val) {
+	let start = 0;
+	let end = arr.length - 1;
+
+	while (start <= end) {
+		let mid = Math.floor((start + end) / 2);
+
+		if (arr[mid] == val) {
+			return mid;
+		}
+
+		if (val < arr[mid]) {
+			end = mid - 1;
+		} else {
+			start = mid + 1;
+		}
+	}
+	return -1;
+}
+/** @param arr {number[]}
+ * @param val {number} */
+function binarySearchLenient(arr, val) {
+	if(val < arr[0]) {
+		return 0;
+	}
+	if(val > arr[arr.length-1]) {
+		return arr.length-1;
+	}
+
+	let lo = 0;
+	let hi = arr.length - 1;
+
+	while (lo <= hi) {
+		const mid = Math.floor((hi + lo) / 2);
+
+		if (val < arr[mid]) {
+			hi = mid - 1;
+		} else if (val > arr[mid]) {
+			lo = mid + 1;
+		} else {
+			return mid;
+		}
+	}
+	// lo == hi + 1
+	return (arr[lo] - val) < (val - arr[hi]) ? lo : hi;
+}
+
+// /** @param arr {number[]}
+//  * @param val {number} */
+// function binarySearchLenientValues(arr, val) {
+// 	if(val < arr[0]) {
+// 		return arr[0];
+// 	}
+// 	if(val > arr[arr.length-1]) {
+// 		return arr[arr.length-1];
+// 	}
+//
+// 	let lo = 0;
+// 	let hi = arr.length - 1;
+//
+// 	while (lo <= hi) {
+// 		const mid = (hi + lo) / 2;
+//
+// 		if (val < arr[mid]) {
+// 			hi = mid - 1;
+// 		} else if (val > arr[mid]) {
+// 			lo = mid + 1;
+// 		} else {
+// 			return arr[mid];
+// 		}
+// 	}
+// 	// lo == hi + 1
+// 	return (arr[lo] - val) < (val - arr[hi]) ? arr[lo] : arr[hi];
+// }
 
 setup();
