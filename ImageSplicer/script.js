@@ -1284,9 +1284,7 @@ function round6(num) {
 
 function setButtonsDisabled(disabled){
 	inert = disabled;
-	const style = document.body.style;
-	style.setProperty("--interactivity", disabled ? "inert" : "auto");
-	style.setProperty("--interactivityPointerEvents", disabled ? "none" : "auto");
+	document.body.style.setProperty("--interactivity", disabled ? "inert" : "auto");
 }
 
 FRAME_RATE_INPUT.addEventListener("change", () => {

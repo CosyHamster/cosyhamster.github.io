@@ -1,0 +1,416 @@
+<html lang="en">
+	<head>
+		<script>if(navigator.userAgent.includes("CrOS"))document.addEventListener("keydown",(event)=>{if(event.keyCode==119)window.addEventListener("beforeunload",(event) => {event.preventDefault();});},{passive:true,once:true});</script>
+		<link rel="stylesheet" href="style.css">
+<!--		<script type="module" src="script.js" defer></script>-->
+		<link rel="icon" href="../Icons/PageFavicon.ico">
+		<title>Image Splicer</title>
+	</head>
+	<body style="--interactivity:inert;">
+		<main>
+			<div style="background-color: black; flex: 0 0 10%; overflow: hidden; z-index: 1;">
+				<input type="file" id="file">
+				<button id="render">Render</button>
+				<button id="save">Save</button>
+			</div>
+			<div style="flex: 0 1 auto; overflow: hidden; z-index: 0;">
+				<canvas id="mainCanvas" style="width: 100%; image-rendering: pixelated; transform: translate(0px, 0px) scale(1); transform-origin: 0px 0px; pointer-events: none;" width="1920" height="1080"></canvas>
+			</div>
+			<div style="background-color: black; flex: 1 0 auto; height: 100%; border-left: 1px solid lightgray; overflow: hidden; z-index: 1;">
+				<div style="border: 1px solid white;">
+					<div style="border-bottom: 1px solid white;">Brushes</div> <!--<div style="margin-bottom: 10px; height: 1px; background-color: lightgray;"></div>-->
+					<div id="brushContainer">
+						<div data-name="layer">
+							<div tabindex="0" id="pointerButton" class="clickableButton" style="height: 1em; display: flex; flex-direction: row; flex-wrap: nowrap; justify-content: flex-start; align-items: flex-start;">
+								<span data-name="name">Pointer</span>
+							</div>
+							<div tabindex="0" id="pixelButton" class="clickableButton" style="height: 1em; display: flex; flex-direction: row; flex-wrap: nowrap; justify-content: flex-start; align-items: flex-start;">
+								<span data-name="name">Pixel</span>
+							</div>
+							<div tabindex="0" id="boxButton" class="clickableButton" style="height: 1em; display: flex; flex-direction: row; flex-wrap: nowrap; justify-content: flex-start; align-items: flex-start;">
+								<span data-name="name">Box</span>
+							</div>
+							<input id="radius" type="range" min="1" max="5" value="1" step="1" style="display: block;" name="radius" title="Draw Radius" aria-description="Radius">
+						</div>
+					</div>
+				</div>
+				<div style="border: 1px solid white;">
+					<div>Layers</div> <!--<div style="margin-bottom: 10px; height: 1px; background-color: lightgray;"></div>-->
+					<div id="layerContainer" style="max-height: 500px; overflow-y: auto; scrollbar-width: thin;">
+
+					</div>
+				</div>
+			</div>
+
+			<div style="display: none;" id="templates">
+				<div data-name="layer">
+					<div style="height: 1em; display: flex; flex-direction: row; flex-wrap: nowrap; justify-content: flex-start; align-items: flex-start;">
+						<span data-name="name"></span>
+						<span tabindex="0" class="clickableButton" data-name="delete" style="margin-left: 2px;">
+							<span data-name="trashButton"></span>
+						</span>
+						<span tabindex="0" class="clickableButton" data-name="save" style="margin-left: 2px;">
+							<span data-name="saveButton"></span>
+						</span>
+					</div>
+					<input type="range" min="0" max="1" value="1" step="any" style="display: block;" name="opacity" title="Opacity" aria-description="Opacity" data-name="opacity">
+				</div>
+			</div>
+
+
+			<script>
+				class Layer {
+					/** @type OffscreenCanvas */ canvas;
+					/** @type OffscreenCanvasRenderingContext2D */ context;
+					/** @type HTMLSpanElement */ nameElement;
+					/** @type HTMLInputElement */ opacityInput;
+					/** @type number */ index;
+					/** @type HTMLDivElement */ layerBlock;
+					/** @type AbortController */ abortController;
+					constructor(file){
+						return new Promise((resolve, reject) => {
+							this.abortController = new AbortController();
+							this.canvas = new OffscreenCanvas(0, 0);
+							this.context = this.canvas.getContext("2d", {willReadFrequently: false});
+							this.context.imageSmoothingEnabled = false;
+
+							const image = new Image();
+							image.addEventListener("load", (e) => {
+								//console.log(`width: ${image.naturalWidth} height: ${image.naturalHeight}`);
+								this.canvas.width = image.naturalWidth;
+								this.canvas.height = image.naturalHeight;
+								this.context.drawImage(image, 0, 0);
+								URL.revokeObjectURL(image.src);
+								resolve(this);
+							}, {passive: true, once: true, signal: this.abortController.signal});
+							image.src = URL.createObjectURL(file);
+
+							this.layerBlock = TEMPLATES.querySelector('[data-name="layer"]').cloneNode(true);
+							this.nameElement = this.layerBlock.querySelector('[data-name="name"]');
+							this.layerBlock.querySelector('[data-name="delete"]').addEventListener("click", () => {
+								layerManager.removeLayer(this);
+							}, {passive: true, once: true, signal: this.abortController.signal});
+							this.layerBlock.querySelector('[data-name="save"]').addEventListener("click", () => {
+								this.canvas.convertToBlob({type: "image/png"}).then(blob => {
+									const reader = new FileReader();
+									reader.addEventListener("load", (e) => {
+										/** @type HTMLAnchorElement */ const anchor = document.createElement('a');
+										anchor.href = reader.result;
+										anchor.download = this.getName()+".png";
+										anchor.click();
+									}, {passive: true, once: true});
+									reader.readAsDataURL(blob);
+								});
+							}, {passive: true, signal: this.abortController.signal});
+							this.opacityInput = this.layerBlock.querySelector('[data-name="opacity"]');
+							this.opacityInput.addEventListener("input", (e) => {
+								render();
+							}, {passive: true, signal: this.abortController.signal});
+						});
+					}
+
+					setName(name){
+						this.nameElement.textContent = name;
+					}
+
+					getName(){
+						return this.nameElement.textContent;
+					}
+
+					release(){
+						this.abortController.abort();
+						this.layerBlock.remove();
+					}
+				}
+				class LayerManager {
+					/** @type Layer[] */ layers = [];
+
+					addLayer(layer){
+						layer.setName("Layer "+this.layers.length);
+						layer.opacityInput.valueAsNumber = (this.layers.length) ? 0.5 : 1;
+						this.layers.push(layer);
+
+						LAYER_CONTAINER.prepend(layer.layerBlock);
+						render();
+					}
+
+					removeLayer(layer) {
+						layer.release();
+						const index = this.layers.indexOf(layer);
+						this.layers.splice(index, 1);
+						if(index == this.layers.length && this.layers.length > 1 && this.getLayer(-1).opacityInput.valueAsNumber == 0){
+							this.getLayer(-1).opacityInput.valueAsNumber = 0.5;
+						}
+						for(let i = 0; i < this.layers.length; i++){
+							this.layers[i].setName("Layer " + i);
+						}
+						render();
+					}
+
+					getLayer(index){
+						return this.layers.at(index);
+					}
+
+					get length() {
+						return this.layers.length;
+					}
+
+				}
+
+				let inert = false;
+				document.getElementById("file").addEventListener("change", async (e) => {
+					if(!inert){
+						for(const file of e.target.files)
+							await createLayer(file);
+					}
+					e.target.value = "";
+				});
+
+				registerClickEvent(document.getElementById("render"), () => {
+					updateTransform();
+					render();
+				})();
+				registerClickEvent(document.getElementById("pointerButton"), () => {
+					drawMode = 0;
+					render();
+				})();
+				registerClickEvent(document.getElementById("pixelButton"), () => {
+					drawMode = 1;
+					render();
+				})();
+				registerClickEvent(document.getElementById("boxButton"), () => {
+					drawMode = 2;
+					render();
+				})();
+
+
+
+				/** @type HTMLInputElement */ const RADIUS_INPUT = document.getElementById("radius");
+				/** @type HTMLDivElement */ const TEMPLATES = document.getElementById("templates");
+				/** @type HTMLDivElement */ const LAYER_CONTAINER = document.getElementById("layerContainer");
+				/** @type HTMLCanvasElement */ const CANVAS = document.getElementById("mainCanvas");
+				/** @type CanvasRenderingContext2D */ const CANVAS_CONTEXT = CANVAS.getContext("2d", {willReadFrequently: false});
+				/** @type HTMLDivElement */ const CANVAS_CONTAINER = CANVAS.parentElement;
+				CANVAS_CONTEXT.imageSmoothingEnabled = false;
+
+				const layerManager = new LayerManager();
+				let interactType = 0;
+				let drawMode = 0;
+				let drawViewportX;
+				let drawViewportY;
+				let mouseMoved = false;
+				let relativeX;
+				let relativeY;
+				let pixelX;
+				let pixelY;
+
+				let canvasX = 0;
+				let canvasY = 0;
+				let scale = 1;
+
+				window.addEventListener("paste", async (e) => {
+					for(const file of e.clipboardData.files){
+						await createLayer(file);
+					}
+				}, {passive: true});
+				CANVAS_CONTAINER.addEventListener("pointerdown", (pointer) => {
+					switch(pointer.button){
+						case 0:
+							if(drawMode != 0){
+								CANVAS_CONTAINER.setPointerCapture(pointer.pointerId);
+								interactType = 1;
+								startDrawCanvas();
+							}
+
+							break;
+						case 2:
+							CANVAS_CONTAINER.setPointerCapture(pointer.pointerId);
+							interactType = 2;
+							break;
+					}
+				}, {passive: true});
+				CANVAS_CONTAINER.addEventListener("pointermove", (pointer) => {
+					switch(interactType){
+						case 0:
+							highlightCanvas(pointer);
+							break;
+						case 1:
+							drawCanvas();
+							break;
+						case 2:
+							canvasX += pointer.movementX;
+							canvasY += pointer.movementY;
+							updateTransform();
+							break;
+					}
+					drawViewportX = pointer.offsetX;
+					drawViewportY = pointer.offsetY;
+					mouseMoved = true;
+				}, {passive: true});
+				CANVAS_CONTAINER.addEventListener("pointerup", (pointer) => {
+					if(interactType == 1){
+						stopDrawCanvas();
+					}
+					interactType = 0;
+				}, {passive: true});
+				CANVAS_CONTAINER.addEventListener("contextmenu", (mouse) => {
+					mouse.preventDefault();
+				});
+				CANVAS_CONTAINER.addEventListener("wheel", (wheelEvent) => {
+					wheelEvent.preventDefault();
+					let difference = wheelEvent.deltaY * -0.001 * scale;
+					const newScale = scale+difference;
+					if(newScale < 1){
+						difference = 1-scale;
+					} else if(newScale > 50){
+						difference = 50-scale;
+					}
+
+					updatePixelPosition();
+					canvasX += (CANVAS.height-(CANVAS.height*(1+difference)))*(relativeX/CANVAS.height);
+					canvasY += (CANVAS.height-(CANVAS.height*(1+difference)))*(relativeY/CANVAS.height);
+					scale = scale+difference;
+					updateTransform();
+				}, {passive: false});
+
+				function updateTransform() {
+					CANVAS.style.transform = `translate(${canvasX}px, ${canvasY}px) scale(${scale})`;
+				}
+
+				function updatePixelPosition() {
+					relativeX = (drawViewportX-canvasX)/scale;
+					relativeY = (drawViewportY-canvasY)/scale;
+					pixelX = Math.floor((relativeX)/CANVAS.clientWidth*CANVAS.width);
+					pixelY = Math.floor((relativeY)/CANVAS.clientHeight*CANVAS.height);
+					mouseMoved = false;
+				}
+
+				window.addEventListener("dragover", (event) => {
+					if(event.dataTransfer.types.includes("Files") && !inert)
+						event.preventDefault();
+				});
+
+				window.addEventListener("drop", async (event) => {
+					const fileList = event.dataTransfer.files;
+					if(fileList.length && !inert){ //an empty FileList is truthy, for some reason
+						event.preventDefault();
+						for(const file of fileList){
+							await createLayer(file);
+						}
+					}
+				});
+
+				async function createLayer(file) {
+					const layer = await new Layer(file);
+					CANVAS.width = layer.canvas.width;
+					CANVAS.height = layer.canvas.height;
+					layerManager.addLayer(layer);
+				}
+
+				function render() {
+					CANVAS_CONTEXT.save();
+					CANVAS_CONTEXT.clearRect(0, 0, CANVAS.width, CANVAS.height);
+					for(const layer of layerManager.layers){
+						CANVAS_CONTEXT.globalAlpha = layer.opacityInput.valueAsNumber;
+						CANVAS_CONTEXT.drawImage(layer.canvas, 0, 0);
+					}
+					CANVAS_CONTEXT.restore();
+				}
+
+				function highlightCanvas() {
+					if(drawMode != 1) return;
+					updatePixelPosition();
+					render();
+					setHighlight();
+				}
+
+				function setHighlight() {
+					const radius = RADIUS_INPUT.valueAsNumber;
+					CANVAS_CONTEXT.fillStyle = "#000000AA";
+					CANVAS_CONTEXT.fillRect(pixelX-(radius-1), pixelY-(radius-1), radius*2-1, radius*2-1);
+				}
+
+				let boxStartX;
+				let boxStartY;
+				function startDrawCanvas() {
+					switch(drawMode) {
+						case 0: break;
+						case 1:
+							drawCanvas();
+							break;
+						case 2:
+							updatePixelPosition();
+							boxStartX = pixelX;
+							boxStartY = pixelY;
+							break;
+					}
+				}
+
+				function drawCanvas() {
+					updatePixelPosition();
+					switch(drawMode){
+						case 0: break;
+						case 1:
+							if(layerManager.length > 1){
+								const victim = layerManager.getLayer(-1).context;
+								const target = layerManager.getLayer(0).context;
+								const radius = RADIUS_INPUT.valueAsNumber;
+
+								const pixel = victim.getImageData(pixelX-(radius-1), pixelY-(radius-1), radius*2-1, radius*2-1, {colorSpace: "srgb"}); //0-R, 1-G, 2-B, 3-A. 0-255
+								target.putImageData(pixel, pixelX-(radius-1), pixelY-(radius-1));
+								render();
+								setHighlight();
+							}
+
+							break;
+						case 2:
+							render();
+							CANVAS_CONTEXT.strokeStyle = "#d3d3d3";
+							CANVAS_CONTEXT.lineWidth = 0;
+							CANVAS_CONTEXT.strokeRect(boxStartX+.5, boxStartY+.5, pixelX-boxStartX, pixelY-boxStartY);
+							break;
+					}
+				}
+
+				function stopDrawCanvas() {
+					if(drawMode == 2 && layerManager.length > 1){
+						const victim = layerManager.getLayer(-1).context;
+						const target = layerManager.getLayer(0).context;
+
+						const pixel = victim.getImageData(boxStartX, boxStartY, pixelX-boxStartX+1, pixelY-boxStartY+1, {colorSpace: "srgb"}); //0-R, 1-G, 2-B, 3-A. 0-255
+						target.putImageData(pixel, boxStartX, boxStartY);
+						render();
+					}
+				}
+
+				/** Registers a click event which calls the specified function. Call the returned function to add a keyboard event.
+				 *  @param element EventTarget | string
+				 *  @param func (event: Event) => void
+				 *  @returns () => void
+				 * */
+				function registerClickEvent(element, func) {
+					if (typeof element === 'string') element = curDoc.getElementById(element);
+					element.addEventListener('click', func, {passive: true})
+					return () => registerKeyDownEvent(element, func);
+				}
+				/** @param element HTMLElement
+				 *  @param func (event: Event) => void
+				 *  @param keyName string */
+				function registerKeyDownEvent(element, func, keyName = "Enter"){
+					element.addEventListener('keydown', (keyEvent) => { if(keyEvent.key === keyName) func(keyEvent) }, {passive: true})
+				}
+				/** @param element EventTarget | string
+				 *  @param func (event: Event) => void */
+				function registerChangeEvent(element, func) {
+					if (typeof element === 'string') element = curDoc.getElementById(element);
+					element.addEventListener('change', func, { passive: true })
+				}
+				/** @param elem HTMLInputElement
+				 *  @param func (event: Event) => void) */
+				function registerInputEvent(elem, func) {
+					elem.addEventListener('input', func, { passive: true });
+				}
+			</script>
+		</main>
+	</body>
+</html>

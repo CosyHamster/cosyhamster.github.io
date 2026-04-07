@@ -6,7 +6,7 @@
 		<link rel="icon" href="../Icons/PageFavicon.ico">
 		<title>Frame Skipper</title>
 	</head>
-	<body style="--interactivity:inert; --abLoopDisplay:none;">
+	<body style="--interactivity:inert; --interactivityPointerEvents:none; --abLoopDisplay:none;">
 		<main>
 			<div id="loadingFR"><div>Determining Frame Rate<progress id="loadingPercentage" max="1" value="0" style="width: 50%; display: block; margin: 0 auto 0 auto;"></progress></div></div>
 			<video id="video" style="width: 100%; height: 100%; background-color: black;"></video>
@@ -19,7 +19,7 @@
 					<div style="display: flex; flex-direction: row; width:100%; height:40px;">
 						<label tabindex="0" class="cell clickableButton tableBorder" title="Upload File" style="height:100%;">
 							<input type="file" accept="video/*" id="upload" style="display: none;">
-							<img style="width: 100%; height: 100%; pointer-events: none; filter: invert(1);" src="../Icons/UploadIcon.svg" alt="Upload"/>
+							<img class="invertColor" style="width: 100%; height: 100%; pointer-events: none;" src="../Icons/UploadIcon.svg" alt="Upload"/>
 						</label>
 						<div class="tableBorder text" id="inputColorContainer" style="height:100%; color: white; font-size: min(5cqw, 18px); --color: #ffffff;">
 							Frame:
@@ -28,12 +28,12 @@
 						</div>
 						<div class="spacer scrollableText" style="color: white; margin: 0 1em; white-space: normal;" id="videoTitle"></div>
 						<a tabindex="0" class="cell clickableButton tableBorder" title="Download Frame" style="height:100%;" id="downloadFrame" download>
-							<img style="width: 100%; height: 100%; pointer-events: none; filter: invert(1);" src="../Icons/DownloadFile.svg" alt="Download"/>
+							<img class="invertColor" style="width: 100%; height: 100%; pointer-events: none;" src="../Icons/DownloadFile.svg" alt="Download"/>
 						</a>
 						<div>
 							<div style="height:100%;">
 								<button tabindex="0" class="clickableButton moreMenuButton" title="More" id="moreMenuButton" popovertarget="moreMenuDropdown">
-									<img style="width: 100%; height: 100%; pointer-events: none; filter: invert(1);" src="../Icons/MoreMenuIcon.svg" alt="More"/>
+									<img class="invertColor" style="width: 100%; height: 100%; pointer-events: none;" src="../Icons/MoreMenuIcon.svg" alt="More"/>
 								</button>
 								<div id="moreMenuDropdown" anchor="moreMenuButton" popover="auto">
 									<div class="" tabindex="1"><label>Frame Rate: <input type="number" id="videoFrameRate" tabindex="1" value="" step="any" min="0.0001"></label></div>
@@ -52,14 +52,16 @@
 				</div>
 				<div id="videoControlsB" style="position: absolute; top: 100%; left:0; transform: translateY(-100%); background-color: rgba(0,0,0,.7); width:100%; pointer-events: auto;">
 					<div class="playbarContainer">
-						<span id="firstDurationLabel" style="margin-right: 1ch; color: white;" class="text" contenteditable="plaintext-only">00:00</span>
-						<span class="playbar" style="interactivity: var(--interactivity); anchor-name: --bar;"></span>
-						<span id="secondDurationLabel" style="margin-left: 1ch; color: white;" class="text">00:00</span>
-						<div id="loopBarTrack" style="position: absolute; position-anchor: --bar; left: calc(anchor(left) + 4px); width: calc(anchor-size(width) - 8px); height: 20px; transform: translateY(-100%); display: var(--abLoopDisplay); interactivity: var(--interactivity);">
-							<div id="drag1" tabindex="0" style="position: absolute; height: 100%; width: 8px; background-color: gold; --progress: 0%; left: var(--progress); transform: translateX(-50%); z-index: 2; anchor-name: --drag1;"></div>
-							<div id="drag2" tabindex="0" style="position: absolute; height: 100%; width: 8px; background-color: gold; --progress: 100%; left: var(--progress); transform: translateX(-50%); z-index: 2; anchor-name: --drag2;"></div>
-							<div id="yellowBar" style="position: absolute; left: anchor(--drag1 left); right: anchor(--drag2 left); top: 50%; transform: translateY(-50%); height: 5px; background-color: gold; z-index: 1;"></div>
+						<div id="firstDurationLabel" style="margin-right: 1ch; color: white;" class="text" contenteditable="plaintext-only">00:00</div>
+						<div style="flex: 1 1; container-type: inline-size;">
+							<div class="playbar interactivity"></div>
+							<div id="loopBarTrack" class="interactivity" style="position: absolute; margin-left: 4px; width: calc(100cqw - 8px); height: 20px; top: 0px; transform: translateY(-100%); display: var(--abLoopDisplay);"> <!--style="position: absolute; grid-area: 1 / 1 / 2 / 2; position-anchor: --bar; height: 20px; left: calc(anchor(left) + 4px); width: calc(anchor-size(width) - 8px); top: 0px; transform: translateY(-100%); display: var(--abLoopDisplay);"-->
+								<div id="drag1" tabindex="0" style="position: absolute; height: 100%; width: 8px; background-color: gold; --progress: 0%; left: var(--progress); transform: translateX(-50%); z-index: 2; anchor-name: --drag1;"></div>
+								<div id="drag2" tabindex="0" style="position: absolute; height: 100%; width: 8px; background-color: gold; --progress: 100%; left: var(--progress); transform: translateX(-50%); z-index: 2; anchor-name: --drag2;"></div>
+								<div id="yellowBar" style="position: absolute; left: anchor(--drag1 left); right: anchor(--drag2 left); top: 50%; transform: translateY(-50%); height: 5px; background-color: gold; z-index: 1;"></div>
+							</div>
 						</div>
+						<div id="secondDurationLabel" style="margin-left: 1ch; color: white;" class="text">00:00</div>
 					</div>
 					<div style="display: flex; flex-direction: row; width:100%; height:40px;">
 						<div title="Mute (M)" class="cell tableBorder" style="height:100%; max-width: 40px;">
@@ -71,29 +73,29 @@
 							</div>
 						</div>
 						<div class="spacer"></div>
-						<div id="controls" style="justify-content: center; flex-grow: 1; height: 100%; interactivity: var(--interactivity);">
+						<div id="controls" class="interactivity" style="justify-content: center; flex-grow: 1; height: 100%;">
 							<div style="display: flex; margin: auto; height: 100%; max-width: 1000px; flex-grow: 1;">
 								<div id="seekBackward" tabindex="0" class="cell clickableButton tableBorder" title="Skip Back (LeftArrow)" style="width: 100%; text-align: center;">
-									<img class="playBackIcon" width="30" height="30" style="width:50%; height:100%; object-fit: contain;filter: invert(1);" src="../Icons/FastForwardIcon.svg" alt="Previous Song"/>
+									<img class="playBackIcon invertColor" width="30" height="30" style="width:50%; height:100%; object-fit: contain;" src="../Icons/FastForwardIcon.svg" alt="Previous Song"/>
 								</div>
 								<div id="skipBackward" tabindex="0" class="cell clickableButton tableBorder" title="Frame Skip Back (Shift + LeftArrow)" style="width: 100%;">
-									<img class="playBackIcon" width="60" height="30" style="width:100%; height:100%; filter: invert(1);" src="../Icons/ForwardIcon.svg" alt="Seek Backwards"/>
+									<img class="playBackIcon invertColor" width="60" height="30" style="width:100%; height:100%;" src="../Icons/ForwardIcon.svg" alt="Seek Backwards"/>
 								</div>
 								<div tabindex="0" class="cell clickableButton tableBorder" title="Play/Pause (Space | K)" style="width: 100%;">
-									<div id="playButton" style="filter: invert(1);"></div>
+									<div id="playButton" class="invertColor"></div>
 								</div>
 								<div id="skipForward" tabindex="0" class="cell clickableButton tableBorder" title="Frame Skip Forward (Shift + RightArrow)" style="width: 100%;">
-									<img class="playBackIcon" width="60" height="30" style="width:100%; height:100%; transform: scaleX(-1); filter: invert(1);" src="../Icons/ForwardIcon.svg" alt="Seek Forwards"/>
+									<img class="playBackIcon invertColor" width="60" height="30" style="width:100%; height:100%; transform: scaleX(-1);" src="../Icons/ForwardIcon.svg" alt="Seek Forwards"/>
 								</div>
 								<div id="seekForward" tabindex="0" class="cell clickableButton tableBorder" title="Skip Forward (RightArrow)" style="width: 100%; text-align: center;">
-									<img class="playBackIcon" width="30" height="30" style="width:50%; height:100%; transform: scaleX(-1); filter: invert(1); object-fit: contain;" src="../Icons/FastForwardIcon.svg" alt="Next Song"/>
+									<img class="playBackIcon invertColor" width="30" height="30" style="width:50%; height:100%; transform: scaleX(-1); object-fit: contain;" src="../Icons/FastForwardIcon.svg" alt="Next Song"/>
 								</div>
 							</div>
 						</div>
 						<div class="spacer"></div>
 						<div id="modifiers1">
 							<div id="fullscreenButton" tabindex="0" class="cell clickableButton tableBorder" title="Fullscreen (F)" style="height:100%;">
-								<img style="width: 100%; height: 100%; pointer-events: none; filter: invert(1);" src="../Icons/arrows-angle-expand.svg" alt="Fullscreen"/>
+								<img class="invertColor" style="width: 100%; height: 100%; pointer-events: none;" src="../Icons/arrows-angle-expand.svg" alt="Fullscreen"/>
 							</div>
 						</div>
 					</div>
