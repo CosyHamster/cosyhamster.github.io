@@ -1,4 +1,5 @@
 body{
+    touch-action: manipulation;
     width: 100%;
     height: 100%;
     margin: 0;
@@ -136,6 +137,7 @@ main{
 .moreMenuButton{
     background-color: inherit;
     appearance: none;
+    height: 100%;
     padding: 0;
     border: 0;
 }
@@ -180,6 +182,7 @@ main{
     color: white;
     background-color: rgba(185,185,185,0);
     interactivity: inert;
+    pointer-events: none;
     opacity: 0;
     transition: 1s;
     width: 100%;
@@ -194,6 +197,7 @@ main{
 #loadingFR[data-active]{
     background-color: rgba(185,185,185,.25);
     interactivity: auto;
+    pointer-events: auto;
     opacity: 1;
 }
 
