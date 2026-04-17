@@ -178,9 +178,11 @@ function uploadFile(file){
 
 	videoSrc = URL.createObjectURL(file);
 	LOADING_OVERLAY.toggleAttribute("data-active", true);
+
+	console.log(function(){console.log(frameSeek)});
 	console.time("loadFR");
-	getVideoFrameTimes(file).then(timeStamps => {
-		frameSeek = new FrameSeekingModern(timeStamps);
+	getVideoFrameTimes(file).then(([timeStamps, keyframeTimestamps]) => {
+		frameSeek = new FrameSeekingModern(timeStamps, keyframeTimestamps);
 		loadVideoPlayer();
 	}).catch((error) => {
 		console.log("MP4Box error: ", error);
@@ -259,13 +261,19 @@ class FrameSeeking {
 
 class FrameSeekingModern extends FrameSeeking {
 	/** @type number[] */ timestamps;
+	/** @type number[] */ keyframeTimestamps;
 
-	/** @param timestamps {number[]} */
-	constructor(timestamps) {
+	/** @param timestamps {number[]}
+	 * @param keyframeTimestamps {number[]} */
+	constructor(timestamps, keyframeTimestamps) {
 		super();
 		let prevVal = null;
 		this.timestamps = timestamps.sort((a,b) => a-b).filter(val => {const oldVal = prevVal; prevVal = val; return val != oldVal; }, this);
-		// console.log("Frame timestamps (seconds):", );
+
+		prevVal = null;
+		this.keyframeTimestamps = keyframeTimestamps.sort((a,b) => a-b).filter(val => {const oldVal = prevVal; prevVal = val; return val != oldVal; }, this);
+		// console.log("Frame timestamps (seconds):", this.timestamps);
+		// console.log("Frame keyframe timestamps (seconds):", this.keyframeTimestamps);
 		this.determineFrameRate(15, this.timestamps.length-5);
 	}
 
@@ -895,7 +903,7 @@ class FrameRateSeek {
 	/** @type number */ lastMediaTime;
 	/** @type number */ lastFrameNum;
 	/** @type number */ beginTime;
-	constructor(src) {
+	 constructor(src) {
 		this.firstFrameCallback = this.firstFrameCallback.bind(this);
 		this.frameCallback = this.frameCallback.bind(this);
 		this.destroy = this.destroy.bind(this);
@@ -1041,11 +1049,15 @@ FILE_UPLOAD.addEventListener("change", () => {
 	FILE_UPLOAD.value = null;
 }, true);
 
-/** @param file {File} */
+
+/** @param {File} file
+ * @returns {Promise<[timestamps: number[], keyframeTimestamps: number[]]>}
+ * */
 function getVideoFrameTimes(file) {
 	return new Promise((resolve, reject) => {
 		let mp4Box = MP4Box.createFile(false);
 		let timestamps = [];
+		let keyframeTimestamps = [];
 		let videoTrackId = null;
 		let timescale = null;
 
@@ -1067,6 +1079,7 @@ function getVideoFrameTimes(file) {
 				for (const sample of samples) {
 					const pts = (sample.cts ?? sample.dts) / timescale;
 					timestamps.push(pts);
+					if(sample.is_sync) keyframeTimestamps.push(pts);
 				}
 			};
 
@@ -1088,7 +1101,7 @@ function getVideoFrameTimes(file) {
 				readNextChunk();
 			} else {
 				mp4Box.flush();
-				resolve(timestamps);
+				resolve([timestamps, keyframeTimestamps]);
 				mp4Box = null;
 				reader = null;
 			}
