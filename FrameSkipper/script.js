@@ -179,7 +179,7 @@ function uploadFile(file){
 	videoSrc = URL.createObjectURL(file);
 	LOADING_OVERLAY.toggleAttribute("data-active", true);
 
-	console.log(function(){console.log(frameSeek)});
+	console.log(function(){return frameSeek});
 	console.time("loadFR");
 	getVideoFrameTimes(file).then(([timeStamps, keyframeTimestamps]) => {
 		frameSeek = new FrameSeekingModern(timeStamps, keyframeTimestamps);
@@ -209,7 +209,7 @@ function loadVideoPlayer(){
 }
 
 class FrameSeeking {
-	/** @type number */ frameRate;
+	/** @type number */ frameRate = 0;
 	/** @type AB */ ab;
 	/** @type boolean */ abEnabled;
 
@@ -284,6 +284,8 @@ class FrameSeekingModern extends FrameSeeking {
 		}
 
 		const framesProcessed = endIndex-startIndex-1;
+		if(!accumulation || !framesProcessed)
+			return;
 		this.frameRate = 1/(accumulation/framesProcessed);
 		FRAME_RATE_INPUT.valueAsNumber = this.frameRate;
 	}
