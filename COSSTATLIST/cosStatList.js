@@ -397,7 +397,7 @@ function validateCreatureAbilities() {
                     break;
                 }
             }
-            if (!found) {
+            if (!found && abilityString != 'n/a') {
                 console.warn(`${creature.common} contains missing ability ${abilityString}`, creature);
             }
         }

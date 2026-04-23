@@ -473,7 +473,8 @@
     "keyed": false
   },
   {
-    "type": "boolean",
+    "type": "number",
+    "displayName": "Vanish",
     "keyName": "vanish",
     "keyed": false
   },
@@ -630,8 +631,8 @@
     "keyed": false
   },
   {
-    "type": "number",
-    "keyName": "Radiation",
+    "type": "string",
+    "keyName": "Aura",
     "keyed": false
   },
   {
@@ -667,6 +668,16 @@
   {
     "type": "number",
     "keyName": "First Strike",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Divination",
+    "keyed": false
+  },
+  {
+    "type": "boolean",
+    "keyName": "Defiled Ground",
     "keyed": false
   },
   {
@@ -722,7 +733,17 @@
   },
   {
     "type": "number",
+    "keyName": "Ligament Tear",
+    "keyed": false
+  },
+  {
+    "type": "number",
     "keyName": "Wing Shredder",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Grim Lariat",
     "keyed": false
   },
 
@@ -795,6 +816,21 @@
   {
     "type": "number",
     "keyName": "Glittering Trail",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Plague Trail",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Flame Trail",
+    "keyed": false
+  },
+  {
+    "type": "number",
+    "keyName": "Frost Trail",
     "keyed": false
   },
   {
