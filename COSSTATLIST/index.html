@@ -14,7 +14,7 @@
         
         <style>
             #loadingGray{
-                background-color: rgba(30, 30, 30, 0.1);
+                background-color: rgba(30, 30, 30);
                 opacity: 0;
                 pointer-events: none;
                 position: fixed;
@@ -26,9 +26,9 @@
                 transform: translate(-50%, -50%);
             }
             #loadingGray[enable]{
-                transition: opacity 500ms;
+                transition: opacity 1000ms;
                 transition-delay: 500ms;
-                opacity: 1;
+                opacity: .25;
                 cursor: wait;
                 pointer-events: all;
             }
