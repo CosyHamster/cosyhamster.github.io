@@ -8,6 +8,7 @@
   "dependencies": {
     "@types/service_worker_api": "^0.0.9",
     "howler": "^2.2.4",
+    "mediabunny": "^1.43.0",
     "mp4box": "^2.3.0"
   }
 }

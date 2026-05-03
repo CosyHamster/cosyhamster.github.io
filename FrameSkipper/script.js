@@ -4,7 +4,8 @@
 // 	howlerScript.src = "../Javascript/mp4box.all.js";
 // 	document.head.appendChild(howlerScript);
 // });
-import * as MP4Box from "../Javascript/mp4box.all.js";
+// import * as MP4Box from "../Javascript/mp4box.all.js";
+import {Input, BlobSource, EncodedPacketSink, ALL_FORMATS} from "../node_modules/mediabunny/dist/modules/src/index.js";
 
 /** Splits inputted seconds into hours, minutes, & seconds. toString() returns the time in digital format.
   * @param {number} seconds */
@@ -28,7 +29,9 @@ const screenshotCanvas = document.createElement("canvas");
 const screenshotCanvasCtx = screenshotCanvas.getContext("2d");
 
 const BUFFER_SIZE = 1024*1024*15;
-const MOE = 0.015;
+const MOE = 0.015;//0.016900000000077853  //0.001900000000205182
+// const MOE = 0.001;
+const SEEK_APPROACH = 0; //0 - MOE, 1 - BACKWARD MOE, 2 - CLAMPED MOE (not yet added)
 var inert = false;
 /** @type HTMLDivElement */ const VIDEO_TITLE_DISPLAY = document.getElementById("videoTitle");
 /** @type HTMLDivElement */ const LOADING_OVERLAY = document.getElementById("loadingFR");
@@ -323,30 +326,75 @@ class FrameSeekingModern extends FrameSeeking {
 		this.frameRate = null;
 	}
 
-	onSeekedManually(newTime) {
+	onSeekedManually(currentMediaTime, newFrame) {
+		if(currentMediaTime && newFrame){
+			PLAY_BAR.style.setProperty("--percentage", String(Math.min(currentMediaTime / video.duration, 1) * 100) + '%');
+			CURRENT_TIME_INPUT.textContent = secondsToTimestamp(currentMediaTime);
+			MEDIA_TIME_INPUT.textContent = String(round6(currentMediaTime)); //avoid excessive decimals from inserted mediaTime
+			FRAME_INPUT.textContent = String(newFrame);
+			COLOR_CONTAINER.style.setProperty("--color", "#aaaaaa");
+		}
 		timeUpdateUnofficial();
 	}
 
 	forward(){
 		if(!video.paused){ video.pause(); return; }
-		const currentFrameNumber = binarySearchLenient(this.timestamps, currentMediaTime);
-		const nextMediaTime = this.timestamps?.[currentFrameNumber+1];
-		if(nextMediaTime){
-			currentMediaTime = nextMediaTime;
-			video.currentTime = nextMediaTime+MOE;
-			this.onSeekedManually(nextMediaTime+MOE);
+		let currentFrameNumber;
+		let nextMediaTime;
+		switch(SEEK_APPROACH){
+			case 0:
+				currentFrameNumber = binarySearchLenient(this.timestamps, currentMediaTime);
+				nextMediaTime = this.timestamps?.[currentFrameNumber+1];
+				if(nextMediaTime){
+					currentMediaTime = nextMediaTime;
+					video.currentTime = nextMediaTime+MOE;
+					this.onSeekedManually(nextMediaTime+MOE);
+				}
+				break;
+			case 1:
+				currentFrameNumber = binarySearchLenient(this.timestamps, currentMediaTime);
+				const newMediaTime = this.timestamps?.[currentFrameNumber+1];
+				nextMediaTime = this.timestamps?.[currentFrameNumber+2];
+				if(nextMediaTime){
+					currentMediaTime = newMediaTime;
+					video.currentTime = nextMediaTime-MOE;
+					this.onSeekedManually(newMediaTime, currentFrameNumber+1);
+				}
+				break;
 		}
+
+
+
 	}
 
 	backward(){
 		if(!video.paused){ video.pause(); return; }
-		const currentFrameNumber = binarySearchLenient(this.timestamps, currentMediaTime);
-		const prevMediaTime = this.timestamps?.[currentFrameNumber-1];
-		if(prevMediaTime){
-			currentMediaTime = prevMediaTime;
-			video.currentTime = prevMediaTime+MOE;
-			this.onSeekedManually(prevMediaTime+MOE);
+		let currentFrameNumber;
+		let prevMediaTime;
+		switch(SEEK_APPROACH){
+			case 0:
+				currentFrameNumber = binarySearchLenient(this.timestamps, currentMediaTime);
+				prevMediaTime = this.timestamps?.[currentFrameNumber-1];
+				if(prevMediaTime){
+					currentMediaTime = prevMediaTime;
+					video.currentTime = prevMediaTime+MOE;
+					this.onSeekedManually(prevMediaTime+MOE);
+				}
+				break;
+			case 1:
+				currentFrameNumber = binarySearchLenient(this.timestamps, currentMediaTime);
+				const mediaTime = this.timestamps?.[currentFrameNumber];
+				prevMediaTime = this.timestamps?.[currentFrameNumber-1];
+				if(prevMediaTime){
+					currentMediaTime = prevMediaTime;
+					video.currentTime = mediaTime-MOE;
+					this.onSeekedManually(prevMediaTime, currentFrameNumber-1);
+				}
+				break;
 		}
+
+
+
 	}
 
 	getSeekDataFromProgress(progress){
@@ -1051,11 +1099,44 @@ FILE_UPLOAD.addEventListener("change", () => {
 	FILE_UPLOAD.value = null;
 }, true);
 
-
 /** @param {File} file
  * @returns {Promise<[timestamps: number[], keyframeTimestamps: number[]]>}
  * */
-function getVideoFrameTimes(file) {
+async function getVideoFrameTimes(file) {
+	try{
+		const videoInput = new Input({source: new BlobSource(file), formats: ALL_FORMATS});
+		const videoTrack = await videoInput.getPrimaryVideoTrack();
+		let videoDuration = await videoTrack.getDurationFromMetadata();
+		if(!videoDuration)
+			videoDuration = await videoTrack.computeDuration();
+
+		const timestamps = [];
+		const keyframeTimestamps = [];
+		const sink = new EncodedPacketSink(videoTrack);
+		for await (const encodedPacket of sink.packets(undefined, undefined, {metadataOnly: true})) {
+			if(encodedPacket.timestamp < 0) //negative timestamps should not be included
+				continue;
+			timestamps.push(encodedPacket.timestamp);
+			if(encodedPacket.type == "key"){
+				keyframeTimestamps.push(encodedPacket.timestamp);
+			}
+			LOADING_PERCENTAGE.value = encodedPacket.timestamp / videoDuration;
+		}
+
+		videoInput.dispose();
+		return [timestamps, keyframeTimestamps];
+	} catch (e){
+		console.warn("Cannot use Mediabunny due to error", e);
+		console.log("Reattempting with MP4Box");
+		return getVideoFrameTimesMP4Box(file);
+	}
+
+	// return import("../node_modules/mediabunny/dist/modules/src/index.js").then( /** @param Mediabunny {WASD} */ async (Mediabunny) => {
+	// });
+}
+
+async function getVideoFrameTimesMP4Box(file) {
+	const MP4Box = await import("../Javascript/mp4box.all.js");
 	return new Promise((resolve, reject) => {
 		let mp4Box = MP4Box.createFile(false);
 		let timestamps = [];
@@ -1281,20 +1362,21 @@ function onVideoFrame(now, metadata){
 	}
 }
 
+//TODO: ensure Math.ceil is fine
 function round1(num) {
-	return Math.round(num*10)/10;
+	return Math.ceil(num*10)/10;
 }
 function round2(num) {
-	return Math.round(num*100)/100;
+	return Math.ceil(num*100)/100;
 }
 function round3(num) {
-	return Math.round(num*1000)/1000;
+	return Math.ceil(num*1000)/1000;
 }
 function round4(num) {
-	return Math.round(num*10000)/10000;
+	return Math.ceil(num*10000)/10000;
 }
 function round6(num) {
-	return Math.round(num*1000000)/1000000;
+	return Math.ceil(num*1000000)/1000000;
 }
 
 function setButtonsDisabled(disabled){
@@ -1393,7 +1475,7 @@ function removeHoveredTimeDisplay(){
 	HOVERED_TIME_DISPLAY.style.transform = "translate(-9999px, 0px)";
 }
 
-/** @param {InputEvent} event */
+/** @param event {InputEvent} */
 function timeInputBeforeInput(event, submitCallback, isUnallowedTest) {
 	if(inert || !videoSrc){
 		event.preventDefault();
