@@ -5,7 +5,8 @@
 // 	document.head.appendChild(howlerScript);
 // });
 // import * as MP4Box from "../Javascript/mp4box.all.js";
-import {Input, BlobSource, EncodedPacketSink, ALL_FORMATS} from "../node_modules/mediabunny/dist/modules/src/index.js";
+// import {Input, BlobSource, EncodedPacketSink, ALL_FORMATS} from "../node_modules/mediabunny/dist/modules/src/index.js";
+import {Input, BlobSource, EncodedPacketSink, ALL_FORMATS} from "../Javascript/mediabunny.min.mjs";
 
 /** Splits inputted seconds into hours, minutes, & seconds. toString() returns the time in digital format.
   * @param {number} seconds */
