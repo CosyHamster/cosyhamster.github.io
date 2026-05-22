@@ -200,7 +200,7 @@ function uploadFile(file){
 	}
 
 	const separationIndex = file.name.lastIndexOf('.');
-	VIDEO_TITLE_DISPLAY.textContent = separationIndex != -1 ? file.name.substring(0, separationIndex) : file.name;
+	VIDEO_TITLE_DISPLAY.textContent = separationIndex !== -1 ? file.name.substring(0, separationIndex) : file.name;
 	saveVideoNamePrefix = VIDEO_TITLE_DISPLAY.textContent.substring(0, 28);
 
 	videoSrc = URL.createObjectURL(file);
@@ -237,19 +237,24 @@ class FrameSeek {
 	/** @type FrameView */ frameView;
 	/** @type boolean */ frameViewEnabled;
 	/** @type number[] */ timestamps;
-	/** @type number[] */ keyframeTimestamps;
+	/** @type number[] */ keyframeIndexes;
 
 
 	/** @param {number[]} timestamps
-	 * @param {number[]} keyframeTimestamps
 	 * @param {FrameView} frameView */
-	constructor(timestamps, keyframeTimestamps, frameView) {
-		// let prevVal = null;
-		this.timestamps = timestamps.sort((a,b) => a-b);//.filter(val => {const oldVal = prevVal; prevVal = val; return val != oldVal; }, this);
-		// prevVal = null;
-		this.keyframeTimestamps = keyframeTimestamps.sort((a,b) => a-b);//.filter(val => {const oldVal = prevVal; prevVal = val; return val != oldVal; }, this);
+	constructor(timestamps, frameView) {
+		this.timestamps = timestamps.sort((a,b) => a-b);
+		this.keyframeIndexes = [];
+		const keyframeIndexes = this.keyframeIndexes;
+		const length = timestamps.length;
+		for(let i = 0; i < length; i++){
+			if(typeof timestamps[i] === "object"){
+				keyframeIndexes.push(i);
+				timestamps[i] = Number(timestamps[i]);
+			}
+		}
 		// console.log("Frame timestamps (seconds):", this.timestamps);
-		// console.log("Frame keyframe timestamps (seconds):", this.keyframeTimestamps);
+		// console.log("Frame keyframe indexes:", this.keyframeIndexes);
 		this.frameView = frameView;
 		if(frameView){
 			frameView.assignFrameSeek(this);
@@ -309,6 +314,9 @@ class FrameSeek {
 	}
 
 	toggleFrameView() {
+		if(!this.frameView)
+			return;
+
 		if(this.frameViewEnabled){
 			this.disableFrameView();
 		} else {
@@ -410,7 +418,7 @@ class FrameSeek {
 	}
 
 	calcOwningKeyFrameNumber(mediaTime){
-		return binarySearchLenientFloor(this.keyframeTimestamps, mediaTime);
+		return binarySearchLenientFloor(this.keyframeIndexes, this.calcFrameNumber(mediaTime));
 	}
 
 	getFrameCount(){
@@ -418,15 +426,15 @@ class FrameSeek {
 	}
 
 	getKeyFrameCount(){
-		return this.keyframeTimestamps.length;
+		return this.keyframeIndexes.length;
 	}
 
 	frameNumberToKeyFrameNumber(frameNumber){
-		return binarySearch(this.keyframeTimestamps, this.timestamps[frameNumber]);
+		return binarySearch(this.keyframeIndexes, frameNumber);
 	}
 
 	keyFrameNumberToFrameNumber(keyframeNumber){
-		return binarySearch(this.timestamps, this.keyframeTimestamps[keyframeNumber]);
+		return this.keyframeIndexes[keyframeNumber];
 	}
 
 	videoIsEnded(mediaTime){
@@ -471,7 +479,7 @@ class FrameSeek {
 
 	incrementBPosition(){
 		const frameNumber = this.ab.loopEndFrameNumber+1;
-		if(frameNumber == this.timestamps.length){
+		if(frameNumber === this.timestamps.length){
 			return [null, null];
 		}
 
@@ -574,9 +582,14 @@ class FrameView {
 	}
 
 	createFrameItem(frameNumber, frameType = null){
-		frameType ??= (binarySearch(this.frameSeek.keyframeTimestamps, this.frameSeek.getMediaTimeAtFrame(frameNumber)) != -1) ? "key" : "delta";
+		if(KEYFRAME_ONLY_CHECKBOX.checked){
+			frameNumber = this.frameSeek.keyFrameNumberToFrameNumber(frameNumber);
+			frameType = "key";
+		}
 
+		frameType ??= (binarySearch(this.frameSeek.keyframeIndexes, frameNumber) !== -1) ? "key" : "delta";
 		const container = document.createElement("div");
+		container.title = String(this.frameSeek.getMediaTimeAtFrame(frameNumber));
 		container.className = "frameItem clickableButton";
 		container.setAttribute("data-n", frameNumber);
 		container.addEventListener("click", this.frameItemClick, {passive: true});
@@ -595,9 +608,9 @@ class FrameView {
 		return container;
 	}
 
-	createKeyFrameItem(keyFrameNumber){
-		return this.createFrameItem(this.frameSeek.keyFrameNumberToFrameNumber(keyFrameNumber), "key");
-	}
+	// createKeyFrameItem(keyFrameNumber){
+	// 	return this.createFrameItem(this.frameSeek.keyFrameNumberToFrameNumber(keyFrameNumber), "key");
+	// }
 
 	frameItemClick(mouseEvent){
 		video.pause();
@@ -615,103 +628,95 @@ class FrameView {
 		const firstFrameNumber = Math.floor(FRAME_VIEW.scrollLeft/100);
 		const lastFrameNumber = Math.min(Math.ceil((FRAME_VIEW.scrollLeft+window.innerWidth)/100), this.frameSeek.getFrameCount()); //up to but not including
 		const currentFrameItems = FRAME_ITEM_CONTAINER.children;
-		const frameItems = [];
 		const lengthFrameItems = lastFrameNumber - firstFrameNumber;
 		if(currentFrameItems.length){
 			const currentFrameNumber = Number(currentFrameItems[0].getAttribute("data-n"));
 			const gap = currentFrameNumber - firstFrameNumber;
-			if(gap == 0){
-				if(lengthFrameItems == currentFrameItems.length)
+			if(gap === 0){
+				if(lengthFrameItems === currentFrameItems.length)
 					return;
-				frameItems.push(...currentFrameItems);
-				for(let i = firstFrameNumber+frameItems.length; i < lastFrameNumber; i++){
-					frameItems.push(this.createFrameItem(i));
-				}
-				frameItems.length = lengthFrameItems;
-			} else if(gap > 0){
-				for(let i = firstFrameNumber; i < currentFrameNumber; i++){
-					frameItems.push(this.createFrameItem(i));
-				}
-				frameItems.push(...currentFrameItems);
-				for(let i = firstFrameNumber+frameItems.length; i < lastFrameNumber; i++){
-					frameItems.push(this.createFrameItem(i));
-				}
-				frameItems.length = lengthFrameItems;
-			} else {
-				for(const frameItem of currentFrameItems){
-					if(Number(frameItem.getAttribute("data-n")) >= firstFrameNumber){
-						frameItems.push(frameItem);
-					}
-				}
-				for(let i = firstFrameNumber+frameItems.length; i < lastFrameNumber; i++){
-					frameItems.push(this.createFrameItem(i));
-				}
-				frameItems.length = lengthFrameItems;
+				this.appendToSize(firstFrameNumber+currentFrameItems.length, lastFrameNumber);
+				this.truncateToSize(currentFrameItems.length, lengthFrameItems);
+			} else if(gap > 0){ //frameItems must be generated in the left
+				this.appendLeftToSize(firstFrameNumber, currentFrameNumber);
+				this.appendToSize(firstFrameNumber+currentFrameItems.length, lastFrameNumber);
+				this.truncateToSize(currentFrameItems.length, lengthFrameItems);
+			} else { //frameItems must be removed in the left
+				this.evictLeftToSize(firstFrameNumber);
+				this.appendToSize(firstFrameNumber+currentFrameItems.length, lastFrameNumber);
+				this.truncateToSize(currentFrameItems.length, lengthFrameItems);
 			}
 		} else {
-			for(let i = firstFrameNumber; i < lastFrameNumber; i++){
-				frameItems.push(this.createFrameItem(i));
-			}
+			this.appendToSize(firstFrameNumber+currentFrameItems.length, lastFrameNumber);
 		}
 
 		FRAME_ITEM_OFFSET.style.width = `${firstFrameNumber*100}px`;
-		FRAME_ITEM_CONTAINER.replaceChildren(...frameItems);
 		// FRAME_ITEM_CONTAINER.scrollWidth,FRAME_ITEM_CONTAINER.scrollLeft
 	}
 
 	updateKeyFrameView() {
-		const firstKeyFrameNumber = Math.floor(FRAME_VIEW.scrollLeft/100);
-		const lastKeyFrameNumber = Math.min(Math.ceil((FRAME_VIEW.scrollLeft+window.innerWidth)/100), this.frameSeek.getKeyFrameCount()); //up to but not including
+		const firstFrameNumber = Math.floor(FRAME_VIEW.scrollLeft/100);
+		const lastFrameNumber = Math.min(Math.ceil((FRAME_VIEW.scrollLeft+window.innerWidth)/100), this.frameSeek.getKeyFrameCount()); //up to but not including
 		const currentFrameItems = FRAME_ITEM_CONTAINER.children;
-		const frameItems = [];
-		const lengthFrameItems = lastKeyFrameNumber - firstKeyFrameNumber;
+		const lengthFrameItems = lastFrameNumber - firstFrameNumber;
 		if(currentFrameItems.length){
 			const currentFrameNumber = this.frameSeek.frameNumberToKeyFrameNumber(Number(currentFrameItems[0].getAttribute("data-n")));
-			const gap = currentFrameNumber - firstKeyFrameNumber;
-			if(gap == 0){
-				if(lengthFrameItems == currentFrameItems.length)
+			const gap = currentFrameNumber - firstFrameNumber;
+			if(gap === 0){
+				if(lengthFrameItems === currentFrameItems.length)
 					return;
-				frameItems.push(...currentFrameItems);
-				for(let i = firstKeyFrameNumber+frameItems.length; i < lastKeyFrameNumber; i++){
-					frameItems.push(this.createKeyFrameItem(i));
-				}
-				frameItems.length = lengthFrameItems;
-			} else if(gap > 0){
-				for(let i = firstKeyFrameNumber; i < currentFrameNumber; i++){
-					frameItems.push(this.createKeyFrameItem(i));
-				}
-				frameItems.push(...currentFrameItems);
-				for(let i = firstKeyFrameNumber+frameItems.length; i < lastKeyFrameNumber; i++){
-					frameItems.push(this.createKeyFrameItem(i));
-				}
-				frameItems.length = lengthFrameItems;
-			} else {
-				for(const frameItem of currentFrameItems){
-					if(this.frameSeek.frameNumberToKeyFrameNumber(Number(frameItem.getAttribute("data-n"))) >= firstKeyFrameNumber){
-						frameItems.push(frameItem);
-					}
-				}
-				for(let i = firstKeyFrameNumber+frameItems.length; i < lastKeyFrameNumber; i++){
-					frameItems.push(this.createKeyFrameItem(i));
-				}
-				frameItems.length = lengthFrameItems;
+				this.appendToSize(firstFrameNumber+currentFrameItems.length, lastFrameNumber);
+				this.truncateToSize(currentFrameItems.length, lengthFrameItems);
+			} else if(gap > 0){ //frameItems must be generated in the left
+				this.appendLeftToSize(firstFrameNumber, currentFrameNumber);
+				this.appendToSize(firstFrameNumber+currentFrameItems.length, lastFrameNumber);
+				this.truncateToSize(currentFrameItems.length, lengthFrameItems);
+			} else { //frameItems must be removed in the left
+				this.evictLeftToSize(this.frameSeek.keyFrameNumberToFrameNumber(firstFrameNumber)); //must be a frame number due to comparison with data-n
+				this.appendToSize(firstFrameNumber+currentFrameItems.length, lastFrameNumber);
+				this.truncateToSize(currentFrameItems.length, lengthFrameItems);
 			}
 		} else {
-			for(let i = firstKeyFrameNumber; i < lastKeyFrameNumber; i++){
-				frameItems.push(this.createKeyFrameItem(i));
-			}
+			this.appendToSize(firstFrameNumber+currentFrameItems.length, lastFrameNumber);
 		}
 
-		FRAME_ITEM_OFFSET.style.width = `${firstKeyFrameNumber*100}px`;
-		FRAME_ITEM_CONTAINER.replaceChildren(...frameItems);
+		FRAME_ITEM_OFFSET.style.width = `${firstFrameNumber*100}px`;
 		// FRAME_ITEM_CONTAINER.scrollWidth,FRAME_ITEM_CONTAINER.scrollLeft
 	}
 
+	evictLeftToSize(firstFrameNumber){
+		let firstElementChild;
+		while((firstElementChild = FRAME_ITEM_CONTAINER.firstElementChild) && Number(firstElementChild.getAttribute("data-n")) < firstFrameNumber){
+			firstElementChild.remove();
+		}
+	}
 
+	appendLeftToSize(firstFrameNumber, currentFrameNumber){
+		let appendList = [];
+		for(let i = firstFrameNumber; i < currentFrameNumber; i++){
+			appendList.push(this.createFrameItem(i));
+		}
+		FRAME_ITEM_CONTAINER.prepend(...appendList);
+	}
+
+	appendToSize(start, end){
+		const appendList = [];
+		for(let i = start; i < end; i++){
+			appendList.push(this.createFrameItem(i));
+		}
+		FRAME_ITEM_CONTAINER.append(...appendList);
+	}
+
+	truncateToSize(currentLength, lengthFrameItems){
+		for(let i = lengthFrameItems; i < currentLength; i++){
+			FRAME_ITEM_CONTAINER.lastChild.remove();
+		}
+	}
 }
 
 class MediabunnyThumbnailService {
-	/**@type {import("mediabunny").InputVideoTrack}*/ videoInput;
+	/**@type {import("mediabunny").Input}*/ videoInput;
+	/**@type {import("mediabunny").InputVideoTrack}*/ videoTrack;
 	/**@type {import("mediabunny").CanvasSink}*/ canvasSink;
 	/**@type {import("mediabunny").EncodedPacketSink}*/ packetSink;
 	/**@type {FrameView}*/ frameView;
@@ -724,12 +729,14 @@ class MediabunnyThumbnailService {
 	observer;
 
 	/** @param {Mediabunny: typeof import("mediabunny")} Mediabunny
-	 * @param {import("mediabunny").InputVideoTrack} videoInput */
-	constructor(Mediabunny, videoInput) {
+	 * @param {import("mediabunny").Input} videoInput
+	 * @param {import("mediabunny").InputVideoTrack} videoTrack */
+	constructor(Mediabunny, videoInput, videoTrack) {
 		this.onMutationList = this.onMutationList.bind(this);
 		this.videoInput = videoInput;
-		this.canvasSink = new Mediabunny.CanvasSink(videoInput, {alpha: false, poolSize: 1});
-		this.packetSink = new Mediabunny.EncodedPacketSink(videoInput);
+		this.videoTrack = videoTrack;
+		this.canvasSink = new Mediabunny.CanvasSink(videoTrack, {alpha: false, poolSize: 1});
+		this.packetSink = new Mediabunny.EncodedPacketSink(videoTrack);
 	}
 
 	/**@param {MutationRecord[]} mutations*/
@@ -738,9 +745,9 @@ class MediabunnyThumbnailService {
 			if(mutation.addedNodes.length){
 				this.markDirty();
 			}
-			// for(const node of mutation.removedNodes){
-			// 	URL.revokeObjectURL(node.querySelector("img")?.src);
-			// }
+			for(const node of mutation.removedNodes){
+				URL.revokeObjectURL(node.querySelector("img")?.src);
+			}
 		}
 	}
 
@@ -767,7 +774,7 @@ class MediabunnyThumbnailService {
 		while(this.dirty){
 			this.dirty = false;
 			/** @type Element[] */
-			const frameItems = Array.from(this.frameItemContainer.children).filter((frameItem) => frameItem.querySelector('img')?.hasAttribute?.("data-l")); //this is because query('img') is potenially null
+			const frameItems = Array.from(this.frameItemContainer.children).filter((frameItem) => frameItem.querySelector('img')?.hasAttribute?.("data-l")); //this is because query('img') is potentially null
 			const timestamps = frameItems.map((value) => frameSeek.getMediaTimeAtFrame(Number(value.getAttribute("data-n"))));
 			let index = 0;
 			for await(const canvasWrapper of this.canvasSink.canvasesAtTimestamps(timestamps)){
@@ -780,16 +787,16 @@ class MediabunnyThumbnailService {
 				// img.src = canvasWrapper.canvas.toDataURL("image/png", 100);
 				canvasWrapper.canvas.toBlob((blob) => {
 					if(frameItems[i].parentElement){
-						const abortCtrl = new AbortController();
 						img.src = URL.createObjectURL(blob);
-						img.addEventListener("load", () => {
-							URL.revokeObjectURL(img.src);
-							abortCtrl.abort();
-						}, {passive: true, signal: abortCtrl.signal});
-						img.addEventListener("error", () => {
-							URL.revokeObjectURL(img.src);
-							abortCtrl.abort();
-						}, {passive: true, signal: abortCtrl.signal});
+						// const abortCtrl = new AbortController();
+						// img.addEventListener("load", () => {
+						// 	URL.revokeObjectURL(img.src);
+						// 	abortCtrl.abort();
+						// }, {passive: true, signal: abortCtrl.signal});
+						// img.addEventListener("error", () => {
+						// 	URL.revokeObjectURL(img.src);
+						// 	abortCtrl.abort();
+						// }, {passive: true, signal: abortCtrl.signal});
 					}
 				}, "image/png", 1);
 			}
@@ -836,14 +843,14 @@ FILE_UPLOAD.addEventListener("change", () => {
  * */
 function createFrameSeeker(file) {
 	return getVideoFrameTimesMediabunny(file).then(value => {
-		const [timestamps, keyframeTimestamps, frameView] = value;
-		return new FrameSeek(timestamps, keyframeTimestamps, frameView);
+		const [timestamps, frameView] = value;
+		return new FrameSeek(timestamps, frameView);
 	}).catch(e => {
 		console.error("Error while creating frame seeker using Mediabunny", e);
 		console.log("Reattempting with MP4Box");
 		getVideoFrameTimesMP4Box(file).then(value => {
-			const [timestamps, keyframeTimestamps] = value;
-			return new FrameSeek(timestamps, keyframeTimestamps, null);
+			const [timestamps] = value;
+			return new FrameSeek(timestamps, null);
 		}).catch(e => {
 			console.error("Error while creating frame seeker using MP4Box", e);
 			console.warn("Failed to create frame seeker. Aborting.");
@@ -853,7 +860,7 @@ function createFrameSeeker(file) {
 }
 
 /** @param {File} file
- * @returns {Promise<[timestamps: number[], keyframeTimestamps: number[], FrameView]>}
+ * @returns {Promise<[timestamps: (number | Number)[], FrameView]>}
  * */
 function getVideoFrameTimesMediabunny(file) {
 	return importMediabunny().then(async (Mediabunny) => {
@@ -862,21 +869,22 @@ function getVideoFrameTimesMediabunny(file) {
 		let videoDuration = await videoTrack.getDurationFromMetadata() ?? await videoTrack.computeDuration();
 
 		const timestamps = [];
-		const keyframeTimestamps = [];
 		const sink = new Mediabunny.EncodedPacketSink(videoTrack);
 		// const sink2 = new Mediabunny.VideoSampleSink(videoTrack);
 		// const sink3 = new Mediabunny.CanvasSink(videoTrack);
 		for await (const encodedPacket of sink.packets(undefined, undefined, {metadataOnly: true})) {
 			if(encodedPacket.timestamp < 0) //negative timestamps should not be included
 				continue;
-			timestamps.push(encodedPacket.timestamp);
-			if(encodedPacket.type == "key"){
-				keyframeTimestamps.push(encodedPacket.timestamp);
+			if(encodedPacket.type === "key"){
+				timestamps.push(new Number(encodedPacket.timestamp));
+			} else {
+				timestamps.push(encodedPacket.timestamp);
 			}
 			LOADING_PERCENTAGE.value = encodedPacket.timestamp / videoDuration;
 		}
 
-		return [timestamps, keyframeTimestamps, new FrameView(new MediabunnyThumbnailService(Mediabunny, videoTrack))];
+		timestamps.length = timestamps.length; //hopefully hint to the browser that the array won't be extended anymore
+		return [timestamps, new FrameView(new MediabunnyThumbnailService(Mediabunny, videoInput, videoTrack))];
 	}).catch(e => {
 		console.warn("Cannot use Mediabunny due to error", e);
 		console.log("Reattempting with MP4Box");
@@ -889,7 +897,6 @@ async function getVideoFrameTimesMP4Box(file) {
 	return new Promise((resolve, reject) => {
 		let mp4Box = MP4Box.createFile(false);
 		let timestamps = [];
-		let keyframeTimestamps = [];
 		let videoTrackId = null;
 		let timescale = null;
 
@@ -915,8 +922,8 @@ async function getVideoFrameTimesMP4Box(file) {
 			mp4Box.onSamples = (trackId, user, samples) => {
 				for (const sample of samples) {
 					const pts = (sample.cts ?? sample.dts) / timescale;
-					timestamps.push(pts);
-					if(sample.is_sync) keyframeTimestamps.push(pts);
+					if(sample.is_sync) timestamps.push(new Number(pts));
+					else timestamps.push(pts);
 				}
 			};
 
@@ -939,7 +946,8 @@ async function getVideoFrameTimesMP4Box(file) {
 				readNextChunk();
 			} else {
 				mp4Box.flush();
-				resolve([timestamps, keyframeTimestamps]);
+				timestamps.length = timestamps.length; //hopefully hint to the browser that the array won't be extended anymore
+				resolve([timestamps]);
 				mp4Box = null;
 				reader = null;
 			}
@@ -1033,7 +1041,7 @@ curWin.addEventListener("keydown", keyEvent => {
 
 	const keyLower = keyEvent.key.toLowerCase();
 	/** @type number */ const compressed = (Number(keyEvent.shiftKey)/*1*/)+(Number(keyEvent.ctrlKey)<<1/*2*/)+(Number(keyEvent.altKey)<<2/*4*/)+(Number(keyEvent.metaKey)<<3/*8*/);
-	if(compressed == 0){
+	if(compressed === 0){
 		switch(keyLower) {
 			case " ": //space
 			case "k":
@@ -1074,7 +1082,7 @@ curWin.addEventListener("keydown", keyEvent => {
 				keyEvent.preventDefault();
 				break;
 		}
-	} else if(compressed == 1){
+	} else if(compressed === 1){
 		switch(keyLower) {
 			case "q":
 			case "p":
@@ -1088,7 +1096,7 @@ curWin.addEventListener("keydown", keyEvent => {
 				keyEvent.preventDefault();
 				break;
 		}
-	} else if(compressed == 2){
+	} else if(compressed === 2){
 		switch(keyLower) {
 			case "s":
 				keyEvent.preventDefault();
@@ -1228,7 +1236,10 @@ function removeHoveredTimeDisplay(){
 	HOVERED_TIME_DISPLAY.style.transform = "translate(-9999px, 0px)";
 }
 
-/** @param {InputEvent} event */
+/** @param {InputEvent} event
+ * @param {() => void} submitCallback
+ * @param {(string) => boolean} isUnallowedTest
+ */
 function timeInputBeforeInput(event, submitCallback, isUnallowedTest) {
 	if(inert || !videoSrc){
 		event.preventDefault();
@@ -1463,7 +1474,7 @@ function binarySearch(arr, val) {
 	while (start <= end) {
 		let mid = Math.floor((start + end) / 2);
 
-		if (arr[mid] == val) {
+		if (arr[mid] === val) {
 			return mid;
 		}
 
