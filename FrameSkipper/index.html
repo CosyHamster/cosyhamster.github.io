@@ -2,11 +2,12 @@
 	<head>
 		<script>if(navigator.userAgent.includes("CrOS"))document.addEventListener("keydown",(event)=>{if(event.keyCode==119)window.addEventListener("beforeunload",(event) => {event.preventDefault();});},{passive:true,once:true});</script>
 		<link rel="stylesheet" href="style.css">
+		<script type="importmap">{"imports": {"mediabunny": "../Javascript/mediabunny.min.mjs", "mp4box": "../Javascript/mp4box.all.js"}}</script>
 		<script type="module" src="script.js" defer></script>
 		<link rel="icon" href="../Icons/PageFavicon.ico">
 		<title>Frame Skipper</title>
 	</head>
-	<body style="--interactivity:inert; --interactivityPointerEvents:none; --abLoopDisplay:none;">
+	<body style="--interactivity:inert; --interactivityPointerEvents:none; --abLoopDisplay:none; --frameViewDisplay:none;">
 		<main>
 			<div id="loadingFR"><div>Determining Frame Rate<progress id="loadingPercentage" max="1" value="0" style="width: 50%; display: block; margin: 0 auto 0 auto;"></progress></div></div>
 			<video id="video" style="width: 100%; height: 100%; background-color: black;"></video>
@@ -16,15 +17,15 @@
 			</div>
 			<div id="ui" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
 				<div id="videoControlsT" style="position: absolute; top:0; left:0; width:100%; background-color: rgba(0,0,0,.7); pointer-events: auto;">
-					<div style="display: flex; flex-direction: row; width:100%; height: 4.5vh;">
+					<div style="display: flex; flex-direction: row; width:100%; height: max(4.5vh, 40px);">
 						<label tabindex="0" class="cell clickableButton tableBorder" title="Upload File" style="height:100%;">
 							<input type="file" accept="video/*" id="upload" style="display: none;">
 							<img class="invertColor" style="width: 100%; height: 100%; pointer-events: none;" src="../Icons/UploadIcon.svg" alt="Upload"/>
 						</label>
 						<div class="tableBorder text" id="inputColorContainer" style="height:100%; color: white; font-size: min(5cqw, 18px); --color: #ffffff;">
 							Frame:
-							<span id="frameNumber" tabindex="0" contenteditable="plaintext-only" inputmode="numeric" style="color: var(--color);">N/A</span>
-							<div title="The time of the video's current frame (secs)" id="mediaTimeInput" tabindex="0" inputmode="numeric" contenteditable="plaintext-only" style="color: var(--color);">N/A</div>
+							<span id="frameNumber" tabindex="0" contenteditable="plaintext-only" inputmode="numeric" enterkeyhint="send" style="color: var(--color);">N/A</span>
+							<div title="The time of the video's current frame (secs)" id="mediaTimeInput" tabindex="0" contenteditable="plaintext-only" inputmode="numeric" enterkeyhint="send" style="color: var(--color);">N/A</div>
 						</div>
 						<div class="spacer scrollableText" style="color: white; margin: 0 1em; white-space: normal;" id="videoTitle"></div>
 						<a tabindex="0" class="cell clickableButton tableBorder" title="Download Frame" style="height:100%;" id="downloadFrame" download>
@@ -40,7 +41,7 @@
 									<div id="toggleLoopBar" class="clickableButton" tabindex="1">Toggle AB Looping</div>
 									<div id="setAHere" class="clickableButton" tabindex="1" style="display: var(--abLoopDisplay);">Set A Here</div>
 									<div id="setBHere" class="clickableButton" tabindex="1" style="display: var(--abLoopDisplay);">Set B Here</div>
-									<div tabindex="1">Using <a tabindex="1" href="https://github.com/gpac/mp4box.js/" target="_blank">MP4Box</a></div>
+									<div tabindex="1">Using <a tabindex="1" href="https://github.com/gpac/mp4box.js/" target="_blank">MP4Box</a> and <a tabindex="1" href="https://github.com/Vanilagy/mediabunny/" target="_blank">Mediabunny</a></div>
 								</div>
 							</div>
 						</div>
@@ -52,20 +53,44 @@
 				</div>
 				<div id="videoControlsB" style="position: absolute; top: 100%; left:0; transform: translateY(-100%); background-color: rgba(0,0,0,.7); width:100%; pointer-events: auto;">
 					<div class="playbarContainer">
-						<div id="firstDurationLabel" style="margin-right: 1ch; color: white;" class="text" contenteditable="plaintext-only">00:00</div>
-						<div style="flex: 1 1; container-type: inline-size;">
-							<div class="playbar interactivity"></div>
-							<div id="loopBarTrack" class="interactivity" style="position: absolute; margin-left: 4px; width: calc(100cqw - 8px); height: 20px; top: 0px; transform: translateY(-100%); display: var(--abLoopDisplay);"> <!--style="position: absolute; grid-area: 1 / 1 / 2 / 2; position-anchor: --bar; height: 20px; left: calc(anchor(left) + 4px); width: calc(anchor-size(width) - 8px); top: 0px; transform: translateY(-100%); display: var(--abLoopDisplay);"-->
-								<div id="drag1" tabindex="0" style="position: absolute; height: 100%; width: 8px; background-color: gold; --progress: 0%; left: var(--progress); transform: translateX(-50%); z-index: 2; anchor-name: --drag1;"></div>
-								<div id="drag2" tabindex="0" style="position: absolute; height: 100%; width: 8px; background-color: gold; --progress: 100%; left: var(--progress); transform: translateX(-50%); z-index: 2; anchor-name: --drag2;"></div>
-								<div id="yellowBar" style="position: absolute; left: anchor(--drag1 left); right: anchor(--drag2 left); top: 50%; transform: translateY(-50%); height: 5px; background-color: gold; z-index: 1;"></div>
+						<div style="display: flex; flex-direction: row; align-items: baseline; width: 100%; height: 20px;">
+							<div id="firstDurationLabel" style="margin-right: 1ch; color: white;" class="text" contenteditable="plaintext-only" enterkeyhint="send">00:00</div>
+							<div style="flex: 1 1; container-type: inline-size; anchor-name: --bar;"><div class="playbar interactivity"></div></div>
+							<div id="secondDurationLabel" style="margin-left: 1ch; color: white;" class="text">00:00</div>
+						</div>
+						<div id="loopBarTrack" class="interactivity" style="position: absolute; top: -20px; left: anchor(--bar left); margin-left: 4px; width: calc(anchor-size(--bar width) - 8px); height: 20px; display: var(--abLoopDisplay);"> <!--style="position: absolute; grid-area: 1 / 1 / 2 / 2; position-anchor: --bar; height: 20px; left: calc(anchor(left) + 4px); width: calc(anchor-size(width) - 8px); top: 0px; transform: translateY(-100%); display: var(--abLoopDisplay);"-->
+							<div id="drag1" tabindex="0" style="position: absolute; height: 100%; width: 8px; background-color: gold; --progress: 0%; left: var(--progress); transform: translateX(-50%); z-index: 2; anchor-name: --drag1;"></div>
+							<div id="drag2" tabindex="0" style="position: absolute; height: 100%; width: 8px; background-color: gold; --progress: 100%; left: var(--progress); transform: translateX(-50%); z-index: 2; anchor-name: --drag2;"></div>
+							<div id="yellowBar" style="position: absolute; left: anchor(--drag1 left); right: anchor(--drag2 left); top: 50%; transform: translateY(-50%); height: 5px; background-color: gold; z-index: 1;"></div>
+						</div>
+						<div style="display: var(--abLoopDisplay);"><div style="height: 20px;"></div></div>
+<!--						<div id="frameView" class="interactivity" style="width: 100%; display: var(&#45;&#45;frameViewDisplay);"> &lt;!&ndash;style="position: absolute; grid-area: 1 / 1 / 2 / 2; position-anchor: &#45;&#45;bar; height: 20px; left: calc(anchor(left) + 4px); width: calc(anchor-size(width) - 8px); top: 0px; transform: translateY(-100%); display: var(&#45;&#45;abLoopDisplay);"&ndash;&gt;-->
+<!--							<div id="frameViewContainer">-->
+<!--								<div style="width: 10000000px; height: 100%; container-type: size; display: flex; flex-direction: row; flex-wrap: nowrap;">-->
+<!--									<div class="frameItem clickableButton">-->
+<!--										<img src="../Icons/videoframe_118688.png" alt="frame 123" style="/*flex: 1 1; */min-height: 0; object-fit: contain;">-->
+<!--										<div style="flex-shrink: 0;"><div>Frame</div><div>123534</div></div>-->
+<!--									</div>-->
+<!--								</div>-->
+
+<!--							</div>-->
+<!--						</div>-->
+						<div id="frameView" class="interactivity" style="display: var(--frameViewDisplay); --scrollWidth: 0px;">
+							<div style="width: var(--scrollWidth);" class="frameItemContainer"><div id="frameItemOffset" style="width: 100px;"></div><div id="frameItemContainer" class="frameItemContainer"></div></div>
+						</div>
+						<div class="interactivity" style="position: relative; width: 100%; height: 20px; display: flex; flex-direction: row; flex-wrap: nowrap;"> <!--style="position: absolute; grid-area: 1 / 1 / 2 / 2; position-anchor: --bar; height: 20px; left: calc(anchor(left) + 4px); width: calc(anchor-size(width) - 8px); top: 0px; transform: translateY(-100%); display: var(--abLoopDisplay);"-->
+							<div style="position: absolute; color: white; display: var(--frameViewDisplay);"><label><input type="checkbox" id="keyframesOnlyCheckbox">Keyframes Only</label></div>
+							<div style="width: 20px; height: 20px; margin-left: auto; margin-right: auto;">
+								<div role="button" tabindex="0" class="clickableButton" style="width: 20px;height: 20px;margin-left: auto;margin-right: auto;" title="Show Frames" id="frameViewToggle">
+									<div class="invertColor" style="width: 20px;height: 20px;"></div>
+								</div>
 							</div>
 						</div>
-						<div id="secondDurationLabel" style="margin-left: 1ch; color: white;" class="text">00:00</div>
+
 					</div>
-					<div style="display: flex; flex-direction: row; width:100%; height: 4.5vh; container-type: size;">
+					<div style="display: flex; flex-direction: row; width:100%; height: max(4.5vh, 40px); container-type: size;">
 						<div title="Mute (M)" class="cell tableBorder" style="height:100%; max-width: 100cqh;">
-							<img src="../Icons/SpeakerIcon.svg" id="volumeIcon" class="" alt="Fullscreen"/>
+								<img src="../Icons/SpeakerIcon.svg" id="volumeIcon" class="" alt="Fullscreen"/>
 							<div tabindex="0" id="volumePullsOpen" class="pullsOpen">
 								<div>
 									<input type="range" id="volumeSlider" max=1 min=0 value=1 step=0.0001 style="writing-mode: vertical-lr; direction: rtl; width: 100%; height: 100%; position: relative;">
