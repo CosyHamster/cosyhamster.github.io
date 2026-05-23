@@ -597,7 +597,7 @@ class FrameView {
 		/**@type HTMLImageElement*/
 		const img = document.createElement("img");
 		img.toggleAttribute("data-l", true);
-		img.src = "../Icons/image.svg";
+		// img.src = "../Icons/image.svg";
 		img.decoding = "async";
 		img.loading = "eager";
 
