@@ -769,55 +769,57 @@ class MediabunnyThumbnailService {
 	}
 
 	async run(){
-		const frameSeek = this.frameView.frameSeek;
-		while(this.dirty){
-			this.dirty = false;
-			let frameItem = this.frameItemContainer.firstElementChild;
-			do {
-				const img = frameItem.querySelector('img');
-				if(!img.hasAttribute("data-l")) {
-					continue;
-				}
-
-				const frameNumber = Number(frameItem.getAttribute("data-n"));
-				let wrappedCanvas;
-				if(KEYFRAME_ONLY_CHECKBOX.checked){
-					wrappedCanvas = await this.canvasSink.getCanvas(frameSeek.getMediaTimeAtFrame(frameNumber));
-				} else {
-					if(!this.canvasSinkIterator || this.currentFrameNumber > frameNumber || this.currentFrameNumber < frameNumber-25){
-						if(this.canvasSinkIterator) this.canvasSinkIterator.return();
-						this.canvasSinkIterator = this.canvasSink.canvases(frameSeek.getMediaTimeAtFrame(frameNumber));
-						this.currentFrameNumber = frameNumber;
+		try{
+			const frameSeek = this.frameView.frameSeek;
+			while(this.dirty){
+				this.dirty = false;
+				let frameItem = this.frameItemContainer.firstElementChild;
+				do {
+					const img = frameItem.querySelector('img');
+					if(!img.hasAttribute("data-l")) {
+						continue;
 					}
-					while(this.currentFrameNumber !== frameNumber){
-						await this.canvasSinkIterator.next();
-						++this.currentFrameNumber;
-						if(!frameItem.parentNode)
-							break;
-						if(this.destroyed){
-							return;
+
+					const frameNumber = Number(frameItem.getAttribute("data-n"));
+					let wrappedCanvas;
+					if(KEYFRAME_ONLY_CHECKBOX.checked){
+						wrappedCanvas = await this.canvasSink.getCanvas(frameSeek.getMediaTimeAtFrame(frameNumber), {verifyKeyPackets: true});
+					} else {
+						if(!this.canvasSinkIterator || this.currentFrameNumber > frameNumber || this.currentFrameNumber < frameNumber-25){
+							if(this.canvasSinkIterator) this.canvasSinkIterator.return();
+							this.canvasSinkIterator = this.canvasSink.canvases(frameSeek.getMediaTimeAtFrame(frameNumber), Infinity, {verifyKeyPackets: true});
+							this.currentFrameNumber = frameNumber;
 						}
+						while(this.currentFrameNumber !== frameNumber){
+							await this.canvasSinkIterator.next();
+							++this.currentFrameNumber;
+							if(!frameItem.parentNode)
+								break;
+							if(this.destroyed){
+								return;
+							}
+						}
+
+						wrappedCanvas = (await this.canvasSinkIterator.next()).value;
+						++this.currentFrameNumber;
 					}
 
-					wrappedCanvas = (await this.canvasSinkIterator.next()).value;
-					++this.currentFrameNumber;
-				}
-
-				if(!frameItem.parentNode)
-					break;
-				if(this.destroyed)
-					return;
-				const finalFrameItem = frameItem;
-				img.removeAttribute("data-l");
-				wrappedCanvas.canvas.toBlob((blob) => {
-					if(finalFrameItem.parentNode){
-						img.src = URL.createObjectURL(blob);
-					}
-				}, "image/png", 1);
-			} while(frameItem = frameItem.nextElementSibling);
+					if(!frameItem.parentNode)
+						break;
+					if(this.destroyed)
+						return;
+					const finalFrameItem = frameItem;
+					img.removeAttribute("data-l");
+					wrappedCanvas.canvas.toBlob((blob) => {
+						if(finalFrameItem.parentNode){
+							img.src = URL.createObjectURL(blob);
+						}
+					}, "image/png", 1);
+				} while((frameItem = frameItem.nextElementSibling));
+			}
+		} finally {
+			this.running = false;
 		}
-
-		this.running = false;
 	}
 
 	destroy(){
@@ -883,7 +885,7 @@ function getVideoFrameTimesMediabunny(file) {
 		const sink = new Mediabunny.EncodedPacketSink(videoTrack);
 		// const sink2 = new Mediabunny.VideoSampleSink(videoTrack);
 		// const sink3 = new Mediabunny.CanvasSink(videoTrack);
-		for await (const encodedPacket of sink.packets(undefined, undefined, {metadataOnly: true})) {
+		for await (const encodedPacket of sink.packets(undefined, undefined, {metadataOnly: true})) { //may determine incorrect key frames but using metadataOnly is worth it imo TODO: benchmark this
 			if(encodedPacket.timestamp < 0) //negative timestamps should not be included
 				continue;
 			timestamps.push(encodedPacket.timestamp);
