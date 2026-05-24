@@ -283,7 +283,7 @@ class FrameSeek {
 	}
 
 	enableAB(){
-		frameSeek.ab ??= new AB(0, video.duration, 0, this.timestamps[this.timestamps.length-1]);
+		frameSeek.ab ??= new AB(this.timestamps[0], this.timestamps[this.timestamps.length-1], 0, this.timestamps.length-1);
 		document.body.style.setProperty("--abLoopDisplay", "block");
 		this.abEnabled = true;
 	}
