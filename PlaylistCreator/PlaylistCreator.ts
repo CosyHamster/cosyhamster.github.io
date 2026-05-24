@@ -1283,6 +1283,7 @@ function handleShuffleButton(enable: boolean) {
     }
   }
   for (let i = 0; i < tempArray.length; i++) sounds[tempArray[i].nativeIndex] = tempArray[i];
+  sounds = Array.from(sounds); //V8 optimization?
   refreshSongNames();
   if(currentSongIndex !== null)
     updateRowColor(sounds[currentSongIndex].currentRow.tableRow)

@@ -236,23 +236,29 @@ class FrameSeek {
 	/** @type boolean */ abEnabled;
 	/** @type FrameView */ frameView;
 	/** @type boolean */ frameViewEnabled;
-	/** @type number[] */ timestamps;
-	/** @type number[] */ keyframeIndexes;
+	/** @type Float64Array */ timestamps;
+	/** @type Uint32Array */ keyframeIndexes;
 
 
 	/** @param {number[]} timestamps
 	 * @param {FrameView} frameView */
 	constructor(timestamps, frameView) {
-		this.timestamps = timestamps.sort((a,b) => a-b);
-		this.keyframeIndexes = [];
-		const keyframeIndexes = this.keyframeIndexes;
+		timestamps.sort((a,b) => a-b);
+		const keyframeIndexes = [];
 		const length = timestamps.length;
-		for(let i = 0; i < length; i++){
-			if(typeof timestamps[i] === "object"){
-				keyframeIndexes.push(i);
-				timestamps[i] = Number(timestamps[i]);
+
+		this.timestamps = new Float64Array((function* (){
+			let ignored = 0;
+			for(let i = 0; i < length; i++){
+				const val = timestamps[i];
+				if(val !== val){
+					keyframeIndexes.push(i-(++ignored));
+				} else {
+					yield val;
+				}
 			}
-		}
+		})());
+		this.keyframeIndexes = new Uint32Array(keyframeIndexes);
 		// console.log("Frame timestamps (seconds):", this.timestamps);
 		// console.log("Frame keyframe indexes:", this.keyframeIndexes);
 		this.frameView = frameView;
@@ -353,8 +359,8 @@ class FrameSeek {
 		switch(SEEK_APPROACH){
 			case 0:
 				currentFrameNumber = binarySearchLenient(this.timestamps, currentMediaTime);
-				nextMediaTime = this.timestamps?.[currentFrameNumber+1];
-				if(nextMediaTime){
+				if(currentFrameNumber+1 < this.timestamps.length){
+					nextMediaTime = this.timestamps[currentFrameNumber+1];
 					currentMediaTime = nextMediaTime;
 					video.currentTime = nextMediaTime+MOE;
 					this.onSeekedManually(nextMediaTime+MOE);
@@ -380,8 +386,8 @@ class FrameSeek {
 		switch(SEEK_APPROACH){
 			case 0:
 				currentFrameNumber = binarySearchLenient(this.timestamps, currentMediaTime);
-				prevMediaTime = this.timestamps?.[currentFrameNumber-1];
-				if(prevMediaTime){
+				if(currentFrameNumber-1 >= 0){
+					prevMediaTime = this.timestamps[currentFrameNumber-1];
 					currentMediaTime = prevMediaTime;
 					video.currentTime = prevMediaTime+MOE;
 					this.onSeekedManually(prevMediaTime+MOE);
@@ -466,12 +472,8 @@ class FrameSeek {
 	}
 
 	setAMediaTime(mediaTime){
-		let frameNumber = this.calcFrameNumber(mediaTime);
-		mediaTime = this.timestamps[clamp(frameNumber, 0, this.timestamps.length-1)];
-		if(mediaTime > this.ab.loopEndMediaTime){
-			mediaTime = this.ab.loopEndMediaTime;
-			frameNumber = this.calcFrameNumber(mediaTime);
-		}
+		let frameNumber = Math.min(this.calcFrameNumber(mediaTime), this.ab.loopEndFrameNumber);
+		mediaTime = this.timestamps[frameNumber];
 		this.ab.loopBeginMediaTime = mediaTime;
 		this.ab.loopBeginFrameNumber = frameNumber;
 		return [mediaTime, frameNumber];
@@ -502,12 +504,8 @@ class FrameSeek {
 	}
 
 	setBMediaTime(mediaTime){
-		let frameNumber = this.calcFrameNumber(mediaTime);
-		mediaTime = this.timestamps[clamp(frameNumber, 0, this.timestamps.length-1)];
-		if(mediaTime < this.ab.loopBeginMediaTime){
-			mediaTime = this.ab.loopBeginMediaTime;
-			frameNumber = this.calcFrameNumber(mediaTime);
-		}
+		let frameNumber = Math.max(this.calcFrameNumber(mediaTime), this.ab.loopBeginFrameNumber);
+		mediaTime = this.timestamps[frameNumber];
 		this.ab.loopEndMediaTime = mediaTime;
 		this.ab.loopEndFrameNumber = frameNumber;
 		return [mediaTime, frameNumber];
@@ -718,7 +716,8 @@ class MediabunnyThumbnailService {
 	/**@type {import("mediabunny").Input}*/ videoInput;
 	/**@type {import("mediabunny").InputVideoTrack}*/ videoTrack;
 	/**@type {import("mediabunny").CanvasSink}*/ canvasSink;
-	/**@type {import("mediabunny").EncodedPacketSink}*/ packetSink;
+	/**@type {AsyncGenerator<import("mediabunny").WrappedCanvas, void, unknown>}*/ canvasSinkIterator = null;
+	/**@type {number}*/ currentFrameNumber;
 	/**@type {FrameView}*/ frameView;
 	destroyed = false;
 	running = false;
@@ -736,7 +735,6 @@ class MediabunnyThumbnailService {
 		this.videoInput = videoInput;
 		this.videoTrack = videoTrack;
 		this.canvasSink = new Mediabunny.CanvasSink(videoTrack, {alpha: false, poolSize: 1});
-		this.packetSink = new Mediabunny.EncodedPacketSink(videoTrack);
 	}
 
 	/**@param {MutationRecord[]} mutations*/
@@ -749,6 +747,7 @@ class MediabunnyThumbnailService {
 				URL.revokeObjectURL(node.querySelector("img")?.src);
 			}
 		}
+
 	}
 
 	assign(frameView, frameItemContainer){
@@ -773,37 +772,49 @@ class MediabunnyThumbnailService {
 		const frameSeek = this.frameView.frameSeek;
 		while(this.dirty){
 			this.dirty = false;
-			/** @type Element[] */
-			const frameItems = Array.from(this.frameItemContainer.children).filter((frameItem) => frameItem.querySelector('img')?.hasAttribute?.("data-l")); //this is because query('img') is potentially null
-			const timestamps = frameItems.map((value) => frameSeek.getMediaTimeAtFrame(Number(value.getAttribute("data-n"))));
-			let index = 0;
-			for await(const canvasWrapper of this.canvasSink.canvasesAtTimestamps(timestamps)){
-				if(!frameItems[index].parentElement == null)
-					break;
+			let frameItem = this.frameItemContainer.firstElementChild;
+			do {
+				const img = frameItem.querySelector('img');
+				if(!img.hasAttribute("data-l")) {
+					continue;
+				}
 
-				let i = index;
-				/**@type HTMLImageElement */ const img = frameItems[index++].querySelector("img");
+				const frameNumber = Number(frameItem.getAttribute("data-n"));
+				let wrappedCanvas;
+				if(KEYFRAME_ONLY_CHECKBOX.checked){
+					wrappedCanvas = await this.canvasSink.getCanvas(frameSeek.getMediaTimeAtFrame(frameNumber));
+				} else {
+					if(!this.canvasSinkIterator || this.currentFrameNumber > frameNumber || this.currentFrameNumber < frameNumber-25){
+						if(this.canvasSinkIterator) this.canvasSinkIterator.return();
+						this.canvasSinkIterator = this.canvasSink.canvases(frameSeek.getMediaTimeAtFrame(frameNumber));
+						this.currentFrameNumber = frameNumber;
+					}
+					while(this.currentFrameNumber !== frameNumber){
+						await this.canvasSinkIterator.next();
+						++this.currentFrameNumber;
+						if(!frameItem.parentNode)
+							break;
+						if(this.destroyed){
+							return;
+						}
+					}
+
+					wrappedCanvas = (await this.canvasSinkIterator.next()).value;
+					++this.currentFrameNumber;
+				}
+
+				if(!frameItem.parentNode)
+					break;
+				if(this.destroyed)
+					return;
+				const finalFrameItem = frameItem;
 				img.removeAttribute("data-l");
-				// img.src = canvasWrapper.canvas.toDataURL("image/png", 100);
-				canvasWrapper.canvas.toBlob((blob) => {
-					if(frameItems[i].parentElement){
+				wrappedCanvas.canvas.toBlob((blob) => {
+					if(finalFrameItem.parentNode){
 						img.src = URL.createObjectURL(blob);
-						// const abortCtrl = new AbortController();
-						// img.addEventListener("load", () => {
-						// 	URL.revokeObjectURL(img.src);
-						// 	abortCtrl.abort();
-						// }, {passive: true, signal: abortCtrl.signal});
-						// img.addEventListener("error", () => {
-						// 	URL.revokeObjectURL(img.src);
-						// 	abortCtrl.abort();
-						// }, {passive: true, signal: abortCtrl.signal});
 					}
 				}, "image/png", 1);
-			}
-
-			if(this.destroyed){
-				return;
-			}
+			} while(frameItem = frameItem.nextElementSibling);
 		}
 
 		this.running = false;
@@ -811,19 +822,19 @@ class MediabunnyThumbnailService {
 
 	destroy(){
 		this.destroyed = true;
-		this.dirty = true;
 		this.videoInput.dispose();
 		this.onMutationList(this.observer.takeRecords());
 		this.observer.disconnect();
+		this.dirty = false;
 	}
 }
 
 function range(start, end){
 	if(start > end)
 		return [];
-	const arr = new Array(end-start);
+	const arr = [];
 	for(let i = start; i < end; i++){
-		arr[i-start] = i;
+		arr.push(i);
 	}
 	return arr;
 }
@@ -875,11 +886,9 @@ function getVideoFrameTimesMediabunny(file) {
 		for await (const encodedPacket of sink.packets(undefined, undefined, {metadataOnly: true})) {
 			if(encodedPacket.timestamp < 0) //negative timestamps should not be included
 				continue;
-			if(encodedPacket.type === "key"){
-				timestamps.push(new Number(encodedPacket.timestamp));
-			} else {
-				timestamps.push(encodedPacket.timestamp);
-			}
+			timestamps.push(encodedPacket.timestamp);
+			if(encodedPacket.type === "key")
+				timestamps.push(NaN);
 			LOADING_PERCENTAGE.value = encodedPacket.timestamp / videoDuration;
 		}
 
@@ -922,8 +931,8 @@ async function getVideoFrameTimesMP4Box(file) {
 			mp4Box.onSamples = (trackId, user, samples) => {
 				for (const sample of samples) {
 					const pts = (sample.cts ?? sample.dts) / timescale;
-					if(sample.is_sync) timestamps.push(new Number(pts));
-					else timestamps.push(pts);
+					timestamps.push(pts);
+					if(sample.is_sync) timestamps.push(NaN);
 				}
 			};
 
@@ -1517,7 +1526,7 @@ function binarySearchLenient(arr, val) {
 	let chosenIndex = (arr[lo] - val) < (val - arr[hi]) ? lo : hi;
 	//get the right-most item of identical neighboring items
 	if(arr[chosenIndex] !== undefined){
-		while(arr?.[chosenIndex+1] === arr[chosenIndex]){
+		while(chosenIndex < arr.length-1 && arr[chosenIndex+1] === arr[chosenIndex]){
 			++chosenIndex;
 		}
 	}
