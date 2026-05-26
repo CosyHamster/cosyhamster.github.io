@@ -117,63 +117,6 @@ class Deque {
 	}
 }
 
-(function setup(){
-	// setButtonsDisabled(true);
-	registerClickEvent(PLAY_BUTTON.parentElement, togglePause)();
-	registerClickEvent(SEEK_BACKWARD, () => seek(-1))();
-	registerClickEvent(SEEK_FORWARD, () => seek(1))();
-	// registerClickEvent(SKIP_BACKWARD, () => {
-	// 	setButtonsDisabled(true);
-	// 	video.pause();
-	// 	video.addEventListener("seeked", () => {
-	// 		setButtonsDisabled(false);
-	// 	}, {once: true});
-	// 	skipBackward();
-	// })();
-	// registerClickEvent(SKIP_FORWARD, () => {
-	// 	if(video.ended) return;
-	// 	video.pause();
-	// 	setButtonsDisabled(true);
-	// 	skipForward();
-	// })();
-	registerClickEvent(SKIP_BACKWARD, () => {
-		frameSeek.backward();
-	})();
-	registerClickEvent(SKIP_FORWARD, () => {
-		frameSeek.forward();
-	})();
-	registerInputEvent(VOLUME_SLIDER, () => {
-		const value = VOLUME_SLIDER.valueAsNumber;
-		VOLUME_SLIDER.setAttribute("data-value", value);
-		video.volume = value;
-	});
-	registerClickEvent(DOWNLOAD_BUTTON, (event) => {
-		screenshotCanvasCtx.drawImage(video, 0, 0);
-		DOWNLOAD_BUTTON.href = screenshotCanvas.toDataURL("image/png");
-		DOWNLOAD_BUTTON.download = `${saveVideoNamePrefix}_videoframe_${frameSeek.calcFrameNumber(currentMediaTime)}.png`;
-	})();
-	registerKeyDownEvent(FILE_UPLOAD.labels[0], () => FILE_UPLOAD.click());
-
-	registerClickEvent(document.getElementById("toggleLoopBar"), () => {
-		if(!frameSeek || inert) return;
-		frameSeek.toggleAB();
-	})();
-
-	registerClickEvent(document.getElementById("frameViewToggle"), () => {
-		if(!frameSeek || inert) return;
-		frameSeek.toggleFrameView();
-	})();
-
-	registerChangeEvent(KEYFRAME_ONLY_CHECKBOX, () => frameSeek.frameView.onChangedKeyFrameMode());
-
-	video.requestVideoFrameCallback(onVideoFrame);
-
-	// if("documentPictureInPicture" in curWin) {
-	// 	registerClickEvent(TOGGLE_PIP_BUTTON, togglePictureInPicture);
-	// 	[].push({ text: "Toggle PIP (WIP)", action: () => TOGGLE_PIP_BUTTON.dispatchEvent(new MouseEvent('click')) });
-	// }
-})();
-
 function togglePause(){
 	if(video.paused)
 		video.play();
@@ -734,7 +677,7 @@ class MediabunnyThumbnailService {
 		this.onMutationList = this.onMutationList.bind(this);
 		this.videoInput = videoInput;
 		this.videoTrack = videoTrack;
-		this.canvasSink = new Mediabunny.CanvasSink(videoTrack, {alpha: false, poolSize: 1});
+		this.canvasSink = new Mediabunny.CanvasSink(videoTrack, {alpha: false, poolSize: 0}); //sorry my poor vram
 	}
 
 	/**@param {MutationRecord[]} mutations*/
@@ -744,10 +687,14 @@ class MediabunnyThumbnailService {
 				this.markDirty();
 			}
 			for(const node of mutation.removedNodes){
-				URL.revokeObjectURL(node.querySelector("img")?.src);
+				const canvas = node.firstElementChild;
+				if(canvas instanceof HTMLCanvasElement){
+					canvas.width = 0; //i dont trust GC
+					canvas.height = 0;
+				}
+				// URL.revokeObjectURL(node.querySelector("img")?.src);
 			}
 		}
-
 	}
 
 	assign(frameView, frameItemContainer){
@@ -775,7 +722,7 @@ class MediabunnyThumbnailService {
 				this.dirty = false;
 				let frameItem = this.frameItemContainer.firstElementChild;
 				do {
-					const img = frameItem.querySelector('img');
+					const img = frameItem.firstElementChild;
 					if(!img.hasAttribute("data-l")) {
 						continue;
 					}
@@ -808,13 +755,14 @@ class MediabunnyThumbnailService {
 						break;
 					if(this.destroyed)
 						return;
-					const finalFrameItem = frameItem;
-					img.removeAttribute("data-l");
-					wrappedCanvas.canvas.toBlob((blob) => {
-						if(finalFrameItem.parentNode){
-							img.src = URL.createObjectURL(blob);
-						}
-					}, "image/png", 1);
+					img.replaceWith(wrappedCanvas.canvas);
+					// const finalFrameItem = frameItem;
+					// img.removeAttribute("data-l");
+					// wrappedCanvas.canvas.toBlob((blob) => {
+					// 	if(finalFrameItem.parentNode){
+					// 		img.src = URL.createObjectURL(blob);
+					// 	}
+					// }, "image/png", 1);
 				} while((frameItem = frameItem.nextElementSibling));
 			}
 		} finally {
@@ -825,6 +773,8 @@ class MediabunnyThumbnailService {
 	destroy(){
 		this.destroyed = true;
 		this.videoInput.dispose();
+		if(this.canvasSinkIterator)
+			this.canvasSinkIterator.return();
 		this.onMutationList(this.observer.takeRecords());
 		this.observer.disconnect();
 		this.dirty = false;
@@ -842,14 +792,6 @@ function range(start, end){
 }
 
 
-
-
-
-FILE_UPLOAD.addEventListener("change", () => {
-	if(!inert)
-		uploadFile(FILE_UPLOAD.files[0]);
-	FILE_UPLOAD.value = null;
-}, true);
 
 /** @param {File} file
  * @returns {Promise<FrameSeek>}
@@ -972,42 +914,6 @@ async function getVideoFrameTimesMP4Box(file) {
 		readNextChunk();
 	});
 }
-
-window.addEventListener("dragover", (event) => {
-	if(event.dataTransfer.types.includes("Files") && !inert)
-		event.preventDefault();
-});
-window.addEventListener("drop", (event) => {
-	const fileList = event.dataTransfer.files;
-	if(fileList.length && !inert) { //an empty FileList is truthy, for some reason
-		event.preventDefault();
-		uploadFile(fileList[0]);
-	}
-});
-
-video.addEventListener("play", () => {
-	PLAY_BUTTON.classList.add("playing");
-}, {passive: true});
-video.addEventListener("pause", () => {
-	PLAY_BUTTON.classList.remove("playing");
-}, {passive: true});
-video.addEventListener("loadstart", () => {
-	PLAY_BUTTON.classList.remove("playing");
-}, {passive: true});
-video.addEventListener("timeupdate", timeUpdate, {passive: true});
-// video.addEventListener("seeking", timeUpdate, {passive: true});
-video.addEventListener("durationchange", () => document.getElementById("secondDurationLabel").textContent = secondsToTimestamp(video.duration), {passive: true});
-video.addEventListener("click", () => {if(videoSrc)toggleUI();}, {passive: true});
-video.addEventListener("dblclick", toggleFullscreen, {passive: true});
-video.addEventListener("ended", () => {
-	if(frameSeek.abEnabled) {
-		currentMediaTime = frameSeek.ab.loopBeginMediaTime;
-		video.currentTime = currentMediaTime+MOE;
-		frameSeek.onSeekedManually(currentMediaTime+MOE);
-		video.play();
-	}
-}, {passive: true});
-registerClickEvent(document.getElementById("fullscreenButton"), toggleFullscreen)();
 
 function timeUpdate() {
 	const currentTime = video.currentTime;
@@ -1591,3 +1497,85 @@ function binarySearchLenientFloor(arr, val) {
 // 	// lo == hi + 1
 // 	return (arr[lo] - val) < (val - arr[hi]) ? arr[lo] : arr[hi];
 // }
+
+(function setup(){
+	window.addEventListener("dragover", (event) => {
+		if(event.dataTransfer.types.includes("Files") && !inert)
+			event.preventDefault();
+	});
+	window.addEventListener("drop", (event) => {
+		const fileList = event.dataTransfer.files;
+		if(fileList.length && !inert) { //an empty FileList is truthy, for some reason
+			event.preventDefault();
+			uploadFile(fileList[0]);
+		}
+	});
+	FILE_UPLOAD.addEventListener("change", () => {
+		if(!inert)
+			uploadFile(FILE_UPLOAD.files[0]);
+		FILE_UPLOAD.value = null;
+	}, true);
+	registerKeyDownEvent(FILE_UPLOAD.labels[0], () => FILE_UPLOAD.click());
+
+	video.addEventListener("play", () => {
+		PLAY_BUTTON.classList.add("playing");
+	}, {passive: true});
+	video.addEventListener("pause", () => {
+		PLAY_BUTTON.classList.remove("playing");
+	}, {passive: true});
+	video.addEventListener("loadstart", () => {
+		PLAY_BUTTON.classList.remove("playing");
+	}, {passive: true});
+	video.addEventListener("timeupdate", timeUpdate, {passive: true});
+// video.addEventListener("seeking", timeUpdate, {passive: true});
+	video.addEventListener("durationchange", () => document.getElementById("secondDurationLabel").textContent = secondsToTimestamp(video.duration), {passive: true});
+	video.addEventListener("click", () => {if(videoSrc)toggleUI();}, {passive: true});
+	video.addEventListener("dblclick", toggleFullscreen, {passive: true});
+	video.addEventListener("ended", () => {
+		if(frameSeek.abEnabled) {
+			currentMediaTime = frameSeek.ab.loopBeginMediaTime;
+			video.currentTime = currentMediaTime+MOE;
+			frameSeek.onSeekedManually(currentMediaTime+MOE);
+			video.play();
+		}
+	}, {passive: true});
+	video.requestVideoFrameCallback(onVideoFrame);
+
+	registerClickEvent(document.getElementById("fullscreenButton"), toggleFullscreen)();
+	registerClickEvent(PLAY_BUTTON.parentElement, togglePause)();
+	registerClickEvent(SEEK_BACKWARD, () => seek(-1))();
+	registerClickEvent(SEEK_FORWARD, () => seek(1))();
+	registerClickEvent(SKIP_BACKWARD, () => {
+		frameSeek.backward();
+	})();
+	registerClickEvent(SKIP_FORWARD, () => {
+		frameSeek.forward();
+	})();
+	registerInputEvent(VOLUME_SLIDER, () => {
+		const value = VOLUME_SLIDER.valueAsNumber;
+		VOLUME_SLIDER.setAttribute("data-value", value);
+		video.volume = value;
+	});
+	registerClickEvent(DOWNLOAD_BUTTON, (event) => {
+		screenshotCanvasCtx.drawImage(video, 0, 0);
+		DOWNLOAD_BUTTON.href = screenshotCanvas.toDataURL("image/png");
+		DOWNLOAD_BUTTON.download = `${saveVideoNamePrefix}_videoframe_${frameSeek.calcFrameNumber(currentMediaTime)}.png`;
+	})();
+	registerClickEvent(document.getElementById("toggleLoopBar"), () => {
+		if(!frameSeek || inert) return;
+		frameSeek.toggleAB();
+	})();
+	registerClickEvent(document.getElementById("frameViewToggle"), () => {
+		if(!frameSeek || inert) return;
+		frameSeek.toggleFrameView();
+	})();
+
+	registerChangeEvent(KEYFRAME_ONLY_CHECKBOX, () => frameSeek.frameView.onChangedKeyFrameMode());
+
+	// if("documentPictureInPicture" in curWin) {
+	// 	registerClickEvent(TOGGLE_PIP_BUTTON, togglePictureInPicture);
+	// 	[].push({ text: "Toggle PIP (WIP)", action: () => TOGGLE_PIP_BUTTON.dispatchEvent(new MouseEvent('click')) });
+	// }
+})();
+
+
