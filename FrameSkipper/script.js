@@ -54,8 +54,8 @@ var inert = false;
 /** @type string */ let videoSrc = null;
 /** @type string */ let saveVideoNamePrefix = "";
 /** @type number */ var currentMediaTime = 0;
+/** @type number */ var currentFrameNumber = 0;
 /** @type FrameSeek */ var frameSeek = null;
-/** @type {(frameCount:number) => void} */ var frameRateDeterminedCallback = null;
 
 /** @type Window */ var storedWindow;
 /** @type Window */ var curWin = window;
@@ -288,8 +288,8 @@ class FrameSeek {
 		if(currentMediaTime && newFrame){
 			PLAY_BAR.style.setProperty("--percentage", String(Math.min(currentMediaTime / video.duration, 1) * 100) + '%');
 			CURRENT_TIME_INPUT.textContent = secondsToTimestamp(currentMediaTime);
-			MEDIA_TIME_INPUT.textContent = String(round6(currentMediaTime)); //avoid excessive decimals from inserted mediaTime
-			FRAME_INPUT.textContent = String(newFrame);
+			// MEDIA_TIME_INPUT.textContent = String(round6(currentMediaTime)); //avoid excessive decimals from inserted mediaTime
+			// FRAME_INPUT.textContent = String(newFrame);
 			COLOR_CONTAINER.style.setProperty("--color", "#aaaaaa");
 		}
 		timeUpdateUnofficial();
@@ -297,20 +297,17 @@ class FrameSeek {
 
 	forward(){
 		if(!video.paused){ video.pause(); return; }
-		let currentFrameNumber;
 		let nextMediaTime;
 		switch(SEEK_APPROACH){
 			case 0:
-				currentFrameNumber = binarySearchLenient(this.timestamps, currentMediaTime);
 				if(currentFrameNumber+1 < this.timestamps.length){
-					nextMediaTime = this.timestamps[currentFrameNumber+1];
-					currentMediaTime = nextMediaTime;
+					nextMediaTime = this.getMediaTimeAtFrame(currentFrameNumber+1);
+					updateCurrentTime(currentFrameNumber+1, nextMediaTime);
 					video.currentTime = nextMediaTime+MOE;
 					this.onSeekedManually(nextMediaTime+MOE);
 				}
 				break;
 			case 1:
-				currentFrameNumber = binarySearchLenient(this.timestamps, currentMediaTime);
 				const newMediaTime = this.timestamps?.[currentFrameNumber+1];
 				nextMediaTime = this.timestamps?.[currentFrameNumber+2];
 				if(nextMediaTime){
@@ -324,20 +321,17 @@ class FrameSeek {
 
 	backward(){
 		if(!video.paused){ video.pause(); return; }
-		let currentFrameNumber;
 		let prevMediaTime;
 		switch(SEEK_APPROACH){
 			case 0:
-				currentFrameNumber = binarySearchLenient(this.timestamps, currentMediaTime);
 				if(currentFrameNumber-1 >= 0){
-					prevMediaTime = this.timestamps[currentFrameNumber-1];
-					currentMediaTime = prevMediaTime;
+					prevMediaTime = this.getMediaTimeAtFrame(currentFrameNumber-1);
+					updateCurrentTime(currentFrameNumber-1, prevMediaTime);
 					video.currentTime = prevMediaTime+MOE;
 					this.onSeekedManually(prevMediaTime+MOE);
 				}
 				break;
 			case 1:
-				currentFrameNumber = binarySearchLenient(this.timestamps, currentMediaTime);
 				const mediaTime = this.timestamps?.[currentFrameNumber];
 				prevMediaTime = this.timestamps?.[currentFrameNumber-1];
 				if(prevMediaTime){
@@ -554,11 +548,12 @@ class FrameView {
 	// }
 
 	frameItemClick(mouseEvent){
-		video.pause();
-		const currentTime = this.frameSeek.getMediaTimeAtFrame(Number(mouseEvent.currentTarget.getAttribute("data-n")));
-		currentMediaTime = currentTime;
-		video.currentTime = currentTime+MOE;
-		this.frameSeek.onSeekedManually(currentTime+MOE);
+		// video.pause();
+		const frameNumber = Number(mouseEvent.currentTarget.getAttribute("data-n"));
+		const mediaTime = this.frameSeek.getMediaTimeAtFrame(frameNumber);
+		updateCurrentTime(frameNumber, mediaTime);
+		video.currentTime = mediaTime+MOE;
+		this.frameSeek.onSeekedManually(mediaTime+MOE);
 	}
 
 	updateFrameView() {
@@ -662,6 +657,8 @@ class MediabunnyThumbnailService {
 	/**@type {AsyncGenerator<import("mediabunny").WrappedCanvas, void, unknown>}*/ canvasSinkIterator = null;
 	/**@type {number}*/ currentFrameNumber;
 	/**@type {FrameView}*/ frameView;
+	/**@type HTMLCanvasElement[]*/ cache = [];
+	/**@type number*/ maxCached = 0;
 	destroyed = false;
 	running = false;
 	dirty = false;
@@ -675,24 +672,32 @@ class MediabunnyThumbnailService {
 	 * @param {import("mediabunny").InputVideoTrack} videoTrack */
 	constructor(Mediabunny, videoInput, videoTrack) {
 		this.onMutationList = this.onMutationList.bind(this);
+		this.updateMaxCache = this.updateMaxCache.bind(this);
 		this.videoInput = videoInput;
 		this.videoTrack = videoTrack;
-		this.canvasSink = new Mediabunny.CanvasSink(videoTrack, {alpha: false, poolSize: 0}); //sorry my poor vram
+		this.canvasSink = new Mediabunny.CanvasSink(videoTrack, {alpha: false, poolSize: 1}); //sorry my poor vram
+		window.addEventListener("resize", this.updateMaxCache, {passive: true});
+		this.updateMaxCache();
+	}
+
+	updateMaxCache(){
+		this.maxCached = Math.ceil(window.innerWidth/100)+1;
+		if(this.cache.length > this.maxCached)
+			this.cache.length = this.maxCached;
 	}
 
 	/**@param {MutationRecord[]} mutations*/
 	onMutationList(mutations){
 		for(const mutation of mutations){
-			if(mutation.addedNodes.length){
-				this.markDirty();
-			}
 			for(const node of mutation.removedNodes){
 				const canvas = node.firstElementChild;
-				if(canvas instanceof HTMLCanvasElement){
-					canvas.width = 0; //i dont trust GC
-					canvas.height = 0;
+				if(canvas instanceof HTMLCanvasElement && this.cache.length < this.maxCached){
+					this.cache.push(canvas);
 				}
 				// URL.revokeObjectURL(node.querySelector("img")?.src);
+			}
+			if(mutation.addedNodes.length){
+				this.markDirty();
 			}
 		}
 	}
@@ -733,7 +738,7 @@ class MediabunnyThumbnailService {
 						wrappedCanvas = await this.canvasSink.getCanvas(frameSeek.getMediaTimeAtFrame(frameNumber), {verifyKeyPackets: true});
 					} else {
 						if(!this.canvasSinkIterator || this.currentFrameNumber > frameNumber || this.currentFrameNumber < frameNumber-25){
-							if(this.canvasSinkIterator) this.canvasSinkIterator.return();
+							if(this.canvasSinkIterator) this.canvasSinkIterator.return(void 0);
 							this.canvasSinkIterator = this.canvasSink.canvases(frameSeek.getMediaTimeAtFrame(frameNumber), Infinity, {verifyKeyPackets: true});
 							this.currentFrameNumber = frameNumber;
 						}
@@ -755,7 +760,16 @@ class MediabunnyThumbnailService {
 						break;
 					if(this.destroyed)
 						return;
-					img.replaceWith(wrappedCanvas.canvas);
+					/**@type OffscreenCanvas*/
+					const frameCanvas = wrappedCanvas.canvas;
+					let canvas = this.cache.pop();
+					if(!canvas){
+						canvas = document.createElement("canvas");
+					}
+					canvas.width = frameCanvas.width;
+					canvas.height = frameCanvas.height;
+					canvas.getContext("bitmaprenderer").transferFromImageBitmap(frameCanvas.transferToImageBitmap());
+					img.replaceWith(canvas);
 					// const finalFrameItem = frameItem;
 					// img.removeAttribute("data-l");
 					// wrappedCanvas.canvas.toBlob((blob) => {
@@ -774,9 +788,11 @@ class MediabunnyThumbnailService {
 		this.destroyed = true;
 		this.videoInput.dispose();
 		if(this.canvasSinkIterator)
-			this.canvasSinkIterator.return();
+			this.canvasSinkIterator.return(void 0);
 		this.onMutationList(this.observer.takeRecords());
 		this.observer.disconnect();
+		window.removeEventListener("resize", this.updateMaxCache, {passive: true});
+		this.cache = [];
 		this.dirty = false;
 	}
 }
@@ -1023,21 +1039,34 @@ curWin.addEventListener("keydown", keyEvent => {
 	}
 });
 
+/** @param {DOMHighResTimeStamp} now
+ * @param {VideoFrameCallbackMetadata} metadata */
 function onVideoFrame(now, metadata){
 	video.requestVideoFrameCallback(onVideoFrame);
-	currentMediaTime = metadata.mediaTime;
-	setEditableTextContent(MEDIA_TIME_INPUT, String(currentMediaTime));
-	setEditableTextContent(FRAME_INPUT, String(frameSeek.calcFrameNumber(currentMediaTime)));
+	updateCurrentMediaTime(metadata.mediaTime);
 	COLOR_CONTAINER.style.setProperty("--color", "#ffffff");
 
 	if(frameSeek.abEnabled){
 		const ab = frameSeek.ab;
 		if(round2(metadata.mediaTime) >= round2(ab.loopEndMediaTime)){
-			currentMediaTime = ab.loopBeginMediaTime;
+			updateCurrentFrameNumber(ab.loopBeginFrameNumber);
 			video.currentTime = currentMediaTime+MOE;
 			frameSeek.onSeekedManually(currentMediaTime+MOE);
 		}
 	}
+}
+
+function updateCurrentMediaTime(mediaTime) {
+	updateCurrentFrameNumber(frameSeek.calcFrameNumber(mediaTime));
+}
+
+function updateCurrentFrameNumber(frameNumber) {
+	updateCurrentTime(frameNumber, frameSeek.getMediaTimeAtFrame(frameNumber));
+}
+
+function updateCurrentTime(frameNumber, mediaTime) {
+	setEditableTextContent(MEDIA_TIME_INPUT, String(currentMediaTime = frameSeek.getMediaTimeAtFrame(frameNumber)));
+	setEditableTextContent(FRAME_INPUT, String(currentFrameNumber = frameNumber));
 }
 
 //TODO: ensure Math.ceil is fine
@@ -1139,7 +1168,7 @@ function progressBarSeek(mouse, seekVideo) {
 	const progress = Math.max(offsetX / progressBarDomRect.width, 0);
 	const [mediaTime, frameNumber] = frameSeek.getSeekDataFromProgress(progress);
 	if(seekVideo) {
-		currentMediaTime = mediaTime;
+		updateCurrentFrameNumber(frameNumber);
 		video.currentTime = mediaTime+MOE;
 		frameSeek.onSeekedManually(mediaTime+MOE);
 	} else {
@@ -1382,7 +1411,7 @@ function clamp(val, min, max) {
 }
 
 /** Runs a standard binary search algorithm on arr, returning the index of val or -1
- * @param arr {number[]}
+ * @param arr {ArrayLike<number>}
  * @param val {number} */
 function binarySearch(arr, val) {
 	let start = 0;
@@ -1404,7 +1433,7 @@ function binarySearch(arr, val) {
 	return -1;
 }
 /** Runs a binary search algorithm on arr, returning the closest index to val
- * @param arr {number[]}
+ * @param arr {ArrayLike<number>}
  * @param val {number} */
 function binarySearchLenient(arr, val) {
 	if(val < arr[0]) {
@@ -1442,7 +1471,7 @@ function binarySearchLenient(arr, val) {
 }
 
 /** Runs a binary search algorithm on arr, returning the index of a value equal to or less than val
- * @param arr {number[]}
+ * @param arr {ArrayLike<number>}
  * @param val {number} */
 function binarySearchLenientFloor(arr, val) {
 	if(val < arr[0]) {
