@@ -25,7 +25,7 @@
 						<div class="tableBorder text" id="inputColorContainer" style="height:100%; color: white; font-size: min(5cqw, 18px); --color: #ffffff;">
 							Frame:
 							<span id="frameNumber" tabindex="0" contenteditable="plaintext-only" inputmode="numeric" enterkeyhint="send" style="color: var(--color);">N/A</span>
-							<div title="The time of the video's current frame (secs)" id="mediaTimeInput" tabindex="0" contenteditable="plaintext-only" inputmode="numeric" enterkeyhint="send" style="color: var(--color);">N/A</div>
+							<div title="The time of the video's current frame (secs)" id="mediaTimeInput" tabindex="0" contenteditable="plaintext-only" inputmode="numeric" enterkeyhint="send" style="color: var(--color); width: 10em;">N/A</div>
 						</div>
 						<div class="spacer scrollableText" style="color: white; margin: 0 1em; white-space: normal;" id="videoTitle"></div>
 						<a tabindex="0" class="cell clickableButton tableBorder" title="Download Frame" style="height:100%;" id="downloadFrame" download>
@@ -41,6 +41,8 @@
 									<div id="toggleLoopBar" class="clickableButton" tabindex="1">Toggle AB Looping</div>
 									<div id="setAHere" class="clickableButton" tabindex="1" style="display: var(--abLoopDisplay);">Set A Here</div>
 									<div id="setBHere" class="clickableButton" tabindex="1" style="display: var(--abLoopDisplay);">Set B Here</div>
+									<div id="trimVideo" class="clickableButton" tabindex="1" style="display: none;/*var(--abLoopDisplay);*/">Save Copy From A to B (inclusive)</div>
+<!--									doesn't work because mediabunny still doesn't support negative timestamps-->
 									<div tabindex="1">Using <a tabindex="1" href="https://github.com/gpac/mp4box.js/" target="_blank">MP4Box</a> and <a tabindex="1" href="https://github.com/Vanilagy/mediabunny/" target="_blank">Mediabunny</a></div>
 								</div>
 							</div>
@@ -90,10 +92,20 @@
 					</div>
 					<div style="display: flex; flex-direction: row; width:100%; height: max(4.5vh, 40px); container-type: size;">
 						<div title="Mute (M)" class="cell tableBorder" style="height:100%; max-width: 100cqh;">
-								<img src="../Icons/SpeakerIcon.svg" id="volumeIcon" class="">
-							<div tabindex="0" id="volumePullsOpen" class="pullsOpen">
+							<img src="../Icons/SpeakerIcon.svg" id="volumeIcon" style="width: 100%; height: 100%; pointer-events: none;" class="">
+							<div tabindex="0" class="pullsOpen">
 								<div>
 									<input type="range" id="volumeSlider" max=1 min=0 value=1 step=0.0001 style="writing-mode: vertical-lr; direction: rtl; width: 100%; height: 100%; position: relative;">
+								</div>
+							</div>
+						</div>
+						<div title="Playback Rate" class="cell tableBorder" style="height:100%; max-width: 100cqh;">
+							<img src="../Icons/PlaybackSpeedIcon.svg" id="playRateIcon" style="width: 100%; height: 100%; pointer-events: none;" class="">
+							<div tabindex="0" class="pullsOpen">
+								<div style="display: flex; flex-direction: column;">
+									<datalist style="display: none" id="playBackRates"><option value="0.0625"></option><option value="0.25"></option><option value="0.5"></option><option value="0.75"></option><option value="1"></option><option value="1.25"></option><option value="1.5"></option><option value="1.75"></option><option value="2"></option><option value="2.25"></option><option value="2.5"></option><option value="2.75"></option><option value="3"></option><option value="3.25"></option><option value="3.5"></option><option value="3.75"></option><option value="4"></option></datalist>
+									<input type="number" style="width: 100%" class="playRate" id="playRateInput" value="1" step="any" max="4" min="0.0625" inputmode="numeric">
+									<input type="range" id="playRateSlider" list="playBackRates" max="4" min="0" value="1" step="0.01" style="writing-mode: vertical-lr; direction: rtl; width: 100%; height: 100%; position: relative; flex-grow: 1;">
 								</div>
 							</div>
 						</div>
@@ -118,10 +130,11 @@
 							</div>
 						</div>
 						<div class="spacer"></div>
-						<div id="modifiers1">
-							<div id="fullscreenButton" tabindex="0" class="cell clickableButton tableBorder" title="Fullscreen (F)" style="height:100%;">
-								<img class="invertColor" style="width: 100%; height: 100%; pointer-events: none;" src="../Icons/arrows-angle-expand.svg" alt="Fullscreen"/>
-							</div>
+						<div class="cell tableBorder" style="height:100%; max-width: 100cqh;">
+							<img class="invertColor" style="width: 100%; height: 100%; pointer-events: none; visibility: hidden;" src="../Icons/arrows-angle-expand.svg" alt="Fullscreen"/>
+						</div>
+						<div id="fullscreenButton" tabindex="0" class="cell clickableButton tableBorder" title="Fullscreen (F)" style="height:100%; max-width: 100cqh;">
+							<img class="invertColor" style="width: 100%; height: 100%; pointer-events: none;" src="../Icons/arrows-angle-expand.svg" alt="Fullscreen"/>
 						</div>
 					</div>
 				</div>

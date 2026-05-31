@@ -52,6 +52,7 @@ var inert = false;
 /** @type RegExp */ const TIME_ONLY_REGEX = /[^\d:.]/g;
 /** @type HTMLVideoElement */ const video = document.getElementById("video");
 /** @type string */ let videoSrc = null;
+/** @type File */ let videoFile = null;
 /** @type string */ let saveVideoNamePrefix = "";
 /** @type number */ var currentMediaTime = 0;
 /** @type number */ var currentFrameNumber = 0;
@@ -73,6 +74,8 @@ var inert = false;
 /** @type HTMLAnchorElement */ const DOWNLOAD_BUTTON = document.getElementById("downloadFrame");
 /** @type HTMLDivElement */ const UI = document.getElementById("ui");
 /** @type HTMLDivElement */ const PLAY_BUTTON = document.getElementById("playButton");
+/** @type HTMLInputElement */ const PLAY_RATE_INPUT = document.getElementById("playRateInput");
+/** @type HTMLInputElement */ const PLAY_RATE_SLIDER = document.getElementById("playRateSlider");
 /** @type HTMLInputElement */ const VOLUME_SLIDER = document.getElementById("volumeSlider");
 /** @type HTMLImageElement */ const VOLUME_ICON = document.getElementById("volumeIcon");
 /** @type HTMLDivElement */ const PLAY_BAR = document.getElementsByClassName("playbar")[0];
@@ -131,6 +134,7 @@ function seek(seekDirection){
 	updateCurrentTime(frameNumber, mediaTime);
 	video.currentTime = currentMediaTime+MOE;
 	frameSeek.onSeekedManually(currentMediaTime);
+	frameSeek.scrollFrameView(frameNumber);
 }
 
 /** @param {number} seekDirection */
@@ -140,6 +144,7 @@ function smallSeek(seekDirection){
 	updateCurrentTime(frameNumber, mediaTime);
 	video.currentTime = currentMediaTime+MOE;
 	frameSeek.onSeekedManually(currentMediaTime);
+	frameSeek.scrollFrameView(frameNumber);
 }
 
 /** @param {File} file */
@@ -156,6 +161,7 @@ function uploadFile(file){
 	VIDEO_TITLE_DISPLAY.textContent = separationIndex !== -1 ? file.name.substring(0, separationIndex) : file.name;
 	saveVideoNamePrefix = VIDEO_TITLE_DISPLAY.textContent.substring(0, 28);
 
+	videoFile = file;
 	videoSrc = URL.createObjectURL(file);
 	LOADING_OVERLAY.toggleAttribute("data-active", true);
 
@@ -305,6 +311,13 @@ class FrameSeek {
 		timeUpdateUnofficial();
 	}
 
+	scrollFrameView(frameNumber){
+		const frameView = this.frameView;
+		if(frameView){
+			frameView.scrollToFrameNumber(frameNumber);
+		}
+	}
+
 	forward(){
 		if(!video.paused){ video.pause(); return; }
 		let nextMediaTime;
@@ -315,6 +328,7 @@ class FrameSeek {
 					updateCurrentTime(currentFrameNumber+1, nextMediaTime);
 					video.currentTime = nextMediaTime+MOE;
 					this.onSeekedManually(nextMediaTime+MOE);
+					this.scrollFrameView(currentFrameNumber);
 				}
 				break;
 			case 1:
@@ -339,6 +353,7 @@ class FrameSeek {
 					updateCurrentTime(currentFrameNumber-1, prevMediaTime);
 					video.currentTime = prevMediaTime+MOE;
 					this.onSeekedManually(prevMediaTime+MOE);
+					this.scrollFrameView(currentFrameNumber);
 				}
 				break;
 			case 1:
@@ -370,8 +385,8 @@ class FrameSeek {
 		return binarySearchLenient(this.timestamps, mediaTime);
 	}
 
-	calcOwningKeyFrameNumber(mediaTime){
-		return binarySearchLenientFloor(this.keyframeIndexes, this.calcFrameNumber(mediaTime));
+	calcOwningKeyFrameNumber(frameNumber){
+		return binarySearchLenientFloor(this.keyframeIndexes, frameNumber);
 	}
 
 	getFrameCount(){
@@ -507,10 +522,18 @@ class FrameView {
 	initializeFrameView(){
 		if(KEYFRAME_ONLY_CHECKBOX.checked){
 			FRAME_VIEW.style.setProperty("--scrollWidth", `${this.frameSeek.getKeyFrameCount() * 100}px`);
-			FRAME_VIEW.scrollLeft = (this.frameSeek.calcOwningKeyFrameNumber(currentMediaTime)*100)-(window.innerWidth/2)+50;
 		} else {
 			FRAME_VIEW.style.setProperty("--scrollWidth", `${this.frameSeek.getFrameCount() * 100}px`);
-			FRAME_VIEW.scrollLeft = (currentFrameNumber*100)-(window.innerWidth/2)+50;
+		}
+
+		this.scrollToFrameNumber(currentFrameNumber);
+	}
+
+	scrollToFrameNumber(frameNumber){
+		if(KEYFRAME_ONLY_CHECKBOX.checked){
+			FRAME_VIEW.scrollLeft = (this.frameSeek.calcOwningKeyFrameNumber(frameNumber)*100)-(window.innerWidth/2)+50;
+		} else {
+			FRAME_VIEW.scrollLeft = (frameNumber*100)-(window.innerWidth/2)+50;
 		}
 	}
 
@@ -736,6 +759,7 @@ class MediabunnyThumbnailService {
 			while(this.dirty){
 				this.dirty = false;
 				let frameItem = this.frameItemContainer.firstElementChild;
+				if(!frameItem) continue;
 				do {
 					const img = frameItem.firstElementChild;
 					if(!img.hasAttribute("data-l")) {
@@ -1063,6 +1087,9 @@ function onVideoFrame(now, metadata){
 			frameSeek.onSeekedManually(currentMediaTime+MOE);
 		}
 	}
+	if(!video.paused){
+		frameSeek.scrollFrameView(currentFrameNumber);
+	}
 }
 
 function updateCurrentMediaTime(mediaTime) {
@@ -1180,6 +1207,7 @@ function progressBarSeek(mouse, seekVideo) {
 		updateCurrentFrameNumber(frameNumber);
 		video.currentTime = mediaTime+MOE;
 		frameSeek.onSeekedManually(mediaTime+MOE);
+		frameSeek.scrollFrameView(frameNumber);
 	} else {
 		HOVERED_TIME_DISPLAY.children[0].textContent = String(secondsToTimestamp(mediaTime));
 		HOVERED_TIME_DISPLAY.children[1].textContent = String(frameNumber);
@@ -1258,6 +1286,7 @@ function submitFrameInput(){
 	updateCurrentTime(frameNumber, mediaTime);
 	video.currentTime = mediaTime+MOE;
 	frameSeek.onSeekedManually(mediaTime+MOE);
+	frameSeek.scrollFrameView(frameNumber);
 }
 const timeInputMultipliers = [1, 60, 60*60, 60*60*24];
 function submitTimeInput(){
@@ -1273,6 +1302,7 @@ function submitTimeInput(){
 	updateCurrentTime(frameNumber, mediaTime);
 	video.currentTime = mediaTime+MOE;
 	frameSeek.onSeekedManually(mediaTime+MOE);
+	frameSeek.scrollFrameView(frameNumber);
 }
 function submitMediaTimeInput(){
 	video.pause();
@@ -1281,6 +1311,7 @@ function submitMediaTimeInput(){
 	updateCurrentTime(frameNumber, mediaTime);
 	video.currentTime = currentMediaTime+MOE;
 	frameSeek.onSeekedManually(currentMediaTime+MOE);
+	frameSeek.scrollFrameView(frameNumber);
 }
 
 function setEditableTextContent(element, string){
@@ -1403,6 +1434,67 @@ registerClickEvent(document.getElementById("setBHere"), () => {
 	LOOP_END_BAR.style.setProperty("--progress", `${mediaTime/video.duration*100}%`);
 })();
 
+registerClickEvent(document.getElementById("trimVideo"), () => {
+	importMediabunny().then(async (Mediabunny) => {
+		const input = new Mediabunny.Input({source: new Mediabunny.BlobSource(videoFile), formats: Mediabunny.ALL_FORMATS});
+		Promise.all([input.getPrimaryVideoTrack(), input.getPrimaryAudioTrack(), input.getMetadataTags()]).then(([videoTrack, audioTrack, metadata]) => {
+			Promise.all([videoTrack.getCodec(), audioTrack.getCodec()]).then(async ([videoCodec, audioCodec]) => {
+				const videoPacketSource = new Mediabunny.EncodedVideoPacketSource(videoCodec);
+				const audioPacketSource = new Mediabunny.EncodedAudioPacketSource(audioCodec);
+				const output = new Mediabunny.Output({
+					target: new Mediabunny.BufferTarget(),
+					format: new Mediabunny.Mp4OutputFormat()
+				});
+				output.addVideoTrack(videoPacketSource);
+				output.addAudioTrack(audioPacketSource);
+				output.setMetadataTags(metadata);
+				await output.start();
+
+				const begin = frameSeek.ab.loopBeginMediaTime;
+				const videoMux = (async () => {
+					const decoderConfig = await videoTrack.getDecoderConfig();
+					const sink = new Mediabunny.EncodedPacketSink(videoTrack);
+
+					const beginPacket = await sink.getKeyPacket(frameSeek.ab.loopBeginMediaTime, {verifyKeyPackets: true, metadataOnly: false});
+					const endPacket = await sink.getPacket((frameSeek.ab.loopEndFrameNumber+1 < frameSeek.getFrameCount()) ? frameSeek.getMediaTimeAtFrame(frameSeek.ab.loopEndFrameNumber+1) : Infinity, {verifyKeyPackets: true, metadataOnly: false});
+					for await (const encodedPacket of sink.packets(beginPacket, endPacket, {metadataOnly: false})) {
+						encodedPacket.timestamp -= begin; //mediabunny does not support negative timestamps. shame.
+						await videoPacketSource.add(encodedPacket, {decoderConfig: decoderConfig});
+					}
+					videoPacketSource.close();
+				})();
+				const audioMux = (async () => {
+					const decoderConfig = await audioTrack.getDecoderConfig();
+					const sink = new Mediabunny.EncodedPacketSink(audioTrack);
+
+					const beginPacket = await sink.getKeyPacket(frameSeek.ab.loopBeginMediaTime, {verifyKeyPackets: true, metadataOnly: false});
+					// const endPacket = await sink.getPacket((frameSeek.ab.loopEndFrameNumber+1 < frameSeek.getFrameCount()) ? frameSeek.getMediaTimeAtFrame(frameSeek.ab.loopEndFrameNumber+1) : Infinity, {verifyKeyPackets: true, metadataOnly: false});
+					for await (const encodedPacket of sink.packets(beginPacket, undefined, { metadataOnly: false })) {
+						if(encodedPacket.timestamp > frameSeek.ab.loopEndMediaTime){
+							break;
+						}
+						encodedPacket.timestamp -= begin; //mediabunny does not support negative timestamps. shame.
+						await audioPacketSource.add(encodedPacket, {decoderConfig: decoderConfig});
+					}
+					audioPacketSource.close();
+				})();
+
+				Promise.all([videoMux, audioMux]).then(async () => {
+					await output.finalize();
+					const blob = new Blob([output.target.buffer], { type: videoFile.type });
+					input.dispose();
+					const url = URL.createObjectURL(blob);
+					const a = document.createElement("a");
+					a.href = url;
+					a.download = videoFile.name;
+					a.click();
+					URL.revokeObjectURL(url);
+				});
+			});
+		});
+	});
+})();
+
 
 function showTimeDisplayPointerEvent(mediaTime, frameNumber, mouse, rect) {
 	HOVERED_TIME_DISPLAY.children[0].textContent = String(secondsToTimestamp(mediaTime));
@@ -1508,7 +1600,7 @@ function binarySearchLenientFloor(arr, val) {
 		}
 	}
 
-	return hi;
+	return (arr[lo] < val) ? lo : hi;
 }
 
 // /** @param arr {number[]}
@@ -1596,6 +1688,24 @@ function binarySearchLenientFloor(arr, val) {
 		const value = VOLUME_SLIDER.valueAsNumber;
 		VOLUME_SLIDER.setAttribute("data-value", value);
 		video.volume = value;
+	});
+	registerInputEvent(PLAY_RATE_SLIDER, () => {
+		const value = PLAY_RATE_SLIDER.valueAsNumber;
+		const cleanValue = clamp(value, 0.0625, 4);
+		if(cleanValue !== value)
+			PLAY_RATE_SLIDER.valueAsNumber = cleanValue;
+
+		PLAY_RATE_INPUT.valueAsNumber = cleanValue;
+		video.playbackRate = cleanValue;
+	});
+	registerChangeEvent(PLAY_RATE_INPUT, () => {
+		const value = PLAY_RATE_INPUT.valueAsNumber;
+		const cleanValue = clamp(value, 0.0625, 4);
+		if(cleanValue !== value)
+			PLAY_RATE_INPUT.valueAsNumber = cleanValue;
+
+		PLAY_RATE_SLIDER.valueAsNumber = cleanValue;
+		video.playbackRate = cleanValue;
 	});
 	registerClickEvent(DOWNLOAD_BUTTON, (event) => {
 		screenshotCanvasCtx.drawImage(video, 0, 0);
