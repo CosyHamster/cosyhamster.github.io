@@ -495,7 +495,6 @@ class FrameView {
 	constructor(thumbnailService) {
 		this.updateFrameView = this.updateFrameView.bind(this);
 		this.frameItemClick = this.frameItemClick.bind(this);
-		FRAME_VIEW.addEventListener("scroll", this.updateFrameView, {passive: true});
 		this.thumbnailService = thumbnailService;
 		thumbnailService.assign(this, FRAME_ITEM_CONTAINER);
 	}
@@ -507,13 +506,13 @@ class FrameView {
 
 	destroy(){
 		this.disable();
-		FRAME_VIEW.removeEventListener("scroll", this.updateFrameView, {passive: true});
 		if(this.thumbnailService)
 			this.thumbnailService.destroy();
 	}
 
 	enable() {
 		document.body.style.setProperty("--frameViewDisplay", "block");
+		FRAME_VIEW.addEventListener("scroll", this.updateFrameView, {passive: true});
 		window.addEventListener("resize", this.updateFrameView, {passive: true});
 		this.initializeFrameView();
 		this.updateFrameView();
@@ -540,6 +539,7 @@ class FrameView {
 	disable() {
 		document.body.style.setProperty("--frameViewDisplay", "none");
 		window.removeEventListener("resize", this.updateFrameView, {passive: true});
+		FRAME_VIEW.removeEventListener("scroll", this.updateFrameView, {passive: true});
 		FRAME_ITEM_CONTAINER.replaceChildren();
 	}
 
@@ -1079,15 +1079,16 @@ function onVideoFrame(now, metadata){
 	updateCurrentMediaTime(metadata.mediaTime);
 	COLOR_CONTAINER.style.setProperty("--color", "#ffffff");
 
-	if(frameSeek.abEnabled){
-		const ab = frameSeek.ab;
-		if(round2(metadata.mediaTime) >= round2(ab.loopEndMediaTime)){
-			updateCurrentFrameNumber(ab.loopBeginFrameNumber);
-			video.currentTime = currentMediaTime+MOE;
-			frameSeek.onSeekedManually(currentMediaTime+MOE);
-		}
-	}
 	if(!video.paused){
+		if(frameSeek.abEnabled){
+			const ab = frameSeek.ab;
+			if(round3(metadata.mediaTime) >= round3(ab.loopEndMediaTime)){
+				updateCurrentTime(ab.loopBeginFrameNumber, ab.loopBeginMediaTime);
+				video.currentTime = currentMediaTime+MOE;
+				frameSeek.onSeekedManually(currentMediaTime+MOE);
+			}
+		}
+
 		frameSeek.scrollFrameView(currentFrameNumber);
 	}
 }
