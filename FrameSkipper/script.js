@@ -180,6 +180,8 @@ function uploadFile(file){
 function loadVideoPlayer(){
 	console.timeEnd("loadFR");
 	video.addEventListener("loadeddata", () => {
+		video.volume = VOLUME_SLIDER.valueAsNumber;
+		video.playbackRate = PLAY_RATE_INPUT.valueAsNumber;
 		screenshotCanvas.width = video.videoWidth;
 		screenshotCanvas.height = video.videoHeight;
 		setButtonsDisabled(false);
