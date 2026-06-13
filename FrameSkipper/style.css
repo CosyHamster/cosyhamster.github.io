@@ -269,6 +269,53 @@ main{
     filter: invert(1) brightness(1);
 }
 
+dialog{
+    transition-behavior: allow-discrete;
+    interpolate-size: allow-keywords;
+    position: fixed;
+    background-color: white;
+
+    @media screen and (prefers-reduced-motion: no-preference) {
+        transition: 250ms;
+        /*animation: moveUp 250ms ease normal;*/
+        /*animation-fill-mode: forwards;*/
+    }
+}
+dialog[open] {
+    left: 0;
+    opacity: 1;
+    width: 75%;
+    height: max-content;
+    @media (max-width: 140ch){
+        width: 100%;
+    }
+    @starting-style {
+        width: 0;
+        height: 0;
+        opacity: 0;
+        left: calc(100%);
+    }
+    /*@media screen and (prefers-reduced-motion: no-preference) {*/
+    /*    animation: moveDown 250ms ease normal;*/
+    /*    animation-fill-mode: forwards;*/
+    /*}*/
+}
+dialog::backdrop{
+    transition: background-color 250ms;
+    background-color: rgba(0, 0, 0, 0.75);
+    /*animation: darkenColor 250ms ease normal;*/
+    /*animation-fill-mode: forwards;*/
+
+    @starting-style {
+        background-color: #0000;
+    }
+}
+
+.input {
+    min-width: 1em;
+    border: 1px solid black;
+}
+
 /*input[type="range"]{*/
 /*    appearance: none;*/
 /*}*/

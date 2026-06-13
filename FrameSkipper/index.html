@@ -3,7 +3,7 @@
 		<script>if(navigator.userAgent.includes("CrOS"))document.addEventListener("keydown",(event)=>{if(event.keyCode==119)window.addEventListener("beforeunload",(event) => {event.preventDefault();});},{passive:true,once:true});</script>
 		<link rel="stylesheet" href="style.css">
 		<script type="importmap">{"imports": {"mediabunny": "../Javascript/mediabunny.min.mjs", "mp4box": "../Javascript/mp4box.all.js"}}</script>
-		<script type="module" src="script.js" defer></script>
+		<script src="script.js" defer></script>
 		<link rel="icon" href="../Icons/PageFavicon.ico">
 		<title>Frame Skipper</title>
 	</head>
@@ -42,6 +42,7 @@
 									<div id="setAHere" class="clickableButton" tabindex="1" style="display: var(--abLoopDisplay);">Set A Here</div>
 									<div id="setBHere" class="clickableButton" tabindex="1" style="display: var(--abLoopDisplay);">Set B Here</div>
 									<div id="trimVideo" class="clickableButton" tabindex="1" style="display: none;/*var(--abLoopDisplay);*/">Save Copy From A to B (inclusive)</div>
+									<div id="openCommandCreator" class="clickableButton" tabindex="1">FFMPEG Command Creator</div>
 <!--									doesn't work because mediabunny still doesn't support negative timestamps-->
 									<div tabindex="1">Using <a tabindex="1" href="https://github.com/gpac/mp4box.js/" target="_blank">MP4Box</a> and <a tabindex="1" href="https://github.com/Vanilagy/mediabunny/" target="_blank">Mediabunny</a></div>
 								</div>
@@ -140,5 +141,12 @@
 				</div>
 			</div>
 		</main>
+
+		<dialog id="ffmpegCommandCreator">
+			<div>
+				<img class="clickableButton" id="exitCommandCreator" style="border-radius: 8px; float: right; width: 20px; height: 20px;" src="../Icons/CancelIcon.svg" alt="Exit"/>
+				<code>.\ffmpeg <span id="commandCreatorStart">-ss NUMBER </span><span id="commandCreatorEnd">-to NUMBER </span>-i <span id="commandCreatorPath" class="input" contenteditable="plaintext-only"></span> -c copy <span id="commandCreatorOutput" class="input" contenteditable="plaintext-only"></span>&nbsp;</code><button type="button" id="commandCreatorCopy">Copy</button>
+			</div>
+		</dialog>
 	</body>
 </html>

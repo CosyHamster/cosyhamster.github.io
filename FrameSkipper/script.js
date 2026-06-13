@@ -36,7 +36,6 @@ const screenshotCanvasCtx = screenshotCanvas.getContext("2d");
 
 const BUFFER_SIZE = 1024*1024*15;
 const MOE = 0.015;//0.016900000000077853  //0.001900000000205182
-// const MOE = 0.001;
 const SEEK_APPROACH = 0; //0 - MOE, 1 - BACKWARD MOE, 2 - CLAMPED MOE (not yet added)
 var inert = false;
 /** @type HTMLDivElement */ const VIDEO_TITLE_DISPLAY = document.getElementById("videoTitle");
@@ -84,6 +83,10 @@ var inert = false;
 /** @type HTMLDivElement */ const SKIP_BACKWARD = document.getElementById("skipBackward");
 /** @type HTMLDivElement */ const SEEK_BACKWARD = document.getElementById('seekBackward');
 /** @type HTMLDivElement */ const SEEK_FORWARD = document.getElementById('seekForward');
+
+/**@type HTMLDialogElement */const COMMAND_CREATOR = document.getElementById("ffmpegCommandCreator");
+/**@type HTMLSpanElement */const COMMAND_CREATOR_PATH = document.getElementById("commandCreatorPath");
+/**@type HTMLSpanElement */const COMMAND_CREATOR_OUTPUT = document.getElementById("commandCreatorOutput");
 
 // Source - https://stackoverflow.com/a/60055110
 // Posted by trincot, modified by community. See post 'Timeline' for change history
@@ -159,6 +162,9 @@ function uploadFile(file){
 
 	const separationIndex = file.name.lastIndexOf('.');
 	VIDEO_TITLE_DISPLAY.textContent = separationIndex !== -1 ? file.name.substring(0, separationIndex) : file.name;
+	COMMAND_CREATOR_PATH.textContent = file.name;
+	COMMAND_CREATOR_OUTPUT.textContent = separationIndex !== -1 ? file.name.substring(0, separationIndex)+" TRIM"+file.name.substring(separationIndex) : file.name;
+
 	saveVideoNamePrefix = VIDEO_TITLE_DISPLAY.textContent.substring(0, 28);
 
 	videoFile = file;
@@ -191,6 +197,54 @@ function loadVideoPlayer(){
 }
 
 
+const BUFFER_LENGTH = 1000;
+class ExpandingTypedArray {
+	/**@type {Float64ArrayConstructor | Uint32ArrayConstructor}*/
+	TypedArrayClass;
+	/**@type {Float64Array[] | Uint32Array[]}*/
+	buffers;
+	index = 0;
+	bufferIndex = 0;
+
+	/**@param TypedArrayClass {Float64ArrayConstructor | Uint32ArrayConstructor}*/
+	constructor(TypedArrayClass) {
+		this.TypedArrayClass = TypedArrayClass;
+		this.buffers = [new TypedArrayClass(BUFFER_LENGTH)];
+	}
+
+	addValue(value) {
+		if(this.bufferIndex === BUFFER_LENGTH){
+			this.buffers.push(new this.TypedArrayClass(BUFFER_LENGTH));
+			this.bufferIndex -= BUFFER_LENGTH;
+			this.index++;
+		}
+		this.buffers[this.index][this.bufferIndex++] = value;
+	}
+
+	//must be called before iterating or converting to a TypedArray.
+	//cannot add more values after calling finalize
+	finalize(){
+		this.buffers[this.index] = this.buffers[this.index].subarray(0, this.bufferIndex);
+	}
+
+	*[Symbol.iterator](){
+		for(const buffer of this.buffers){
+			for(const value of buffer){
+				yield value;
+			}
+		}
+	}
+
+	toTypedArray(){
+		const typedArray = new this.TypedArrayClass(this.index*1000+this.bufferIndex);
+		let index = 0;
+		for(const value of this){
+			typedArray[index++] = value;
+		}
+		return typedArray;
+	}
+}
+
 class FrameSeek {
 	/** @type number */ frameRate = 0;
 	/** @type AB */ ab;
@@ -200,28 +254,12 @@ class FrameSeek {
 	/** @type Float64Array */ timestamps;
 	/** @type Uint32Array */ keyframeIndexes;
 
-
-	/** @param {number[]} timestamps
+	/** @param {Float64Array} timestamps
+	 * @param {Uint32Array} keyframeIndexes
 	 * @param {FrameView} frameView */
-	constructor(timestamps, frameView) {
-		timestamps.sort((a,b) => a-b);
-		const keyframeIndexes = [];
-		const length = timestamps.length;
-
-		this.timestamps = new Float64Array((function* (){
-			let ignored = 0;
-			for(let i = 0; i < length; i++){
-				const val = timestamps[i];
-				if(val !== val){
-					keyframeIndexes.push(i-(++ignored));
-				} else {
-					yield val;
-				}
-			}
-		})());
-		this.keyframeIndexes = new Uint32Array(keyframeIndexes);
-		// console.log("Frame timestamps (seconds):", this.timestamps);
-		// console.log("Frame keyframe indexes:", this.keyframeIndexes);
+	constructor(timestamps, keyframeIndexes, frameView) {
+		this.timestamps = timestamps;
+		this.keyframeIndexes = keyframeIndexes;
 		this.frameView = frameView;
 		if(frameView){
 			frameView.assignFrameSeek(this);
@@ -299,7 +337,6 @@ class FrameSeek {
 	destroy() {
 		this.destroyAB();
 		this.destroyFrameView();
-		this.frameRate = null;
 	}
 
 	onSeekedManually(currentMediaTime, newFrame) {
@@ -689,7 +726,7 @@ class MediabunnyThumbnailService {
 	/**@type {import("mediabunny").Input}*/ videoInput;
 	/**@type {import("mediabunny").InputVideoTrack}*/ videoTrack;
 	/**@type {import("mediabunny").CanvasSink}*/ canvasSink;
-	/**@type {AsyncGenerator<import("mediabunny").WrappedCanvas, void, unknown>}*/ canvasSinkIterator = null;
+	/**@type {AsyncGenerator}*/ canvasSinkIterator = null;
 	/**@type {number}*/ currentFrameNumber;
 	/**@type {FrameView}*/ frameView;
 	/**@type HTMLCanvasElement[]*/ cache = [];
@@ -850,14 +887,14 @@ function range(start, end){
  * */
 function createFrameSeeker(file) {
 	return getVideoFrameTimesMediabunny(file).then(value => {
-		const [timestamps, frameView] = value;
-		return new FrameSeek(timestamps, frameView);
+		const [timestamps, keyframeIndexes, frameView] = value;
+		return new FrameSeek(timestamps, keyframeIndexes, frameView);
 	}).catch(e => {
 		console.error("Error while creating frame seeker using Mediabunny", e);
 		console.log("Reattempting with MP4Box");
 		getVideoFrameTimesMP4Box(file).then(value => {
-			const [timestamps] = value;
-			return new FrameSeek(timestamps, null);
+			const [timestamps, keyframeIndexes] = value;
+			return new FrameSeek(timestamps, keyframeIndexes, null);
 		}).catch(e => {
 			console.error("Error while creating frame seeker using MP4Box", e);
 			console.warn("Failed to create frame seeker. Aborting.");
@@ -866,8 +903,28 @@ function createFrameSeeker(file) {
 	});
 }
 
+/**@returns {[timestamps: Float64Array, keyframeIndexes: Uint32Array]} */
+function parseExpandingTimestampBuffer(timestamps) {
+	const expandingKeyframeIndexesBuffer = new ExpandingTypedArray(Uint32Array);
+	timestamps = timestamps.toTypedArray().sort((a,b) => a-b);
+	timestamps = Float64Array.from((function* (){
+		let index = 0;
+		let ignored = 0;
+		for(const val of timestamps){
+			if(val !== val){
+				expandingKeyframeIndexesBuffer.addValue(index-(++ignored));
+			} else {
+				yield val;
+			}
+			index++;
+		}
+	})());
+	expandingKeyframeIndexesBuffer.finalize();
+	return [timestamps, expandingKeyframeIndexesBuffer.toTypedArray()];
+}
+
 /** @param {File} file
- * @returns {Promise<[timestamps: (number | Number)[], FrameView]>}
+ * @returns {Promise<[timestamps: Float64Array, keyframeIndexes: Uint32Array, FrameView]>}
  * */
 function getVideoFrameTimesMediabunny(file) {
 	return importMediabunny().then(async (Mediabunny) => {
@@ -875,21 +932,19 @@ function getVideoFrameTimesMediabunny(file) {
 		const videoTrack = await videoInput.getPrimaryVideoTrack();
 		let videoDuration = await videoTrack.getDurationFromMetadata() ?? await videoTrack.computeDuration();
 
-		const timestamps = [];
+		const expandingTimestampBuffer = new ExpandingTypedArray(Float64Array);
 		const sink = new Mediabunny.EncodedPacketSink(videoTrack);
-		// const sink2 = new Mediabunny.VideoSampleSink(videoTrack);
-		// const sink3 = new Mediabunny.CanvasSink(videoTrack);
 		for await (const encodedPacket of sink.packets(undefined, undefined, {metadataOnly: true})) { //may determine incorrect key frames but using metadataOnly is worth it imo TODO: benchmark this
-			if(encodedPacket.timestamp < 0) //negative timestamps should not be included
-				continue;
-			timestamps.push(encodedPacket.timestamp);
+			// if(encodedPacket.timestamp < 0) //negative timestamps should not be included
+			// 	continue;
+			expandingTimestampBuffer.addValue(encodedPacket.timestamp);
 			if(encodedPacket.type === "key")
-				timestamps.push(NaN);
+				expandingTimestampBuffer.addValue(NaN);
 			LOADING_PERCENTAGE.value = encodedPacket.timestamp / videoDuration;
 		}
 
-		timestamps.length = timestamps.length; //hopefully hint to the browser that the array won't be extended anymore
-		return [timestamps, new FrameView(new MediabunnyThumbnailService(Mediabunny, videoInput, videoTrack))];
+		expandingTimestampBuffer.finalize();
+		return [...parseExpandingTimestampBuffer(expandingTimestampBuffer), new FrameView(new MediabunnyThumbnailService(Mediabunny, videoInput, videoTrack))];
 	}).catch(e => {
 		console.warn("Cannot use Mediabunny due to error", e);
 		console.log("Reattempting with MP4Box");
@@ -901,7 +956,7 @@ async function getVideoFrameTimesMP4Box(file) {
 	const MP4Box = await import("mp4box");
 	return new Promise((resolve, reject) => {
 		let mp4Box = MP4Box.createFile(false);
-		let timestamps = [];
+		const expandingTimestampBuffer = new ExpandingTypedArray(Float64Array);
 		let videoTrackId = null;
 		let timescale = null;
 
@@ -927,8 +982,8 @@ async function getVideoFrameTimesMP4Box(file) {
 			mp4Box.onSamples = (trackId, user, samples) => {
 				for (const sample of samples) {
 					const pts = (sample.cts ?? sample.dts) / timescale;
-					timestamps.push(pts);
-					if(sample.is_sync) timestamps.push(NaN);
+					expandingTimestampBuffer.addValue(pts);
+					if(sample.is_sync) expandingTimestampBuffer.addValue(NaN);
 				}
 			};
 
@@ -936,7 +991,6 @@ async function getVideoFrameTimesMP4Box(file) {
 			timescale = videoTrack.timescale;
 			mp4Box.setExtractionOptions(videoTrackId, null, {nbSamples: Infinity}); //1_000_000
 			mp4Box.start();
-
 		};
 
 		let offset = 0;
@@ -951,8 +1005,8 @@ async function getVideoFrameTimesMP4Box(file) {
 				readNextChunk();
 			} else {
 				mp4Box.flush();
-				timestamps.length = timestamps.length; //hopefully hint to the browser that the array won't be extended anymore
-				resolve([timestamps]);
+				expandingTimestampBuffer.finalize();
+				resolve([...parseExpandingTimestampBuffer(expandingTimestampBuffer)]);
 				mp4Box = null;
 				reader = null;
 			}
@@ -1441,7 +1495,7 @@ registerClickEvent(document.getElementById("trimVideo"), () => {
 	importMediabunny().then(async (Mediabunny) => {
 		const input = new Mediabunny.Input({source: new Mediabunny.BlobSource(videoFile), formats: Mediabunny.ALL_FORMATS});
 		Promise.all([input.getPrimaryVideoTrack(), input.getPrimaryAudioTrack(), input.getMetadataTags()]).then(([videoTrack, audioTrack, metadata]) => {
-			Promise.all([videoTrack.getCodec(), audioTrack.getCodec()]).then(async ([videoCodec, audioCodec]) => {
+			Promise.all([videoTrack?.getCodec?.(), audioTrack?.getCodec?.()]).then(async ([videoCodec, audioCodec]) => {
 				const videoPacketSource = new Mediabunny.EncodedVideoPacketSource(videoCodec);
 				const audioPacketSource = new Mediabunny.EncodedAudioPacketSource(audioCodec);
 				const output = new Mediabunny.Output({
@@ -1453,16 +1507,19 @@ registerClickEvent(document.getElementById("trimVideo"), () => {
 				output.setMetadataTags(metadata);
 				await output.start();
 
-				const begin = frameSeek.ab.loopBeginMediaTime;
+				const videoSink = new Mediabunny.EncodedPacketSink(videoTrack);
+				const beginVideoPacket = await videoSink.getKeyPacket(frameSeek.ab.loopBeginMediaTime, {verifyKeyPackets: true, metadataOnly: false});
+				const begin = beginVideoPacket.timestamp;
+				const end = frameSeek.ab.loopEndMediaTime;
+
 				const videoMux = (async () => {
 					const decoderConfig = await videoTrack.getDecoderConfig();
-					const sink = new Mediabunny.EncodedPacketSink(videoTrack);
-
-					const beginPacket = await sink.getKeyPacket(frameSeek.ab.loopBeginMediaTime, {verifyKeyPackets: true, metadataOnly: false});
-					const endPacket = await sink.getPacket((frameSeek.ab.loopEndFrameNumber+1 < frameSeek.getFrameCount()) ? frameSeek.getMediaTimeAtFrame(frameSeek.ab.loopEndFrameNumber+1) : Infinity, {verifyKeyPackets: true, metadataOnly: false});
-					for await (const encodedPacket of sink.packets(beginPacket, endPacket, {metadataOnly: false})) {
-						encodedPacket.timestamp -= begin; //mediabunny does not support negative timestamps. shame.
-						await videoPacketSource.add(encodedPacket, {decoderConfig: decoderConfig});
+					for await (const encodedPacket of videoSink.packets(beginVideoPacket, undefined, {metadataOnly: false})) {
+						let sequenceNumber = 0;
+						if(encodedPacket.timestamp > end) //TODO: the video duration glitches if the last frame is on a keyframe. not sure why.
+							break;
+						// encodedPacket.timestamp -= begin;
+						await videoPacketSource.add(encodedPacket.clone({timestamp: encodedPacket.timestamp-begin, sequenceNumber: sequenceNumber++}), {decoderConfig: decoderConfig});
 					}
 					videoPacketSource.close();
 				})();
@@ -1470,21 +1527,23 @@ registerClickEvent(document.getElementById("trimVideo"), () => {
 					const decoderConfig = await audioTrack.getDecoderConfig();
 					const sink = new Mediabunny.EncodedPacketSink(audioTrack);
 
-					const beginPacket = await sink.getKeyPacket(frameSeek.ab.loopBeginMediaTime, {verifyKeyPackets: true, metadataOnly: false});
-					// const endPacket = await sink.getPacket((frameSeek.ab.loopEndFrameNumber+1 < frameSeek.getFrameCount()) ? frameSeek.getMediaTimeAtFrame(frameSeek.ab.loopEndFrameNumber+1) : Infinity, {verifyKeyPackets: true, metadataOnly: false});
+					const beginPacket = await sink.getKeyPacket(begin, {verifyKeyPackets: true, metadataOnly: false});
 					for await (const encodedPacket of sink.packets(beginPacket, undefined, { metadataOnly: false })) {
-						if(encodedPacket.timestamp > frameSeek.ab.loopEndMediaTime){
+						let sequenceNumber = 0;
+						if(encodedPacket.timestamp > end){
 							break;
 						}
-						encodedPacket.timestamp -= begin; //mediabunny does not support negative timestamps. shame.
-						await audioPacketSource.add(encodedPacket, {decoderConfig: decoderConfig});
+						if(encodedPacket.timestamp < begin) //TODO: wait for mediabunny to support negative timestamps.
+							continue;
+						// encodedPacket.timestamp -= begin;
+						await audioPacketSource.add(encodedPacket.clone({timestamp: encodedPacket.timestamp-begin, sequenceNumber: sequenceNumber++}), {decoderConfig: decoderConfig});
 					}
 					audioPacketSource.close();
 				})();
 
 				Promise.all([videoMux, audioMux]).then(async () => {
 					await output.finalize();
-					const blob = new Blob([output.target.buffer], { type: videoFile.type });
+					const blob = new Blob([output.target.buffer], { type: "video/mp4" });
 					input.dispose();
 					const url = URL.createObjectURL(blob);
 					const a = document.createElement("a");
@@ -1723,8 +1782,37 @@ function binarySearchLenientFloor(arr, val) {
 		if(!frameSeek || inert) return;
 		frameSeek.toggleFrameView();
 	})();
-
 	registerChangeEvent(KEYFRAME_ONLY_CHECKBOX, () => frameSeek.frameView.onChangedKeyFrameMode());
+
+	registerClickEvent(document.getElementById("exitCommandCreator"), () => {
+		COMMAND_CREATOR.close();
+	})();
+	registerClickEvent(document.getElementById("openCommandCreator"), () => {
+		if(frameSeek){
+			if(frameSeek.abEnabled){
+				document.getElementById("commandCreatorStart").style.display = document.getElementById("commandCreatorEnd").style.display = "none";
+				if(frameSeek.ab.loopBeginFrameNumber !== 0){
+					document.getElementById("commandCreatorStart").textContent = `-ss ${frameSeek.ab.loopBeginMediaTime} `;
+					document.getElementById("commandCreatorStart").style.display = "";
+				}
+				if(frameSeek.ab.loopEndFrameNumber !== frameSeek.getFrameCount()-1){
+					document.getElementById("commandCreatorEnd").textContent = `-to ${frameSeek.ab.loopEndMediaTime} `;
+					document.getElementById("commandCreatorEnd").style.display = "";
+				}
+			} else {
+				document.getElementById("commandCreatorStart").style.display = document.getElementById("commandCreatorEnd").style.display = "none";
+			}
+			COMMAND_CREATOR.showModal();
+		}
+	})();
+	registerInputEvent(COMMAND_CREATOR_PATH, () => {
+		const path = COMMAND_CREATOR_PATH.textContent;
+		const splitIndex = path.lastIndexOf('.');
+		document.getElementById("commandCreatorOutput").textContent = splitIndex !== -1 ? path.substring(0, splitIndex)+" TRIM"+path.substring(splitIndex) : path;
+	})
+	registerClickEvent(document.getElementById("commandCreatorCopy"), () => {
+		navigator.clipboard.writeText(COMMAND_CREATOR.querySelector("code").innerText.trim());
+	})();
 
 	// if("documentPictureInPicture" in curWin) {
 	// 	registerClickEvent(TOGGLE_PIP_BUTTON, togglePictureInPicture);
