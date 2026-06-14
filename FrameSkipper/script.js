@@ -534,8 +534,10 @@ class FrameView {
 	constructor(thumbnailService) {
 		this.updateFrameView = this.updateFrameView.bind(this);
 		this.frameItemClick = this.frameItemClick.bind(this);
-		this.thumbnailService = thumbnailService;
-		thumbnailService.assign(this, FRAME_ITEM_CONTAINER);
+		if(thumbnailService){
+			thumbnailService.assign(this, FRAME_ITEM_CONTAINER);
+			this.thumbnailService = thumbnailService;
+		}
 	}
 
 	/** @param {FrameSeek} frameSeek */
@@ -893,8 +895,8 @@ function createFrameSeeker(file) {
 		console.error("Error while creating frame seeker using Mediabunny", e);
 		console.log("Reattempting with MP4Box");
 		getVideoFrameTimesMP4Box(file).then(value => {
-			const [timestamps, keyframeIndexes] = value;
-			return new FrameSeek(timestamps, keyframeIndexes, null);
+			const [timestamps, keyframeIndexes, frameView] = value;
+			return new FrameSeek(timestamps, keyframeIndexes, frameView);
 		}).catch(e => {
 			console.error("Error while creating frame seeker using MP4Box", e);
 			console.warn("Failed to create frame seeker. Aborting.");
@@ -1006,7 +1008,7 @@ async function getVideoFrameTimesMP4Box(file) {
 			} else {
 				mp4Box.flush();
 				expandingTimestampBuffer.finalize();
-				resolve([...parseExpandingTimestampBuffer(expandingTimestampBuffer)]);
+				resolve([...parseExpandingTimestampBuffer(expandingTimestampBuffer), new FrameView()]);
 				mp4Box = null;
 				reader = null;
 			}
