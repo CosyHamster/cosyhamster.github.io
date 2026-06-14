@@ -62,22 +62,11 @@
 							<div id="secondDurationLabel" style="margin-left: 1ch; color: white;" class="text">00:00</div>
 						</div>
 						<div id="loopBarTrack" class="interactivity" style="position: absolute; top: -20px; left: anchor(--bar left); margin-left: 4px; width: calc(anchor-size(--bar width) - 8px); height: 20px; display: var(--abLoopDisplay);"> <!--style="position: absolute; grid-area: 1 / 1 / 2 / 2; position-anchor: --bar; height: 20px; left: calc(anchor(left) + 4px); width: calc(anchor-size(width) - 8px); top: 0px; transform: translateY(-100%); display: var(--abLoopDisplay);"-->
-							<div id="drag1" tabindex="0" style="position: absolute; height: 100%; width: 8px; background-color: gold; --progress: 0%; left: var(--progress); transform: translateX(-50%); z-index: 2; anchor-name: --drag1;"></div>
-							<div id="drag2" tabindex="0" style="position: absolute; height: 100%; width: 8px; background-color: gold; --progress: 100%; left: var(--progress); transform: translateX(-50%); z-index: 2; anchor-name: --drag2;"></div>
-							<div id="yellowBar" style="position: absolute; left: anchor(--drag1 left); right: anchor(--drag2 left); top: 50%; transform: translateY(-50%); height: 5px; background-color: gold; z-index: 1;"></div>
+							<div id="drag1" tabindex="0" style="position: absolute; height: 100%; width: 8px; background-color: gold; --progress: 0%; left: var(--progress); transform: translateX(-50%); z-index: 1; anchor-name: --drag1;"></div>
+							<div id="drag2" tabindex="0" style="position: absolute; height: 100%; width: 8px; background-color: gold; --progress: 100%; left: var(--progress); transform: translateX(-50%); z-index: 1; anchor-name: --drag2;"></div>
+							<div id="yellowBar" style="position: absolute; left: anchor(--drag1 left); right: anchor(--drag2 left); top: 50%; transform: translateY(-50%); height: 5px; background-color: gold; pointer-events: none; z-index: 1;"></div>
 						</div>
 						<div style="display: var(--abLoopDisplay);"><div style="height: 20px;"></div></div>
-<!--						<div id="frameView" class="interactivity" style="width: 100%; display: var(&#45;&#45;frameViewDisplay);"> &lt;!&ndash;style="position: absolute; grid-area: 1 / 1 / 2 / 2; position-anchor: &#45;&#45;bar; height: 20px; left: calc(anchor(left) + 4px); width: calc(anchor-size(width) - 8px); top: 0px; transform: translateY(-100%); display: var(&#45;&#45;abLoopDisplay);"&ndash;&gt;-->
-<!--							<div id="frameViewContainer">-->
-<!--								<div style="width: 10000000px; height: 100%; container-type: size; display: flex; flex-direction: row; flex-wrap: nowrap;">-->
-<!--									<div class="frameItem clickableButton">-->
-<!--										<img src="../Icons/videoframe_118688.png" alt="frame 123" style="/*flex: 1 1; */min-height: 0; object-fit: contain;">-->
-<!--										<div style="flex-shrink: 0;"><div>Frame</div><div>123534</div></div>-->
-<!--									</div>-->
-<!--								</div>-->
-
-<!--							</div>-->
-<!--						</div>-->
 						<div id="frameView" class="interactivity" style="display: var(--frameViewDisplay); --scrollWidth: 0px;">
 							<div style="width: var(--scrollWidth);" class="frameItemContainer"><div id="frameItemOffset" style="width: 100px;"></div><div id="frameItemContainer" class="frameItemContainer"></div></div>
 						</div>
