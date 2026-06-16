@@ -197,7 +197,7 @@ function loadVideoPlayer(){
 }
 
 
-const BUFFER_LENGTH = 1000;
+const BUFFER_LENGTH = 8000;
 class ExpandingTypedArray {
 	/**@type {Float64ArrayConstructor | Uint32ArrayConstructor}*/
 	TypedArrayClass;
@@ -940,8 +940,7 @@ function getVideoFrameTimesMediabunny(file) {
 			// if(encodedPacket.timestamp < 0) //negative timestamps should not be included
 			// 	continue;
 			expandingTimestampBuffer.addValue(encodedPacket.timestamp);
-			if(encodedPacket.type === "key")
-				expandingTimestampBuffer.addValue(NaN);
+			if(encodedPacket.type === "key") expandingTimestampBuffer.addValue(NaN);
 			LOADING_PERCENTAGE.value = encodedPacket.timestamp / videoDuration;
 		}
 
@@ -1786,6 +1785,7 @@ function binarySearchLenientFloor(arr, val) {
 	})();
 	registerChangeEvent(KEYFRAME_ONLY_CHECKBOX, () => frameSeek.frameView.onChangedKeyFrameMode());
 
+
 	registerClickEvent(document.getElementById("exitCommandCreator"), () => {
 		COMMAND_CREATOR.close();
 	})();
@@ -1794,7 +1794,7 @@ function binarySearchLenientFloor(arr, val) {
 			if(frameSeek.abEnabled){
 				document.getElementById("commandCreatorStart").style.display = document.getElementById("commandCreatorEnd").style.display = "none";
 				if(frameSeek.ab.loopBeginFrameNumber !== 0){
-					document.getElementById("commandCreatorStart").textContent = `-ss ${frameSeek.ab.loopBeginMediaTime} `;
+					document.getElementById("commandCreatorStart").textContent = `-ss ${frameSeek.getMediaTimeAtFrame(frameSeek.keyFrameNumberToFrameNumber(frameSeek.calcOwningKeyFrameNumber(frameSeek.ab.loopBeginFrameNumber)))} `;
 					document.getElementById("commandCreatorStart").style.display = "";
 				}
 				if(frameSeek.ab.loopEndFrameNumber !== frameSeek.getFrameCount()-1){
