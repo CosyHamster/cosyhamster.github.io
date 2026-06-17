@@ -236,7 +236,7 @@ class ExpandingTypedArray {
 	}
 
 	toTypedArray(){
-		const typedArray = new this.TypedArrayClass(this.index*1000+this.bufferIndex);
+		const typedArray = new this.TypedArrayClass(this.index*BUFFER_LENGTH+this.bufferIndex);
 		let index = 0;
 		for(const value of this){
 			typedArray[index++] = value;
