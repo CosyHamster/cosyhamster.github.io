@@ -813,7 +813,14 @@ class MediabunnyThumbnailService {
 						wrappedCanvas = await this.canvasSink.getCanvas(frameSeek.getMediaTimeAtFrame(frameNumber), {verifyKeyPackets: true});
 					} else {
 						if(!this.canvasSinkIterator || this.currentFrameNumber > frameNumber || this.currentFrameNumber < frameNumber-25){
-							if(this.canvasSinkIterator) this.canvasSinkIterator.return(void 0);
+							if(this.canvasSinkIterator) {
+								await this.canvasSinkIterator.return(undefined);
+								if(!frameItem.parentNode)
+									break;
+								if(this.destroyed){
+									return;
+								}
+							}
 							this.canvasSinkIterator = this.canvasSink.canvases(frameSeek.getMediaTimeAtFrame(frameNumber), Infinity, {verifyKeyPackets: true});
 							this.currentFrameNumber = frameNumber;
 						}
