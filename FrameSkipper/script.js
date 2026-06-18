@@ -156,6 +156,8 @@ function uploadFile(file){
 	video.pause();
 	if(videoSrc){
 		URL.revokeObjectURL(videoSrc);
+	}
+	if(frameSeek){
 		frameSeek.destroy();
 		frameSeek = null;
 	}
@@ -164,21 +166,21 @@ function uploadFile(file){
 	VIDEO_TITLE_DISPLAY.textContent = separationIndex !== -1 ? file.name.substring(0, separationIndex) : file.name;
 	COMMAND_CREATOR_PATH.textContent = file.name;
 	COMMAND_CREATOR_OUTPUT.textContent = separationIndex !== -1 ? file.name.substring(0, separationIndex)+" TRIM"+file.name.substring(separationIndex) : file.name;
-
 	saveVideoNamePrefix = VIDEO_TITLE_DISPLAY.textContent.substring(0, 28);
 
 	videoFile = file;
 	videoSrc = URL.createObjectURL(file);
 	LOADING_OVERLAY.toggleAttribute("data-active", true);
 
-	console.log(function(){return frameSeek});
+	// console.log(function(){return frameSeek});
 	console.time("loadFR");
 	createFrameSeeker(file).then(newFrameSeeker => {
 		frameSeek = newFrameSeeker;
 		loadVideoPlayer();
 	}).catch(e => {
 		console.timeEnd("loadFR");
-		setButtonsDisabled(false);
+		setButtonsDisabled(true);
+		inert = false;
 		LOADING_OVERLAY.toggleAttribute("data-active", false);
 	});
 }
@@ -899,14 +901,14 @@ function createFrameSeeker(file) {
 		const [timestamps, keyframeIndexes, frameView] = value;
 		return new FrameSeek(timestamps, keyframeIndexes, frameView);
 	}).catch(e => {
-		console.error("Error while creating frame seeker using Mediabunny", e);
+		console.warn("Cannot use Mediabunny due to error", e);
 		console.log("Reattempting with MP4Box");
-		getVideoFrameTimesMP4Box(file).then(value => {
+		return getVideoFrameTimesMP4Box(file).then(value => {
 			const [timestamps, keyframeIndexes, frameView] = value;
 			return new FrameSeek(timestamps, keyframeIndexes, frameView);
 		}).catch(e => {
-			console.error("Error while creating frame seeker using MP4Box", e);
-			console.warn("Failed to create frame seeker. Aborting.");
+			console.warn("Error while creating frame seeker using MP4Box", e);
+			console.error("Failed to create frame seeker. Throwing.");
 			throw e;
 		});
 	});
@@ -953,10 +955,6 @@ function getVideoFrameTimesMediabunny(file) {
 
 		expandingTimestampBuffer.finalize();
 		return [...parseExpandingTimestampBuffer(expandingTimestampBuffer), new FrameView(new MediabunnyThumbnailService(Mediabunny, videoInput, videoTrack))];
-	}).catch(e => {
-		console.warn("Cannot use Mediabunny due to error", e);
-		console.log("Reattempting with MP4Box");
-		return getVideoFrameTimesMP4Box(file);
 	});
 }
 
@@ -1797,9 +1795,9 @@ function binarySearchLenientFloor(arr, val) {
 		COMMAND_CREATOR.close();
 	})();
 	registerClickEvent(document.getElementById("openCommandCreator"), () => {
-		if(frameSeek){
-			if(frameSeek.abEnabled){
-				document.getElementById("commandCreatorStart").style.display = document.getElementById("commandCreatorEnd").style.display = "none";
+		if(videoFile){
+			document.getElementById("commandCreatorStart").style.display = (document.getElementById("commandCreatorEnd").style.display = "none");
+			if(frameSeek && frameSeek.abEnabled){
 				if(frameSeek.ab.loopBeginFrameNumber !== 0){
 					document.getElementById("commandCreatorStart").textContent = `-ss ${frameSeek.getMediaTimeAtFrame(frameSeek.keyFrameNumberToFrameNumber(frameSeek.calcOwningKeyFrameNumber(frameSeek.ab.loopBeginFrameNumber)))} `;
 					document.getElementById("commandCreatorStart").style.display = "";
@@ -1808,8 +1806,6 @@ function binarySearchLenientFloor(arr, val) {
 					document.getElementById("commandCreatorEnd").textContent = `-to ${frameSeek.ab.loopEndMediaTime} `;
 					document.getElementById("commandCreatorEnd").style.display = "";
 				}
-			} else {
-				document.getElementById("commandCreatorStart").style.display = document.getElementById("commandCreatorEnd").style.display = "none";
 			}
 			COMMAND_CREATOR.showModal();
 		}
