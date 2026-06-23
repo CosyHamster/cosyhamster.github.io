@@ -904,6 +904,17 @@ var currentSongIndex: number | null = null;
   if(SITE_DEPRECATED) DEPRECATED_POPUP.showModal();
   SEEK_DISTANCE_PROPORTIONAL_CHECKBOX.checked = true;
   SKIP_UNPLAYABLE_CHECKBOX.checked = true;
+
+  if ("launchQueue" in window) {
+    window.launchQueue.setConsumer(async (launchParams) => {
+      if(launchParams.files.length){
+        await import("../Javascript/howler.js"); //this app is old and doesn't wait for module import to finish.
+        Promise.allSettled(launchParams.files.filter(fsFile => fsFile.kind === "file").map(fsFile => fsFile.getFile())).then(results => {
+          addFiles(results.map(result => result?.value).filter(value => value));
+        });
+      }
+    });
+  }
   //END
 })()
 
@@ -1135,7 +1146,6 @@ function seek(seekDirection: number) { //controls audio seeking, seekDuration: u
 }
 
 async function importFiles(element: DataTransfer | ArrayLike<File>) {
-  const songTableRows: HTMLTableRowElement[] = [];
   if (element.constructor.name == "FileList") {
     addFiles(<FileList>element);
   } else if (element instanceof curWin.DataTransfer) {
@@ -1146,39 +1156,40 @@ async function importFiles(element: DataTransfer | ArrayLike<File>) {
     let fileReceiver = new DataTransferItemGrabber(dataTransferItemList);
     addFiles(await fileReceiver.retrieveContents());
   }
+}
 
-  function addFiles(files: ArrayLike<File> /*FileList or File[]*/) {
-    const lengthBeforeBegin = sounds.length;
-    let offsetBecauseOfSkipped = 0
-    changeStatus(`Importing ${files.length} Files...`);
+function addFiles(files: ArrayLike<File> /*FileList or File[]*/) {
+  const songTableRows: HTMLTableRowElement[] = [];
+  const lengthBeforeBegin = sounds.length;
+  let offsetBecauseOfSkipped = 0
+  changeStatus(`Importing ${files.length} Files...`);
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (file == null) continue;
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    if (file == null) continue;
 
-      const fileExtension = getFileExtension(file.name);
-      if (SKIP_UNPLAYABLE_CHECKBOX.checked && !isValidExtension(fileExtension)) {
-        const error = new TypeError(`The file ${file.name} failed to import because its extension ${fileExtension} is unsupported and cannot be played!`);
-        displayError(error, `The file type '${fileExtension}' is unsupported.`, file.name);
-        ++offsetBecauseOfSkipped;
-        continue;
-      }
-
-      const nativeIndex: number = i + lengthBeforeBegin - offsetBecauseOfSkipped;
-      const songRow: SongTableRow = new SongTableRow();
-      songRow.setSongName(file.name);
-      songRow.updateFileSizeDisplay(file.size);
-      songRow.setRowSongNumber(nativeIndex+1);
-      const song = new Song(file, nativeIndex, songRow);
-
-      songTableRows.push(songRow.tableRow); //index (2nd parameter) is used to number the checkboxes
-      sounds.push(song);
+    const fileExtension = getFileExtension(file.name);
+    if (SKIP_UNPLAYABLE_CHECKBOX.checked && !isValidExtension(fileExtension)) {
+      const error = new TypeError(`The file ${file.name} failed to import because its extension ${fileExtension} is unsupported and cannot be played!`);
+      displayError(error, `The file type '${fileExtension}' is unsupported.`, file.name);
+      ++offsetBecauseOfSkipped;
+      continue;
     }
 
-    addRowsInPlaylistTable(songTableRows);
-    changeStatus(`${files.length - offsetBecauseOfSkipped} files added!`);
-    updateAllFileInfos();
+    const nativeIndex: number = i + lengthBeforeBegin - offsetBecauseOfSkipped;
+    const songRow: SongTableRow = new SongTableRow();
+    songRow.setSongName(file.name);
+    songRow.updateFileSizeDisplay(file.size);
+    songRow.setRowSongNumber(nativeIndex+1);
+    const song = new Song(file, nativeIndex, songRow);
+
+    songTableRows.push(songRow.tableRow); //index (2nd parameter) is used to number the checkboxes
+    sounds.push(song);
   }
+
+  addRowsInPlaylistTable(songTableRows);
+  changeStatus(`${files.length - offsetBecauseOfSkipped} files added!`);
+  updateAllFileInfos();
 }
 
 function addRowsInPlaylistTable(songTableRows: HTMLTableRowElement[]){

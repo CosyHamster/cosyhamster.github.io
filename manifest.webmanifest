@@ -43,5 +43,36 @@
                 }
             ]
         }
+    ],
+    "launch_handler": {
+        "client_mode": "auto"
+    },
+    "file_handlers": [
+        {
+            "action": "PlaylistCreator/",
+            "accept": {
+                "audio/mpeg": [".mp3"],
+                "audio/mp3": [".mp3"],
+                "audio/ogg": [".ogg"],
+                "application/ogg": [".ogg"],
+                "audio/wav": [".wav"],
+                "audio/x-wav": [".wav"],
+                "audio/flac": [".flac"],
+                "audio/vorbis": [".vorbis"],
+                "audio/opus": [".opus"],
+                "audio/aac": [".aac", ".adts"],
+                "audio/m4a": [".m4a"],
+                "audio/webm": [".webm"]
+            }
+        },
+        {
+            "action": "FrameSkipper/",
+            "accept": {
+                "video/mp4": [".mp4"],
+                "video/mpeg": [".mpeg"],
+                "video/webm": [".webm"],
+                "video/AV1": [".av1"]
+            }
+        }
     ]
   }

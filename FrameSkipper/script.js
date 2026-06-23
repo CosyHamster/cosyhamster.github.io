@@ -1819,6 +1819,17 @@ function binarySearchLenientFloor(arr, val) {
 		navigator.clipboard.writeText(COMMAND_CREATOR.querySelector("code").innerText.trim());
 	})();
 
+	if ("launchQueue" in window) {
+		window.launchQueue.setConsumer(async (launchParams) => {
+			for (const fsFile of launchParams.files) {
+				if(fsFile.kind === "file"){
+					uploadFile(await fsFile.getFile());
+					break;
+				}
+			}
+		});
+	}
+
 	// if("documentPictureInPicture" in curWin) {
 	// 	registerClickEvent(TOGGLE_PIP_BUTTON, togglePictureInPicture);
 	// 	[].push({ text: "Toggle PIP (WIP)", action: () => TOGGLE_PIP_BUTTON.dispatchEvent(new MouseEvent('click')) });
