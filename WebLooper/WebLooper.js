@@ -320,7 +320,7 @@ function createNewPlayer(index){
     inputNumberChangeDetect(rateChanger);
     inputNumberChangeDetect(panChanger);
     muteButton.addEventListener('change', () => {
-        return sounds[index]?.mute(element.checked);
+        return sounds[index]?.mute(muteButton.checked);
     }, {passive: true})
     updateElementContainers();
 }
