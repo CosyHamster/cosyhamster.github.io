@@ -6,6 +6,12 @@ import("../Javascript/howler.js").catch((error) => {
     howlerScript.src = "../Javascript/howler.js";
     document.head.appendChild(howlerScript);
 });
+function helper_calculatePlayRate(cents) {
+    return Math.pow(2, cents / 1200);
+}
+function helper_calculateDetune(rate) {
+    return 1200 * Math.log2(rate);
+}
 var audio = new Audio();
 var useObjectURLS = false;
 var aiffIsPlayable = !!(audio.canPlayType("audio/aiff") || audio.canPlayType("audio/x-aiff"));

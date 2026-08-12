@@ -6,6 +6,14 @@ import("../Javascript/howler.js").catch((error) => {
   document.head.appendChild(howlerScript);
 });
 
+function helper_calculatePlayRate(cents) { //https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode/detune
+  return Math.pow(2, cents / 1200);
+}
+
+function helper_calculateDetune(rate) {
+  return 1200 * Math.log2(rate);
+}
+
 var audio = new Audio();
 var useObjectURLS = false;
 var aiffIsPlayable = !!(audio.canPlayType("audio/aiff") || audio.canPlayType("audio/x-aiff"));
