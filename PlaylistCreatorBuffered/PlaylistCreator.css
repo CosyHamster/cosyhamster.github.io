@@ -1,0 +1,452 @@
+html {
+    /*--mainTableControlsHeight: 3em; !*6.65 vw*!*/
+    /*--mainTableControlsHeight: max(4vw, 3em); !*48 px*!*/
+    --mainTableControlsHeight: calc(2em + 1vw); /*48 px*/
+}
+
+.muteCheckbox + div svg{
+    transition-duration: 200ms;
+    fill: black;
+    stroke: black;
+}
+
+.muteCheckbox:checked + div svg{
+    fill: red;
+    stroke: red;
+}
+
+.text{
+    display: inline;
+    unicode-bidi: normal;
+}
+.playpause div {
+    display: inline-block;
+    box-sizing: border-box;
+    width: 0;
+    height: 3em;
+    border-color: transparent transparent transparent #000;
+    transition: 100ms all ease;
+    cursor: pointer;
+    border-style: double;
+    border-width: 0 0 0 3em; /* 0px 0 0px 60px */
+    margin: auto;
+}
+.playpause input[type=checkbox] {
+    position: absolute;
+    display: none;
+}
+.playpause input[type=checkbox]:not(:checked) + div {
+    /*border-style: solid;*/
+    /*border-width: 4.933333334cqw 0 4.93333334cqw 8cqw; !* 37px 0 37px 60px *!*/
+    border-style: solid;
+    /*border-width: 1.5em 0 1.5em 2.5em;!* 37px 0 37px 60px *!*/
+    border-width: 6.3cqw 0 6.3cqw 10.5cqw;
+}
+
+label[for="playpause"]{
+    position: relative;
+    transform: translateY(-50%);
+    top: 50%;
+    width: 100%;
+    height: 100%;
+    display: block;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+label[for="playpause"]:has(input:not(:checked)){
+    height: 90%;
+    background-image: url("../Icons/play-button-arrowhead-svgrepo-com.svg");
+    /*https://www.svgrepo.com/svg/164900/play-button-arrowhead*/
+}
+label[for="playpause"]:has(input:checked){
+    background-image: url("../Icons/pause-alt-svgrepo-com.svg");
+    /*https://www.svgrepo.com/svg/507380/pause-alt*/
+}
+
+label[for="repeatButton"]{
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+label[for="repeatButton"]:has(input){
+    background-image: url("../Icons/RepeatIcon.svg");
+    /*https://www.svgrepo.com/svg/523665/repeat;*/
+}
+label[for="repeatButton"]:has(input:checked){
+    background-image: url("../Icons/Repeat1Icon.svg");
+    /*https://www.svgrepo.com/svg/523664/repeat-one;*/
+}
+
+.smallplaypause div{
+    border-width: 0 0 0 2.5em;/* 0px 0 0px 60px */
+}
+.smallplaypause input[type=checkbox]:not(:checked) + div {
+    border-style: solid;
+    border-width: 1.5em 0 1.5em 2.5em;/* 37px 0 37px 60px */
+}
+.smallplaypause input[type=checkbox] + div{ height: 3em; /*original: 3em*/ }
+.playpause input[type=checkbox]:focus + div {
+    box-shadow: 0 0 1px lightblue;
+}
+#dragOverDisplay{
+    background-color: rgba(173, 216, 230, 0.75);
+    pointer-events: none;
+    opacity: 0;
+    position: fixed;
+    left: -50vw;
+    top: -50vh;
+    width: 200vw;
+    height: 200vh;
+    transition-duration: 200ms;
+    z-index: 10;
+}
+#dragOverDisplay[draggingOver]{ opacity: 1; }
+
+#loadingGray{
+    background-color: rgba(30, 30, 30, 0.65);
+    opacity: 0;
+    pointer-events: none;
+    cursor: wait;
+    position: fixed;
+    width: 200vw;
+    height: 200vh;
+    top: 50vh;
+    left: 50vw;
+    z-index: 15;
+    transition: opacity 50ms;
+    transform: translate(-50%, -50%);
+}
+#loadingGray[enable]{
+    opacity: 1;
+    pointer-events: all;
+}
+
+#rightClickContextMenu{
+    width: max-content;
+    height: 0;
+    background-color: white;
+    opacity: 0;
+    z-index: 5;
+    position: fixed;
+    overflow: hidden;
+    border-radius: 5px;
+    border: 1px solid black;
+    @media not (prefers-reduced-motion) {
+        transition: all 250ms;
+        transition-property: opacity, height;
+    }
+}
+#rightClickContextMenu:not([open]){
+    pointer-events: none;
+}
+#rightClickContextMenu[open]{
+    opacity: 1;
+}
+.contextOption{
+    color: black;
+    border-bottom: black;
+    border-bottom-style: solid;
+    border-bottom-width: 0px; /*set to 1px if there is an option below it, otherwise it should be 0px*/
+    font-weight: bold;
+    text-align: center;
+    user-select: none;
+    line-height: 29px;
+    height: 29px;
+    overflow: hidden;
+    white-space: nowrap;
+    position: relative;
+    transform: translateX(-50%);
+    /*transition: background-color 150ms;*/
+
+    --distance-from-sides: 5px;
+    left: calc(50% - var(--distance-from-sides));
+    margin-left: var(--distance-from-sides);
+}
+.contextOption:hover{
+    background-color: lightgray;
+}
+.contextOption:active{
+    background-color: rgb(175,175,175);
+}
+.contextIcon{
+    position: relative;
+    width: 20px;
+    height: 20px;
+    top: 50%;
+    transform: translate(0, -50%);
+}
+
+.playBackIcon{ pointer-events: none; }
+
+dialog{
+    interpolate-size: allow-keywords;
+    background-color: white;
+    left: calc(100% - 5px);
+    flex-direction: column;
+    display: inline-flex;
+    position: fixed;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    @media screen and (prefers-reduced-motion: no-preference) {
+        animation: moveUp 250ms ease normal;
+        animation-fill-mode: forwards;
+        transition: 250ms;
+    }
+}
+dialog[open] {
+    left: 0;
+    opacity: 1;
+    height: max-content;
+    width: 75%;
+    @media (max-width: 140ch){
+        width: 100%;
+    }
+    @media screen and (prefers-reduced-motion: no-preference) {
+        animation: moveDown 250ms ease normal;
+        animation-fill-mode: forwards;
+    }
+}
+dialog::backdrop{
+    transition: 250ms;
+    transition-duration: 250ms;
+    animation: darkenColor 250ms ease normal;
+    animation-fill-mode: forwards;
+}
+@keyframes moveUp{
+    from {
+        top: 50vh;
+    }
+    to {
+        top: -30px;
+    }
+}
+@keyframes moveDown{
+    from {
+        top: -100vh;
+    }
+    to {
+        top: 0;
+    }
+}
+@keyframes darkenColor{
+    from {
+      background-color: #0000;
+    }
+    to {
+      background-color: rgba(0, 0, 0, 0.75);
+    }
+}
+
+.clickableButton{
+    position: relative;
+    z-index: 0;
+    border-radius: 5px;
+    user-select: none;
+    -webkit-user-drag: none;
+    cursor: pointer;
+}
+.clickableButton:hover{ background-color: rgb(200, 200, 200); }
+.clickableButton:active{
+    transition-duration: 50ms;
+    background-color: rgb(255, 255, 255);
+    box-shadow: 0 5px 5px 0 rgba(0,0,0,0.24), 0 17px 50px 0 rgba(0,0,0,0.19);
+}
+#enterPIP:after{
+    content: "Enter PIP (WIP)";
+    @media all and (display-mode: picture-in-picture){
+        content: "Exit PIP";
+    }
+}
+
+.pullsOpen div {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    bottom: 100%;
+    background: white;
+    transition: all 200ms ease;
+    @media (prefers-reduced-motion) {
+        transition-duration: 50ms;
+    }
+    visibility: hidden;
+    opacity: 0;
+    z-index: 4;
+}
+.pullsOpen {
+    visibility: visible;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+.pullsOpen:is(:hover, :focus-within) div{
+    width: 100%;
+    height: 200px;
+    @media(max-height: calc( 200px + calc(2em + 1vw) )){ /* i cant use var(--mainTableControlsHeight) here */
+        height: calc(100dvh - var(--mainTableControlsHeight));
+    }
+    visibility: visible;
+    opacity: 1;
+}
+@media(max-width: 650px){
+    #planPanPullsOpen:is(:hover, :focus-within) div{
+        width: 200%;
+    }
+    #playRatePullsOpen:is(:hover, :focus-within) div{
+        width: 200%;
+    }
+    #volumePullsOpen:is(:hover, :focus-within) div{
+        width: 200%;
+        transform: translate(-50%, 0);
+    }
+}
+
+
+.shuffle + label svg {
+    width: 100%;
+    height: 100%;
+    fill: #000;
+}
+.shuffle:checked + label svg { fill: #ff0000; }
+.repeatButton + label img{
+    width: 100%;
+    height: 100%;
+    /* display: inline-block; */
+}
+.playingStatus{
+    display: inline-block;
+    font-weight: bold;
+    color:black;
+}
+.scrollableText{
+    display: inline-block;
+    font-family: Cambria, serif;
+    text-overflow: clip;
+    overflow: scroll /*hidden*/;
+    white-space: nowrap;
+    scrollbar-width: none;
+    /* max-width: 75vw; 45.5ch */
+}
+.songName{
+    align-self: end;
+    flex: 1 1 auto;
+    margin-right: 5px;
+}
+.fileSizeLabel{
+    position: absolute;
+    transform: translate(-100%, 0);
+    left: calc(100% - 10px);
+    /*left: 100%;*/
+}
+.songNumber{
+    flex: 0 1 auto;
+}
+.largerSize{ max-width: 90%; }
+
+.playbar {
+    --percentage: 0%;
+    display: inline-block;
+    accent-color: white;
+    width: 50vw;
+    height: .5em;
+    border: solid #858585 1px;
+    border-radius: 15px;
+    appearance: none;
+    vertical-align: baseline;
+    background-image: linear-gradient(90deg, black var(--percentage), white 0%);
+}
+progress {
+    --percentage: 0%;
+    accent-color: white;
+    width: 50vw;
+    height: .5em;
+    border: solid #858585 1px;
+    border-radius: 15px;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: progressbar;
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
+}
+progress::-webkit-progress-bar {
+    /*background-color: #3b3b3b;*/
+    background-image: linear-gradient(90deg, white var(--percentage), black var(--percentage));
+    border-radius: 15px;
+}
+progress::-webkit-progress-value {
+    background-color: transparent;
+    /*border-radius: 2px;*/
+}
+
+input[type=file]{
+    width:90px;
+    color:transparent;
+}
+input[type=number]{
+    display: inline-block;
+    width: 100%;
+}
+.cell{ text-align: center; }
+
+dt {
+    font-weight: bold;
+}
+dd {
+    font-weight: normal;
+}
+
+#Playlist_Viewer {
+    width:100%;
+    margin-bottom: calc(var(--mainTableControlsHeight) + 3em); /* + 3em for the progress bar section of the main controls */
+    border: 1px solid black;
+    table-layout: fixed;
+    user-select: none;
+    z-index: -2;
+}
+.mainTable {
+    background-color: #fbfbfb;
+    position: fixed;
+    width: 100%;
+    left: 0px;
+    top: 100dvh;
+    transform: translate(0%, -100%);
+    z-index: 1;
+}
+table{
+    border-spacing: 1px;
+    border: 1px gray;
+}
+.tableBorder:not(:focus-visible){
+    outline: 1px solid rgb(74, 74, 74);
+    border-collapse: collapse;
+    border-radius: 0;
+}
+.songBorder{
+    display: flex;
+    border-top: 1px solid rgb(74, 74, 74);
+    border-collapse: collapse;
+    border-radius: 0;
+    width: 100%;
+}
+#mobilePlaylistOptions{
+    transition: 250ms;
+    transition-property: opacity, display, visibility;
+    position: fixed;
+    width: 100%;
+    height: 30px;
+    top: 0;
+    left: 0;
+    background-color: lightblue;
+    opacity: 0;
+    z-index: 1;
+    display: flex;
+    visibility: hidden;
+    pointer-events: none;
+}
+#mobilePlaylistOptions[data-active]{
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}

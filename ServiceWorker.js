@@ -1,3 +1,4 @@
+"use strict";
 const CACHE_NAME = 'CosyHamsterMusicPlayerOfflineCache';
 var cacheStorage;
 self.addEventListener("install", event => {
@@ -58,7 +59,7 @@ self.addEventListener("fetch", (e) => {
                 resolveRequest();
                 resolveUsingCache();
             }
-        }, 10_000);
+        }, 10000);
         useFetchRequestAndCache(e.request).then(response => {
             if (!requestResolved) {
                 resolveRequest();

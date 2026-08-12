@@ -6,6 +6,8 @@
     "typescript": "^5.4.3"
   },
   "dependencies": {
+    "@alexanderolsen/libsamplerate-js": "^2.1.2",
+    "@axonkit/libsamplerate-js": "^0.1.0",
     "@types/service_worker_api": "^0.0.9",
     "howler": "^2.2.4",
     "mediabunny": "^1.46.0",
