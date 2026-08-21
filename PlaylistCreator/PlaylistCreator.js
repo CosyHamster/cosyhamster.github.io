@@ -9,8 +9,8 @@ import("../Javascript/howler.js").catch((error) => {
 function helper_calculatePlayRate(cents) {
     return Math.pow(2, cents / 1200);
 }
-function helper_calculateDetune(rate) {
-    return 1200 * Math.log2(rate);
+function helper_calculateDetune(playRate) {
+    return 1200 * Math.log2(playRate);
 }
 var audio = new Audio();
 var useObjectURLS = false;

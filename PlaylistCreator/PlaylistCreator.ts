@@ -6,12 +6,12 @@ import("../Javascript/howler.js").catch((error) => {
   document.head.appendChild(howlerScript);
 });
 
-function helper_calculatePlayRate(cents) { //https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode/detune
+function helper_calculatePlayRate(cents: number) { //https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode/detune
   return Math.pow(2, cents / 1200);
 }
 
-function helper_calculateDetune(rate) {
-  return 1200 * Math.log2(rate);
+function helper_calculateDetune(playRate: number) {
+  return 1200 * Math.log2(playRate);
 }
 
 var audio = new Audio();

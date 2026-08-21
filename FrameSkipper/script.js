@@ -36,7 +36,7 @@ const screenshotCanvasCtx = screenshotCanvas.getContext("2d");
 
 const BUFFER_SIZE = 1024*1024*15;
 const MOE = 0.015;//0.016900000000077853  //0.001900000000205182
-const SEEK_APPROACH = 0; //0 - MOE, 1 - BACKWARD MOE, 2 - CLAMPED MOE (not yet added)
+const SEEK_APPROACH = 0; //0 - MO// E, 1 - BACKWARD MOE, 2 - CLAMPED MOE (not yet added)
 var inert = false;
 /** @type HTMLDivElement */ const VIDEO_TITLE_DISPLAY = document.getElementById("videoTitle");
 /** @type HTMLDivElement */ const LOADING_OVERLAY = document.getElementById("loadingFR");
@@ -68,7 +68,7 @@ var inert = false;
 /** @type HTMLDivElement */ const FRAME_VIEW = document.getElementById("frameView");
 /** @type HTMLDivElement */ const FRAME_ITEM_CONTAINER = document.getElementById("frameItemContainer");
 /** @type HTMLDivElement */ const FRAME_ITEM_OFFSET = document.getElementById("frameItemOffset");
-/**@type HTMLInputElement */ const KEYFRAME_ONLY_CHECKBOX = document.getElementById("keyframesOnlyCheckbox");
+/** @type HTMLInputElement */ const KEYFRAME_ONLY_CHECKBOX = document.getElementById("keyframesOnlyCheckbox");
 
 /** @type HTMLAnchorElement */ const DOWNLOAD_BUTTON = document.getElementById("downloadFrame");
 /** @type HTMLDivElement */ const UI = document.getElementById("ui");
@@ -84,9 +84,11 @@ var inert = false;
 /** @type HTMLDivElement */ const SEEK_BACKWARD = document.getElementById('seekBackward');
 /** @type HTMLDivElement */ const SEEK_FORWARD = document.getElementById('seekForward');
 
-/**@type HTMLDialogElement */const COMMAND_CREATOR = document.getElementById("ffmpegCommandCreator");
-/**@type HTMLSpanElement */const COMMAND_CREATOR_PATH = document.getElementById("commandCreatorPath");
-/**@type HTMLSpanElement */const COMMAND_CREATOR_OUTPUT = document.getElementById("commandCreatorOutput");
+/** @type HTMLDialogElement */ const COMMAND_CREATOR = document.getElementById("ffmpegCommandCreator");
+/** @type HTMLSpanElement */ const COMMAND_CREATOR_PATH = document.getElementById("commandCreatorPath");
+/** @type HTMLSpanElement */ const COMMAND_CREATOR_OUTPUT = document.getElementById("commandCreatorOutput");
+/** @type HTMLSpanElement */ const COMMAND_CREATOR_START = document.getElementById("commandCreatorStart");
+/** @type HTMLSpanElement */ const COMMAND_CREATOR_END = document.getElementById("commandCreatorEnd");
 
 // Source - https://stackoverflow.com/a/60055110
 // Posted by trincot, modified by community. See post 'Timeline' for change history
@@ -1522,7 +1524,7 @@ registerClickEvent(document.getElementById("trimVideo"), () => {
 					const decoderConfig = await videoTrack.getDecoderConfig();
 					for await (const encodedPacket of videoSink.packets(beginVideoPacket, undefined, {metadataOnly: false})) {
 						let sequenceNumber = 0;
-						if(encodedPacket.timestamp > end) //TODO: the video duration glitches if the last frame is on a keyframe. not sure why.
+						if(encodedPacket.timestamp > end) //TODO: the video duration sometimes glitches if the last frame is on a keyframe. not sure why.
 							break;
 						// encodedPacket.timestamp -= begin;
 						await videoPacketSource.add(encodedPacket.clone({timestamp: encodedPacket.timestamp-begin, sequenceNumber: sequenceNumber++}), {decoderConfig: decoderConfig});
@@ -1796,15 +1798,19 @@ function binarySearchLenientFloor(arr, val) {
 	})();
 	registerClickEvent(document.getElementById("openCommandCreator"), () => {
 		if(videoFile){
-			document.getElementById("commandCreatorStart").style.display = (document.getElementById("commandCreatorEnd").style.display = "none");
 			if(frameSeek && frameSeek.abEnabled){
 				if(frameSeek.ab.loopBeginFrameNumber !== 0){
-					document.getElementById("commandCreatorStart").textContent = `-ss ${frameSeek.getMediaTimeAtFrame(frameSeek.keyFrameNumberToFrameNumber(frameSeek.calcOwningKeyFrameNumber(frameSeek.ab.loopBeginFrameNumber)))} `;
-					document.getElementById("commandCreatorStart").style.display = "";
+					COMMAND_CREATOR_START.textContent = `-ss ${frameSeek.getMediaTimeAtFrame(frameSeek.keyFrameNumberToFrameNumber(frameSeek.calcOwningKeyFrameNumber(frameSeek.ab.loopBeginFrameNumber)))} `;
+					COMMAND_CREATOR_START.style.display = "";
+				} else {
+					COMMAND_CREATOR_START.style.display = "none";
 				}
+
 				if(frameSeek.ab.loopEndFrameNumber !== frameSeek.getFrameCount()-1){
-					document.getElementById("commandCreatorEnd").textContent = `-to ${frameSeek.ab.loopEndMediaTime} `;
-					document.getElementById("commandCreatorEnd").style.display = "";
+					COMMAND_CREATOR_END.textContent = `-to ${frameSeek.ab.loopEndMediaTime} `;
+					COMMAND_CREATOR_END.style.display = "";
+				} else {
+					COMMAND_CREATOR_END.style.display = "none";
 				}
 			}
 			COMMAND_CREATOR.showModal();

@@ -1,6 +1,7 @@
-import { InputAudioTrack } from "mediabunny";
-
 //@ts-expect-error
+import {M} from "mp4box/dist/log-DO1-_KSL";
+import {EBMLFloat32} from "mediabunny/dist/modules/src/matroska/ebml";
+
 import("../Javascript/howler.js").catch((error) => {
     console.warn(error + "\nLoading Howler using script element instead.");
     let howlerScript = document.createElement('script');
@@ -49,6 +50,27 @@ class AudioNode {
     }
 }
 
+/**
+ * Resamples an AudioBuffer to a target sample rate.
+ * @param {AudioContext|BaseAudioContext} ctx - Your existing audio context.
+ * @param {AudioBuffer} audioBuffer - The source audio buffer to convert.
+ * @param {number} targetSampleRate - The desired sample rate (e.g., 16000, 44100, 48000).
+ * @returns {Promise<AudioBuffer>} A promise that resolves with the new resampled AudioBuffer.
+ */
+function resampleAudioBuffer(ctx, audioBuffer) {
+    const targetLength = Math.floor(audioBuffer.duration * ctx.sampleRate); //new length in sample-frames
+    const offlineCtx = new OfflineAudioContext(
+        audioBuffer.numberOfChannels,
+        targetLength,
+        ctx.sampleRate
+    );
+    const bufferSource = offlineCtx.createBufferSource();
+    bufferSource.buffer = audioBuffer;
+    bufferSource.connect(offlineCtx.destination);
+    bufferSource.start(0);
+    return offlineCtx.startRendering(); //Promise<AudioBuffer>
+}
+
 function roundToSampleBounds(timestamp) {
     return Math.round(ctx.sampleRate * timestamp) / ctx.sampleRate;
 }
@@ -91,8 +113,6 @@ function replaceAudioContext(sampleRate: number) {
     ctx = new AudioContext({sampleRate: sampleRate});
     gainNode = ctx.createGain();
     gainNode.connect(ctx.destination);
-    if(wasPlaying)
-        SoundManager.startPlaying();
     // ctx.audioWorklet.addModule('../WebLooper/WebLooper.js').then(() => {
     //     resamplerNode = new AudioWorkletNode(ctx, 'resampler');
     //     resamplerNode.connect(gainNode);
@@ -102,28 +122,125 @@ function replaceAudioContext(sampleRate: number) {
     // });
 }
 
-async function rerenderBuffer(buffer: AudioBuffer, playRate: number) {
+function resampleBuffer(buffer) {
     const dynamicRate = buffer.sampleRate * playRate;
     const duration = buffer.duration / playRate;
-    const numberOfFrames = Math.floor(duration * buffer.sampleRate);
+    const numberOfFrames = Math.ceil(duration * ctx.sampleRate);
 
+    // Create offline context matching the hardware sample rate
     const offlineCtx = new OfflineAudioContext(
         buffer.numberOfChannels,
-        Math.ceil(buffer.length / playRate),
-        buffer.sampleRate
+        numberOfFrames,
+        ctx.sampleRate
     );
 
+    // Play source buffer at the altered playback rate
     const bufferSource = offlineCtx.createBufferSource();
     bufferSource.buffer = buffer;
     bufferSource.playbackRate.value = playRate;
     bufferSource.connect(offlineCtx.destination);
     bufferSource.start(0);
 
+    // Rendered buffer is now perfectly matched to hardware sample rate
     return offlineCtx.startRendering(); //Promise<AudioBuffer>
 }
 
 
 let cachedMediabunnyInternals: [InputAudioTrack, number, number, Song] = [null, null, null, null];
+async function *resampledBufferIteratorOLD(bufferIterator: AsyncGenerator, nChannels: number, inputSampleRate: number, currentID: number){
+    const LibSampleRate = await import('@axonkit/libsamplerate-js');
+    SoundManager.assertID(currentID);
+    let src = null;
+    try {
+        let resampled = new Float32Array();
+        let queuedBuffers: {buffer: AudioBuffer, timestamp: number, duration: number}[] = [];
+        let totalRemainer = 0;
+        let result = (await bufferIterator.next());
+        SoundManager.assertID(currentID);
+        src = await LibSampleRate.create(nChannels, inputSampleRate, ctx.sampleRate, {converterType: 0}); //0 = SRC_SINC_BEST_QUALITY
+
+        while(true){
+            let {buffer, timestamp, duration} = result.value as {buffer: AudioBuffer, timestamp: number, duration: number};
+            queuedBuffers.push(result.value);
+            totalRemainer += buffer.length*(ctx.sampleRate/inputSampleRate);
+            let integerLength = Math.trunc(totalRemainer);
+            totalRemainer -= integerLength;
+            // let actualBufferLength = buffer.length*(ctx.sampleRate/inputSampleRate)
+            // let bufferLength = Math.trunc(actualBufferLength);
+            // totalRemainer += actualBufferLength - bufferLength;
+            // let integerRemainer = Math.trunc(totalRemainer);
+            // totalRemainer = totalRemainer - integerRemainer;
+            //
+            result.value.buffer = ctx.createBuffer(nChannels, integerLength, ctx.sampleRate);
+            result = (await bufferIterator.next());
+            SoundManager.assertID(currentID);
+
+            const length = buffer.length;
+            let data = new Float32Array(nChannels * length);
+            // console.log("in: "+data.length);
+            for(let i = 0; i < nChannels; i++){
+                for(let j = 0; j < length; j++){
+                    const channel = buffer.getChannelData(i);
+                    data[i+j*nChannels] = channel[j];
+                }
+            }
+
+            let out = src.process(data);
+            let concat = new Float32Array(resampled.length+out.length);
+            concat.set(resampled, 0);
+            concat.set(out, resampled.length);
+
+            while(concat.length >= queuedBuffers[0].buffer.length*nChannels){
+                let result = queuedBuffers.shift();
+                let buffer = result.buffer;
+                let length = buffer.length;
+                for(let i = 0; i < nChannels; i++){
+                    for(let j = 0; j < length; j++){
+                        const channel = buffer.getChannelData(i);
+                        channel[j] = out[i+j*nChannels];
+                    }
+                }
+
+                concat = concat.subarray(length*nChannels);
+                yield result;
+            }
+
+            resampled = concat;
+            if(result.done){
+                let out = src.flush();
+                let concat = new Float32Array(resampled.length+out.length);
+                concat.set(resampled, 0);
+                concat.set(out, resampled.length);
+
+                while(concat.length !== 0 && concat.length >= queuedBuffers[0].buffer.length*nChannels){
+                    let result = queuedBuffers.shift();
+                    let buffer = result.buffer;
+                    let length = buffer.length;
+                    for(let i = 0; i < nChannels; i++){
+                        for(let j = 0; j < length; j++){
+                            const channel = buffer.getChannelData(i);
+                            channel[j] = out[i+j*nChannels];
+                        }
+                    }
+
+                    concat = concat.subarray(length*nChannels);
+                    yield result;
+                }
+
+                if(concat.length !== 0){
+                    console.warn("samples are still remaining!");
+                    debugger;
+                }
+                return;
+            }
+        }
+    } finally {
+        if(src){
+            src.destroy();
+        }
+    }
+}
+
 async function *resampledBufferIterator(bufferIterator: AsyncGenerator, nChannels: number, inputSampleRate: number, currentID: number){
     const LibSampleRate = await import('@axonkit/libsamplerate-js'); //https://www.npmjs.com/package/@axonkit/libsamplerate-js
     let bufferFrameSize = ctx.sampleRate;
@@ -144,7 +261,6 @@ async function *resampledBufferIterator(bufferIterator: AsyncGenerator, nChannel
             nextResult = (await bufferIterator.next());
             SoundManager.assertID(currentID);
 
-            // buffer = await rerenderBuffer(buffer, 0.5);
             let length = buffer.length;
             if(length > bufferFrameSize){
                 while(length > bufferFrameSize){
@@ -194,7 +310,6 @@ async function *resampledBufferIterator(bufferIterator: AsyncGenerator, nChannel
                         channel[j] = out[i+j*nChannels];
                     }
                 }
-
                 let outputDuration = length/outputBuffer.sampleRate;
                 yield {buffer: outputBuffer, timestamp: currentTimestamp, duration: outputDuration};
                 currentTimestamp += outputDuration;
@@ -213,7 +328,6 @@ async function *resampledBufferIterator(bufferIterator: AsyncGenerator, nChannel
         if(src){
             src.destroy();
         }
-        await bufferIterator.return(undefined);
     }
 }
 
@@ -283,9 +397,9 @@ class SoundManager { //adapted from https://github.com/Vanilagy/mediabunny/blob/
 
                     const sink = new Mediabunny.AudioBufferSink(track);
                     bufferIterator = sink.buffers(playbackTimeAtStart, Infinity);
-                    // if(inputSampleRate !== ctx.sampleRate){
-                    bufferIterator = resampledBufferIterator(bufferIterator, nChannels, inputSampleRate, currentID);
-                    // }
+                    if(inputSampleRate !== ctx.sampleRate){
+                        bufferIterator = resampledBufferIterator(bufferIterator, nChannels, inputSampleRate, currentID);
+                    }
                     let result = (await bufferIterator.next());
                     // if(result.done){index = currentSongIndex = REPEAT_BUTTON.checked ? index : (index+(sounds.length+1))%sounds.length; SoundManager.currentTime = 0; console.log("new current song: ", sounds[currentSongIndex]); setCurrentFileName(sounds[currentSongIndex].file.name); }
 
