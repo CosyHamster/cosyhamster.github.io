@@ -166,8 +166,8 @@ function uploadFile(file){
 
 	const separationIndex = file.name.lastIndexOf('.');
 	VIDEO_TITLE_DISPLAY.textContent = separationIndex !== -1 ? file.name.substring(0, separationIndex) : file.name;
-	COMMAND_CREATOR_PATH.textContent = file.name;
-	COMMAND_CREATOR_OUTPUT.textContent = separationIndex !== -1 ? file.name.substring(0, separationIndex)+" TRIM"+file.name.substring(separationIndex) : file.name;
+	COMMAND_CREATOR_PATH.textContent = '"'+file.name+'"';
+	COMMAND_CREATOR_OUTPUT.textContent = '"'+(separationIndex !== -1 ? file.name.substring(0, separationIndex)+" TRIM"+file.name.substring(separationIndex) : file.name)+'"';
 	saveVideoNamePrefix = VIDEO_TITLE_DISPLAY.textContent.substring(0, 28);
 
 	videoFile = file;
