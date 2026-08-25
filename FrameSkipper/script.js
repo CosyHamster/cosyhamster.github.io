@@ -1565,6 +1565,52 @@ registerClickEvent(document.getElementById("trimVideo"), () => {
 	});
 })();
 
+async function exportVideoWithoutAudio(){
+	importMediabunny().then(async (Mediabunny) => {
+		const input = new Mediabunny.Input({source: new Mediabunny.BlobSource(videoFile), formats: Mediabunny.ALL_FORMATS});
+		Promise.all([input.getPrimaryVideoTrack(), input.getMetadataTags()]).then(([videoTrack, metadata]) => {
+			Promise.all([videoTrack?.getCodec?.()]).then(async ([videoCodec]) => {
+				const videoPacketSource = new Mediabunny.EncodedVideoPacketSource(videoCodec);
+				const output = new Mediabunny.Output({
+					target: new Mediabunny.BufferTarget(),
+					format: new Mediabunny.Mp4OutputFormat()
+				});
+				output.addVideoTrack(videoPacketSource);
+				output.setMetadataTags(metadata);
+				await output.start();
+
+				const videoSink = new Mediabunny.EncodedPacketSink(videoTrack);
+				const beginVideoPacket = await videoSink.getKeyPacket(frameSeek.ab.loopBeginMediaTime, {verifyKeyPackets: true, metadataOnly: false});
+				const begin = beginVideoPacket.timestamp;
+				const end = frameSeek.ab.loopEndMediaTime;
+
+				const videoMux = (async () => {
+					const decoderConfig = await videoTrack.getDecoderConfig();
+					for await (const encodedPacket of videoSink.packets(beginVideoPacket, undefined, {metadataOnly: false})) {
+						let sequenceNumber = 0;
+						if(encodedPacket.timestamp > end) //TODO: the video duration sometimes glitches if the last frame is on a keyframe. not sure why.
+							break;
+						// encodedPacket.timestamp -= begin;
+						await videoPacketSource.add(encodedPacket.clone({timestamp: encodedPacket.timestamp-begin, sequenceNumber: sequenceNumber++}), {decoderConfig: decoderConfig});
+					}
+					videoPacketSource.close();
+				})();
+
+				Promise.all([videoMux]).then(async () => {
+					await output.finalize();
+					const blob = new Blob([output.target.buffer], {type: "video/mp4"});
+					input.dispose();
+					const url = URL.createObjectURL(blob);
+					const a = document.createElement("a");
+					a.href = url;
+					a.download = videoFile.name;
+					a.click();
+					URL.revokeObjectURL(url);
+				});
+			});
+		});
+	});
+}
 
 function showTimeDisplayPointerEvent(mediaTime, frameNumber, mouse, rect) {
 	HOVERED_TIME_DISPLAY.children[0].textContent = String(secondsToTimestamp(mediaTime));
