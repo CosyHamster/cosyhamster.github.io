@@ -32,6 +32,9 @@ main{
     scrollbar-width: none;
     /* max-width: 75vw; 45.5ch */
 }
+.scrollableText::-webkit-scrollbar{
+    width: 0px;
+}
 
 .prevent-select {
     user-select: none;
@@ -199,6 +202,9 @@ main{
     text-align: center;
     overflow-x: scroll;
     scrollbar-width: thin;
+}
+#frameView::-webkit-scrollbar{
+    width: 0px;
 }
 .frameItemContainer {
     height: 100%;

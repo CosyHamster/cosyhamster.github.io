@@ -33,6 +33,9 @@ main{
     scrollbar-width: none;
     /* max-width: 75vw; 45.5ch */
 }
+.scrollableText::-webkit-scrollbar{
+    width: 0px;
+}
 
 .prevent-select {
     user-select: none;
