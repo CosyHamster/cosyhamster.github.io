@@ -1334,7 +1334,7 @@ function displayError(error: Error, shortMessage: string, errorCategory: string)
 function seek(seekDirection: number) { //controls audio seeking, seekDuration: usually +1 || -1
     if(currentSongIndex === null) return;
     const seekDuration = SEEK_DURATION_NUMBER_INPUT.valueAsNumber * seekDirection;
-    const numToAdd = (SEEK_DISTANCE_PROPORTIONAL_CHECKBOX.checked) ? seekDuration * PLAY_RATE.valueAsNumber : seekDuration;
+    const numToAdd = (SEEK_DISTANCE_PROPORTIONAL_CHECKBOX.checked) ? seekDuration * obtainPlayRate() : seekDuration;
     const currentTime = SoundManager.getCurrentTime();
     SoundManager.setCurrentTime(currentTime + numToAdd);
 }
@@ -1430,8 +1430,12 @@ function addRowsInPlaylistTable(songTableRows: HTMLTableRowElement[]){
 
 function onPlayRateUpdate(newRate: number) {
     PLAY_RATE_RANGE.valueAsNumber = PLAY_RATE.valueAsNumber = newRate;
-    SoundManager.setPlayRate((CENTS_CHECKBOX.checked) ? calculatePlayRateFromDetune(newRate) : newRate);
+    SoundManager.setPlayRate(obtainPlayRate());
     updateSeekDurationDisplay();
+}
+
+function obtainPlayRate() {
+    return (CENTS_CHECKBOX.checked) ? calculatePlayRateFromDetune(PLAY_RATE.valueAsNumber) : PLAY_RATE.valueAsNumber;
 }
 
 function onPanningUpdate(){
@@ -1451,7 +1455,7 @@ function setIsBuffering(buffering: boolean){
 
 function updateSeekDurationDisplay() {
     const duration = SEEK_DURATION_NUMBER_INPUT.valueAsNumber;
-    const playRate = (SEEK_DISTANCE_PROPORTIONAL_CHECKBOX.checked) ? PLAY_RATE.valueAsNumber : 1;
+    const playRate = (SEEK_DISTANCE_PROPORTIONAL_CHECKBOX.checked) ? obtainPlayRate() : 1;
     if (duration < 1) {
         SEEK_DURATION_DISPLAY.textContent = `${(duration*playRate) * 1000} ms`;
     } else {
