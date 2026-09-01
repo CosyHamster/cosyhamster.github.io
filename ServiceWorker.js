@@ -59,7 +59,7 @@ self.addEventListener("fetch", (e) => {
                 resolveRequest();
                 resolveUsingCache();
             }
-        }, 10000);
+        }, 10_000);
         useFetchRequestAndCache(e.request).then(response => {
             if (!requestResolved) {
                 resolveRequest();

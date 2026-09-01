@@ -1,15 +1,96 @@
-//@ts-expect-error
-import("../Javascript/howler.js").catch((error) => {
-    console.warn(error + "\nLoading Howler using script element instead.");
-    let howlerScript = document.createElement('script');
-    howlerScript.src = "../Javascript/howler.js";
-    document.head.appendChild(howlerScript);
-});
+"use strict";
 function importMediabunny() {
     return import("mediabunny").catch(e => {
         console.error("Mediabunny failed to import due to error", e);
         throw e;
     });
+}
+class ExpiredError extends Error {
+    constructor(t = "Play ID changed") {
+        super(t);
+        this.name = "InputDisposedError";
+    }
+}
+class Deque {
+    size = 0;
+    front = undefined;
+    back = undefined;
+    constructor() {
+        // this.front = this.back = undefined;
+    }
+    addFront(value) {
+        if (!this.front)
+            this.front = this.back = { value };
+        else
+            this.front = this.front.next = { value, prev: this.front };
+        ++this.size;
+    }
+    removeFront() {
+        const value = this.peekFront();
+        if (this.front === this.back)
+            this.front = this.back = undefined;
+        else
+            (this.front = this.front.prev).next = undefined;
+        --this.size;
+        return value;
+    }
+    peekFront() {
+        return this.front && this.front.value;
+    }
+    addBack(value) {
+        if (!this.front)
+            this.front = this.back = { value };
+        else
+            this.back = this.back.prev = { value, next: this.back };
+        ++this.size;
+    }
+    removeBack() {
+        let value = this.peekBack();
+        if (this.front === this.back)
+            this.front = this.back = undefined;
+        else
+            (this.back = this.back.next).back = undefined;
+        --this.size;
+        return value;
+    }
+    peekBack() {
+        return this.back && this.back.value;
+    }
+}
+class AudioDeque {
+    size = 0;
+    front = undefined;
+    back = undefined;
+    get length() {
+        return this.size;
+    }
+    set length(_) {
+        this.front = this.back = undefined;
+        this.size = 0;
+    }
+    shift() {
+        if (this.front) {
+            const value = this.front.value;
+            this.front = this.front.next;
+            --this.size;
+            return value;
+        }
+        return null;
+    }
+    push(value) {
+        if (!this.front)
+            this.front = this.back = { value };
+        else
+            this.back = this.back.next = { value };
+        ++this.size;
+    }
+    *[Symbol.iterator]() {
+        let ele = this.front;
+        while (ele) {
+            yield ele.value;
+            ele = ele.next;
+        }
+    }
 }
 var ctx = new AudioContext();
 var gainNode = ctx.createGain();
@@ -21,26 +102,25 @@ var resamplerNode;
 //     gainNode.connect(ctx.destination);
 // });
 var currentNode = null;
-var scheduledNodes = [];
-var BUFFER_SECONDS = 1; //how far ahead timestamps can be
+var scheduledNodes = new AudioDeque();
 var playRate = 1;
-var volume = 1;
 var isBuffering = true;
 var isPlaying = false;
 class AudioNode {
+    node;
+    timestamp;
+    duration;
+    startTimestamp;
+    finished = false;
     constructor(node, timestamp, duration, startTimestamp) {
-        this.finished = false;
         this.node = node;
         this.timestamp = timestamp;
         this.duration = duration;
         this.startTimestamp = startTimestamp;
     }
 }
-function roundToSampleBounds(timestamp) {
-    return Math.round(ctx.sampleRate * timestamp) / ctx.sampleRate;
-}
 function helper_beginPlayingSoundIndex(index) {
-    setCurrentSongIndex(index);
+    setCurrentSong(sounds[index]);
     SoundManager.startTime = 0;
     SoundManager.stop();
     SoundManager.startPlaying();
@@ -57,11 +137,14 @@ function helper_stop() {
 function helper_seek(seconds) {
     SoundManager.setCurrentTime(SoundManager.getCurrentTime() + seconds);
 }
-function helper_calculatePlayRate(cents) {
+function calculatePlayRateFromDetune(cents) {
     return Math.pow(2, cents / 1200);
 }
-function helper_calculateDetune(rate) {
-    return 1200 * Math.log2(rate);
+function calculateDetuneFromPlayRate(rate) {
+    return round6(1200 * Math.log2(rate));
+}
+function round6(num) {
+    return Math.round(num * 1000000) / 1000000;
 }
 function replaceAudioContext(sampleRate) {
     const wasPlaying = isPlaying;
@@ -79,18 +162,6 @@ function replaceAudioContext(sampleRate) {
     //     if(wasPlaying)
     //         SoundManager.startPlaying();
     // });
-}
-async function rerenderBuffer(buffer, playRate) {
-    const dynamicRate = buffer.sampleRate * playRate;
-    const duration = buffer.duration / playRate;
-    const numberOfFrames = Math.floor(duration * buffer.sampleRate);
-    const offlineCtx = new OfflineAudioContext(buffer.numberOfChannels, Math.ceil(buffer.length / playRate), buffer.sampleRate);
-    const bufferSource = offlineCtx.createBufferSource();
-    bufferSource.buffer = buffer;
-    bufferSource.playbackRate.value = playRate;
-    bufferSource.connect(offlineCtx.destination);
-    bufferSource.start(0);
-    return offlineCtx.startRendering(); //Promise<AudioBuffer>
 }
 let cachedMediabunnyInternals = [null, null, null, null];
 async function* resampledBufferIterator(bufferIterator, nChannels, inputSampleRate, currentID) {
@@ -145,7 +216,7 @@ async function* resampledBufferIterator(bufferIterator, nChannels, inputSampleRa
                         channel[j] = out[i + j * nChannels];
                     }
                 }
-                let outputDuration = length / outputBuffer.sampleRate;
+                let outputDuration = length / outputBuffer.sampleRate * playRate;
                 yield { buffer: outputBuffer, timestamp: currentTimestamp, duration: outputDuration };
                 currentTimestamp += outputDuration;
             }
@@ -158,7 +229,7 @@ async function* resampledBufferIterator(bufferIterator, nChannels, inputSampleRa
                         channel[j] = out[i + j * nChannels];
                     }
                 }
-                let outputDuration = length / outputBuffer.sampleRate;
+                let outputDuration = length / outputBuffer.sampleRate * playRate;
                 yield { buffer: outputBuffer, timestamp: currentTimestamp, duration: outputDuration };
                 currentTimestamp += outputDuration;
             }
@@ -179,10 +250,16 @@ async function* resampledBufferIterator(bufferIterator, nChannels, inputSampleRa
     }
 }
 class SoundManager {
+    static playID = 0;
+    static startTime = 0;
+    static ctxStartTime = null;
+    static ctxStartTimeDisplay = null;
     static startPlaying() {
         SoundManager.ctxStartTime = SoundManager.ctxStartTimeDisplay = null;
         let currentID = ++SoundManager.playID;
         isPlaying = true;
+        if (playRate === 0)
+            return;
         setIsBuffering(true);
         let bufferIterator = null;
         return importMediabunny().then(async (Mediabunny) => {
@@ -191,14 +268,13 @@ class SoundManager {
                 if (ctx.state === 'suspended') {
                     await ctx.resume();
                 }
-                let index = currentSongIndex;
+                let currentSong = sounds[currentSongIndex];
                 let playbackTimeAtStart = SoundManager.startTime;
                 while (true) {
-                    const song = sounds[index];
                     let track, nChannels, inputSampleRate;
                     createMediabunnyInternals: {
                         if (cachedMediabunnyInternals[3] !== null) {
-                            if (cachedMediabunnyInternals[3] === song) {
+                            if (cachedMediabunnyInternals[3] === currentSong) {
                                 [track, nChannels, inputSampleRate] = cachedMediabunnyInternals;
                                 break createMediabunnyInternals;
                             }
@@ -206,32 +282,29 @@ class SoundManager {
                                 destroyCachedMediabunnyInternals();
                             }
                         }
-                        let input = new Mediabunny.Input({ source: new Mediabunny.BlobSource(song.file), formats: Mediabunny.ALL_FORMATS });
-                        track = await input.getPrimaryAudioTrack();
-                        await Promise.all([track.getNumberOfChannels(), track.getSampleRate()]).then((values) => {
-                            [nChannels, inputSampleRate] = values;
-                            cachedMediabunnyInternals = [track, nChannels, inputSampleRate, song];
+                        let input = new Mediabunny.Input({ source: new Mediabunny.BlobSource(currentSong.file), formats: Mediabunny.ALL_FORMATS });
+                        let success = await input.getPrimaryAudioTrack().then(async (audioTrack) => {
+                            return Promise.all([audioTrack.getNumberOfChannels(), audioTrack.getSampleRate()]).then((values) => {
+                                track = audioTrack;
+                                [nChannels, inputSampleRate] = values;
+                                cachedMediabunnyInternals = [audioTrack, nChannels, inputSampleRate, currentSong];
+                                return true;
+                            }).catch(e => {
+                                displayError(e, e.message, currentSong.file.name);
+                                return false;
+                            });
+                        }).catch(e => {
+                            displayError(e, e.message, currentSong.file.name);
+                            return false;
                         });
                         SoundManager.assertID(currentID);
+                        if (!success) {
+                            currentSong = sounds[(currentSong.currentIndex + (sounds.length + 1)) % sounds.length];
+                            SoundManager.startTime = 0;
+                            setCurrentSong(currentSong);
+                            continue;
+                        }
                     }
-                    //if(!track){ //TODO: move this to addFile function to reject incompatible files & obtain their duration immediately on import
-                    //    index = (index+(sounds.length+1))%sounds.length;
-                    //    continue;
-                    //}
-                    //else {
-                    //	  if (await track.getCodec() === null) {
-                    //		  problemMessage = 'Unsupported audio codec. ';
-                    //		  index = (index+(sounds.length+1))%sounds.length;
-                    //            continue;
-                    //	  } else if (!(await track.canDecode())) {
-                    //		  problemMessage = 'Unable to decode the audio track. ';
-                    //		  index = (index+(sounds.length+1))%sounds.length;
-                    //            continue;
-                    //    }
-                    //}
-                    //let duration = await track.getDurationFromMetadata() ?? await track.computeDuration();
-                    //song.duration = duration;
-                    //song.onDurationLoaded();
                     const sink = new Mediabunny.AudioBufferSink(track);
                     bufferIterator = sink.buffers(playbackTimeAtStart, Infinity);
                     // if(inputSampleRate !== ctx.sampleRate){
@@ -255,21 +328,21 @@ class SoundManager {
                             SoundManager.ctxStartTime = SoundManager.ctxStartTimeDisplay = ctxCurrentTime;
                             playbackTimeAtStart = timestamp;
                         }
-                        let startTimestamp = SoundManager.ctxStartTime + (timestamp - playbackTimeAtStart);
+                        let startTimestamp = SoundManager.ctxStartTime + (timestamp - playbackTimeAtStart) / playRate;
                         startTimestamp = Math.round(ctx.sampleRate * startTimestamp) / ctx.sampleRate; // Round timestamp to the context's sample boundaries to prevent subsample audio glitches
                         let audioNode = new AudioNode(node, timestamp, duration, startTimestamp);
                         SoundManager.addNode(audioNode);
                         if (result.done) {
-                            let nextIndex = REPEAT_BUTTON.checked ? index : (index + (sounds.length + 1)) % sounds.length;
-                            let nextCtxStartTime = startTimestamp + duration;
+                            let nextSong = REPEAT_BUTTON.checked ? currentSong : sounds[(currentSong.currentIndex + (sounds.length + 1)) % sounds.length];
+                            let nextCtxStartTime = startTimestamp + duration / playRate;
                             SoundManager.ctxStartTime = nextCtxStartTime;
-                            if (index !== nextIndex) {
+                            if (currentSong !== nextSong) {
                                 destroyCachedMediabunnyInternals();
                             }
-                            index = nextIndex;
+                            currentSong = nextSong;
                             node.onended = () => {
                                 audioNode.finished = true;
-                                SoundManager.shiftQueuedNodes(nextIndex);
+                                SoundManager.shiftQueuedNodes(nextSong);
                                 SoundManager.ctxStartTimeDisplay = nextCtxStartTime;
                             };
                         }
@@ -292,14 +365,14 @@ class SoundManager {
                         }
                         // console.log("ctx.currentTime = " + ctx.currentTime);
                         // console.log("startTimestamp = " + startTimestamp);
-                        if (startTimestamp - ctx.currentTime >= BUFFER_SECONDS) {
+                        if (startTimestamp - ctx.currentTime >= BUFFER_SECONDS.valueAsNumber) {
                             await new Promise((resolve, reject) => {
                                 const id = setInterval(() => {
                                     // console.log("waiting before adding more buffers");
                                     if (currentID != SoundManager.playID) {
-                                        reject();
+                                        reject(new ExpiredError());
                                     }
-                                    if (startTimestamp - ctx.currentTime < BUFFER_SECONDS) {
+                                    if (startTimestamp - ctx.currentTime < BUFFER_SECONDS.valueAsNumber) {
                                         clearInterval(id);
                                         resolve();
                                     }
@@ -310,7 +383,9 @@ class SoundManager {
                 }
             }
             catch (e) {
-                console.warn(e);
+                if (!(e instanceof ExpiredError)) {
+                    console.warn(e);
+                }
                 if (bufferIterator) {
                     await bufferIterator.return();
                 }
@@ -342,6 +417,7 @@ class SoundManager {
         }
     }
     static setCurrentTime(time) {
+        time = Math.max(Math.min(time, sounds[currentSongIndex].duration), 0);
         if (isPlaying) {
             ++SoundManager.playID;
             SoundManager.clear();
@@ -384,30 +460,35 @@ class SoundManager {
             audioNode.node.onended = null;
             audioNode.node.stop();
         }
-        scheduledNodes = [];
+        scheduledNodes.length = 0;
     }
-    static async resume() {
+    static resume() {
         SoundManager.startPlaying();
     }
-    static shiftQueuedNodes(nextIndex = null) {
+    static shiftQueuedNodes(nextSong = null) {
         if (!isPlaying) {
             console.warn("shiftQueuedNodes but isPlaying is false");
         }
         let previousNode = currentNode;
         currentNode = scheduledNodes.shift();
         if (!currentNode) {
+            changeStatus(StatusTexts.BUFFERING);
             setIsBuffering(true);
-            if (nextIndex !== null) {
+            if (nextSong !== null) {
                 SoundManager.startTime = 0;
-                setCurrentSongIndex(nextIndex);
+                setCurrentSong(nextSong);
             }
             else {
-                SoundManager.startTime = (previousNode.timestamp + previousNode.duration) * playRate;
+                SoundManager.startTime = (previousNode.timestamp + previousNode.duration);
             }
         }
-        else if (nextIndex !== null) {
+        else if (nextSong !== null) {
+            changeStatus(StatusTexts.PLAYING);
             SoundManager.startTime = 0;
-            setCurrentSongIndex(nextIndex);
+            setCurrentSong(nextSong);
+        }
+        else {
+            changeStatus(StatusTexts.PLAYING);
         }
     }
     static getCurrentTime() {
@@ -425,14 +506,10 @@ class SoundManager {
     }
     static assertID(id) {
         if (id != SoundManager.playID) {
-            throw new Error("Play id changed");
+            throw new ExpiredError();
         }
     }
 }
-SoundManager.playID = 0;
-SoundManager.startTime = 0;
-SoundManager.ctxStartTime = null;
-SoundManager.ctxStartTimeDisplay = null;
 function destroyCachedMediabunnyInternals() {
     if (cachedMediabunnyInternals[3]) {
         cachedMediabunnyInternals[3] = null; //song
@@ -440,75 +517,44 @@ function destroyCachedMediabunnyInternals() {
         cachedMediabunnyInternals[0] = null; //track
     }
 }
-// function destroyAllCachedMediabunnyInternals(){
-//     for(const song of songsWithCachedMediabunnyInternals){
-//         destroyCachedMediabunnyInternals(song);
-//     }
-//     songsWithCachedMediabunnyInternals = [];
-// }
-// function destroyCachedMediabunnyInternals(song){
-//     console.log(song, song.cachedMediabunnyInternals);
-//     song.cachedMediabunnyInternals = null;
-//     // cachedMediabunnyInternals[0].close();
-// }
-let previousSongTableRow = null;
-function setCurrentSongIndex(index) {
-    currentSongIndex = index;
-    setCurrentFileName(sounds[index].file.name);
-    setRowActive(sounds[index].currentRow.tableRow);
-    // setCurrentSongTableRow(song.row);
+function setCurrentSong(song) {
+    currentSongIndex = song.currentIndex;
+    setCurrentFileName(song.file.name);
+    setActiveRow(song.currentRow.tableRow);
 }
-function startPlayingSong(index) {
-    setCurrentSongIndex(index);
-    SoundManager.startTime = 0;
-    SoundManager.startPlaying();
-    return;
-}
-function stopCurrentSong() {
-    const currentRow = sounds[currentSongIndex].currentRow;
+function removeCurrentSong() {
     currentSongIndex = null;
-    currentRow.getPlaySongCheckbox().checked = false;
-    updateRowColor(currentRow);
-    PLAY_BUTTON.checked = false;
-    setProgressBarPercentage(100);
-    return;
+    setCurrentFileName("Playlist Creator");
+    setActiveRow(null);
 }
-function setCurrentSongTableRow(songTableRow) {
-    // setRowActive(songTableRow.tableRow);
-    // if(previousSongTableRow){
-    //     previousSongTableRow.getPlaySongCheckbox().checked = false;
-    //     if(!previousSongTableRow.tableRow.hasAttribute("data-selected")){
-    //         previousSongTableRow.tableRow.style.backgroundColor = RowColors.NONE;
-    //     }
-    // }
-    // songTableRow.getPlaySongCheckbox().checked = true;
-    // if(songTableRow.tableRow.hasAttribute("data-selected")){
-    //     previousSongTableRow.tableRow.style.backgroundColor = RowColors.PLAYING;
-    // }
-    // previousSongTableRow = songTableRow;
+let codecs;
+{ //Copied from howler.js
+    const audioTest = new Audio();
+    const mpegTest = !!audioTest.canPlayType('audio/mpeg;').replace(/^no$/, '');
+    const aiffIsPlayable = !!(audioTest.canPlayType("audio/aiff") || audioTest.canPlayType("audio/x-aiff"));
+    codecs = {
+        mp3: !!((mpegTest || audioTest.canPlayType('audio/mp3;').replace(/^no$/, ''))),
+        mpeg: mpegTest,
+        opus: !!audioTest.canPlayType('audio/ogg; codecs="opus"').replace(/^no$/, ''),
+        ogg: !!audioTest.canPlayType('audio/ogg; codecs="vorbis"').replace(/^no$/, ''),
+        oga: !!audioTest.canPlayType('audio/ogg; codecs="vorbis"').replace(/^no$/, ''),
+        wav: !!(audioTest.canPlayType('audio/wav; codecs="1"') || audioTest.canPlayType('audio/wav')).replace(/^no$/, ''),
+        aac: !!audioTest.canPlayType('audio/aac;').replace(/^no$/, ''),
+        caf: !!audioTest.canPlayType('audio/x-caf;').replace(/^no$/, ''),
+        m4a: !!(audioTest.canPlayType('audio/x-m4a;') || audioTest.canPlayType('audio/m4a;') || audioTest.canPlayType('audio/aac;')).replace(/^no$/, ''),
+        m4b: !!(audioTest.canPlayType('audio/x-m4b;') || audioTest.canPlayType('audio/m4b;') || audioTest.canPlayType('audio/aac;')).replace(/^no$/, ''),
+        mp4: !!(audioTest.canPlayType('audio/x-mp4;') || audioTest.canPlayType('audio/mp4;') || audioTest.canPlayType('audio/aac;')).replace(/^no$/, ''),
+        weba: !!(audioTest.canPlayType('audio/webm; codecs="vorbis"').replace(/^no$/, '')),
+        webm: !!(audioTest.canPlayType('audio/webm; codecs="vorbis"').replace(/^no$/, '')),
+        dolby: !!audioTest.canPlayType('audio/mp4; codecs="ec-3"').replace(/^no$/, ''),
+        flac: !!(audioTest.canPlayType('audio/x-flac;') || audioTest.canPlayType('audio/flac;')).replace(/^no$/, ''),
+        aif: aiffIsPlayable,
+        aiff: aiffIsPlayable,
+        aff: aiffIsPlayable
+    };
 }
-function test_updateProgressBar() {
-    if (currentSongIndex !== null && sounds[currentSongIndex].duration !== null) {
-        const songDuration = sounds[currentSongIndex].duration;
-        const currentTime = SoundManager.getCurrentTime();
-        const timeToSet = (currentTime / songDuration) * 100;
-        if (Number.isFinite(timeToSet))
-            setProgressBarPercentage(timeToSet);
-        updateCurrentTimeDisplay(currentTime, songDuration);
-    }
-    requestAnimationFrame(test_updateProgressBar);
-}
-requestAnimationFrame(test_updateProgressBar);
-var audio = new Audio();
-var useObjectURLS = false;
-var aiffIsPlayable = !!(audio.canPlayType("audio/aiff") || audio.canPlayType("audio/x-aiff"));
-function codecsMixin(extension) {
-    switch (extension) {
-        case "aif":
-        case "aiff":
-        case "aff": return aiffIsPlayable;
-        default: return Howler.codecs(extension);
-    }
+function canPlay(extension) {
+    return codecs[extension.replace(/^x-/, '')];
 }
 var storedWindow;
 var curWin = window;
@@ -527,6 +573,7 @@ else {
     ON_MOBILE = (/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series([46])0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(userAgent) || /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br([ev])w|bumb|bw-([nu])|c55\/|capi|ccwa|cdm-|cell|chtm|cldc|cmd-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc-s|devi|dica|dmob|do([cp])o|ds(12|-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly([-_])|g1 u|g560|gene|gf-5|g-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd-([mpt])|hei-|hi(pt|ta)|hp( i|ip)|hs-c|ht(c([- _agpst])|tp)|hu(aw|tc)|i-(20|go|ma)|i230|iac([ \-\/])|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja([tv])a|jbro|jemu|jigs|kddi|keji|kgt([ \/])|klon|kpt |kwc-|kyo([ck])|le(no|xi)|lg( g|\/([klu])|50|54|-[a-w])|libw|lynx|m1-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t([- ov])|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30([02])|n50([025])|n7(0([01])|10)|ne(([cm])-|on|tf|wf|wg|wt)|nok([6i])|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan([adt])|pdxg|pg(13|-([1-8]|c))|phil|pire|pl(ay|uc)|pn-2|po(ck|rt|se)|prox|psio|pt-g|qa-a|qc(07|12|21|32|60|-[2-7]|i-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h-|oo|p-)|sdk\/|se(c([-01])|47|mc|nd|ri)|sgh-|shar|sie([-m])|sk-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h-|v-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl-|tdg-|tel([im])|tim-|t-mo|to(pl|sh)|ts(70|m-|m3|m5)|tx-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c([- ])|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas-|your|zeto|zte-/i.test(userAgent.substring(0, 4)));
 }
 class SongTableRow {
+    tableRow;
     constructor(tableRow) {
         if (tableRow) {
             this.tableRow = tableRow;
@@ -557,7 +604,6 @@ class SongTableRow {
         fileSize.setAttribute('class', 'scrollableText fileSizeLabel');
         fileSize.addEventListener("contextmenu", onRightClickFileDisplay);
         cell1.append(songNumber, playButton, songName, fileSize);
-        filePlayingCheckboxes.push(checkbox);
         this.tableRow = row;
     }
     setSongName(fileName) {
@@ -593,311 +639,40 @@ class SongTableRow {
         return this.tableRow.parentNode == null;
     }
 }
-class SongLoader {
-    constructor(song) {
-        this.fileReader = new FileReader();
-        this.song = song;
-    }
-    loadSong() {
-        // const xml = new XMLHttpRequest();
-        // xml.responseType = "blob";
-        // xml.onprogress = (xmlHttpRequest: XMLHttpRequest, ev: ProgressEvent<EventTarget>) => {return 5}
-        // xml.open()
-        return new Promise(async (resolve, reject) => {
-            if (useObjectURLS) {
-                if (this.song.howl == null) {
-                    const howl = this.createHowl();
-                    this.song.howl = howl;
-                    resolve(howl);
-                    this.song.updateFileInfoDisplay();
-                    this.triggerAbort();
-                }
-                return;
-            }
-            if (!this.finishedLoadingAbortController) {
-                this.finishedLoadingAbortController = new AbortController();
-            }
-            else {
-                if (this.finishedLoadingAbortController.signal.aborted) {
-                    if (this.song.howl)
-                        resolve(this.song.howl);
-                    else
-                        reject("Failed to find howl when attempting to load song from a completed SongLoader.");
-                    return;
-                }
-                else {
-                    this.finishedLoadingAbortController.signal.addEventListener('abort', () => {
-                        if (this.song.howl)
-                            resolve(this.song.howl);
-                        else
-                            reject("Failed to find howl after waiting for previous load to finish.");
-                    }, { passive: true, once: true });
-                    return;
-                }
-            }
-            const onProgress = (progressEvent) => {
-                if (sounds[currentSongIndex].file == this.song.file)
-                    setProgressBarPercentage((100 * progressEvent.loaded) / progressEvent.total);
-                if (SHOW_LENGTHS.checked) {
-                    this.song.currentRow.setFileDisplay(`${Math.round(100 * progressEvent.loaded / progressEvent.total)} %`, `${progressEvent.loaded} bytes / ${progressEvent.total} bytes`);
-                }
-                else {
-                    this.song.currentRow.setFileDisplay(`${getInMegabytes(progressEvent.loaded)} MB / ${getInMegabytes(progressEvent.total)} MB`, `${progressEvent.loaded} bytes / ${progressEvent.total} bytes`);
-                }
-            };
-            const onLoaded = () => {
-                const howl = this.createHowl();
-                this.song.howl = howl;
-                resolve(howl);
-                this.song.updateFileInfoDisplay();
-                this.triggerAbort();
-            };
-            const errorFunc = (progressEvent) => {
-                this.triggerAbort();
-                //TODO: implement these error handlers for songs loaded using the object URL. accessing {sounds[currentSongIndex].howl._sounds[0]._node (.readyState === 3)} may help.
-                const error = progressEvent.target.error;
-                switch (error.name) {
-                    case "NotFoundError": {
-                        displayError(error, "Failed to find file!", this.song.file.name);
-                        break;
-                    }
-                    case "NotReadableError": {
-                        displayError(error, "This file's access had changed. Try reimporting it.", this.song.file.name);
-                        break;
-                    }
-                    default: {
-                        displayError(error, error.message, this.song.file.name);
-                        break;
-                    }
-                }
-                reject(error.name);
-            };
-            const warnUser = () => {
-                this.triggerAbort();
-                reject(`File Aborted: ${this.song.file.name}`);
-            };
-            this.finishedLoadingAbortController.signal.addEventListener('abort', () => {
-                this.fileReader.abort();
-                console.log('fileReader aborted');
-            }, { passive: true, once: true, signal: this.finishedLoadingAbortController.signal });
-            this.fileReader.addEventListener('progress', onProgress, { passive: true, signal: this.finishedLoadingAbortController.signal });
-            this.fileReader.addEventListener('loadend', onLoaded, { passive: true, signal: this.finishedLoadingAbortController.signal });
-            this.fileReader.addEventListener('error', errorFunc, { passive: true, signal: this.finishedLoadingAbortController.signal });
-            this.fileReader.addEventListener('abort', warnUser, { passive: true, signal: this.finishedLoadingAbortController.signal });
-            this.fileReader.readAsArrayBuffer(this.song.file);
-        });
-    }
-    ;
-    cancelLoading() {
-        this.triggerAbort();
-        this.fileReader.abort();
-    }
-    triggerAbort() {
-        if (this.finishedLoadingAbortController) {
-            this.finishedLoadingAbortController.abort();
-        }
-        this.song.updateFileInfoDisplay();
-    }
-    createHowl() {
-        // LOADING_GRAY.toggleAttribute("enable", true);
-        // await sleep(0); //dom update before beginning the load
-        console.time("createHowl");
-        const howl = new Howl({
-            providedBuffer: (useObjectURLS) ? null : this.fileReader.result, //providedBuffer will be used over src
-            src: this.song.fileURL,
-            preload: PRELOAD_TYPE_SELECTOR.value === "process",
-            autoplay: false,
-            loop: false,
-            format: getFileExtension(this.song.file.name),
-        });
-        console.timeEnd("createHowl");
-        // LOADING_GRAY.toggleAttribute("enable", false);
-        reapplySoundAttributes(howl);
-        howl.on("load", () => {
-            this.song.duration = howl.duration();
-            this.song.updateFileInfoDisplay();
-        });
-        howl.on('end', () => {
-            if (REPEAT_BUTTON.checked) {
-                if (sounds[currentSongIndex].isInExistence() && !sounds[currentSongIndex].howl.playing()) {
-                    sounds[currentSongIndex].howl.stop();
-                    sounds[currentSongIndex].howl.play();
-                }
-                return;
-            }
-            jumpSong();
-        }); //jump to next song when they end (or do custom stuff if needed)
-        howl.on("play", onPlayStart);
-        return howl;
-    }
-}
-async function updateAllFileInfos() {
-    // if(SHOW_LENGTHS.checked){
-    //   loadAndDisplaySongLengths();
-    // }
-    for (const song of sounds) {
-        song.updateFileInfoDisplay();
-    }
-}
-let queuedSongs = new Set();
-async function loadAndDisplaySongLengths() {
-    const loadSongs = queuedSongs.size == 0;
-    for (const song of sounds) {
-        if (song.duration === null)
-            queuedSongs.add(song);
-    }
-    if (!loadSongs)
-        return;
-    for (const song of queuedSongs) {
-        if (!SHOW_LENGTHS.checked) {
-            queuedSongs.clear();
-            return;
-        }
-        queuedSongs.delete(song);
-        if (song.currentRow.isRemoved())
-            continue;
-        if (song.durationLoaded()) {
-            song.updateFileInfoDisplay();
-            continue;
-        }
-        await loadSongDuration(song);
-    }
-}
-async function loadSongDuration(song) {
-    await new Promise((resolve) => {
-        const audio = curDoc.createElement('audio');
-        const abortController = new AbortController();
-        let timeoutID;
-        function onFinish() {
-            clearTimeout(timeoutID);
-            abortController.abort();
-        }
-        function giveUp() {
-            onFinish();
-            resolve();
-        }
-        // @ts-ignore
-        timeoutID = setTimeout(giveUp, 60000);
-        audio.addEventListener("durationchange", () => {
-            song.duration = audio.duration;
-            song.onDurationLoaded();
-            onFinish();
-            resolve();
-        }, { passive: true, once: true, signal: abortController.signal });
-        audio.addEventListener("error", giveUp, { passive: true, once: true, signal: abortController.signal });
-        audio.addEventListener("abort", giveUp, { passive: true, once: true, signal: abortController.signal });
-        audio.preload = "metadata";
-        audio.src = song.fileURL;
-    });
-}
 class Song {
+    file;
+    howl = null;
+    duration = null;
+    currentRow;
+    nativeIndex;
+    currentIndex;
     constructor(file, nativeIndex, currentRow) {
-        this.howl = null;
-        this.songLoader = null;
-        this.duration = null;
         this.file = file;
-        this.fileURL = URL.createObjectURL(this.file);
         this.nativeIndex = nativeIndex;
+        this.currentIndex = nativeIndex;
         this.currentRow = currentRow;
     }
     toString() {
-        return this.file.name + ": " + this.getState();
+        return this.file.name + ": " + this.duration;
     }
-    getState() {
-        if (!this.isInExistence()) {
-            return (this.songLoader == null) ?
-                "NO DATA" : "DOWNLOADING FILE";
-        }
-        else {
-            switch (this.howl.state()) {
-                case "loaded":
-                    return "HOWL LOADED";
-                case "loading":
-                    return "HOWL LOADING";
-                default:
-                    return "HOWL UNLOADED";
-            }
-        }
-    }
-    async loadSong() {
-        return new Promise(resolve => {
-            if (this.howl != null) {
-                resolve(true);
-                return;
-            }
-            if (this.songLoader == null || this.songLoader.finishedLoadingAbortController.signal.aborted)
-                this.songLoader = new SongLoader(this);
-            else
-                this.songLoader.finishedLoadingAbortController.signal.addEventListener("abort", () => {
-                    resolve(this.howl != null);
-                });
-            this.songLoader.loadSong().then(howl => {
-                this.howl = howl;
-                resolve(true);
-            }, (error) => {
-                console.warn("Failed loading song: " + this.file.name + ".\nError: " + error);
-                resolve(false);
-            }).finally(() => {
-                this.songLoader = null;
-            });
-        });
-    }
-    unload() {
-        if (this.songLoader != null) {
-            this.songLoader.cancelLoading();
-            this.songLoader = null;
-        }
-        if (this.howl != null) {
-            this.howl.unload();
-            if (this.howl._src != this.fileURL)
-                URL.revokeObjectURL(this.howl._src);
-            this.howl = null;
-        }
+    updateDuration(duration) {
+        this.duration = duration;
         this.updateFileInfoDisplay();
     }
-    onDelete() {
-        this.unload();
-        URL.revokeObjectURL(this.fileURL);
-    }
-    /** @returns Whether the {@link Howl} exists for the audio, is fully loaded, but is not currently playing. */
-    isPaused() {
-        return this.isLoaded() && this.howl.playing() == false;
-    }
-    /** @returns Whether the {@link Howl} for this audio exists and is fully loaded. */
-    isLoaded() {
-        return this.isInExistence() && this.howl.state() === "loaded";
-    }
-    /** @returns Whether the {@link Howl} for this audio exists and is in the loading state. */
-    isLoading() {
-        return this.isInExistence() && this.howl.state() === "loading";
-    }
-    /** @returns Whether the associated {@link Howl} for this audio doesn't exist, or the {@link Howl}'s current audio data is not loaded, or currently loading. */
-    isUnloaded() {
-        return !this.isInExistence() || this.howl.state() === "unloaded";
-    }
-    /** @returns Whether the associated {@link Howl} is created for this Song. */
-    isInExistence() {
-        return this.howl != null;
-    }
-    durationLoaded() {
+    hasDuration() {
         return this.duration !== null;
     }
     updateFileInfoDisplay() {
-        if (SHOW_LENGTHS.checked && this.durationLoaded()) {
+        if (SHOW_LENGTHS.checked && this.hasDuration()) {
             this.currentRow.updateFileInfoDisplay(this.file.size, this.duration);
         }
         else {
             this.currentRow.updateFileSizeDisplay(this.file.size);
         }
     }
-    onDurationLoaded() {
-        this.updateFileInfoDisplay();
-    }
 }
 class RegistrableEvent {
-    constructor() {
-        this.registeredCallbacks = [];
-    }
+    registeredCallbacks = [];
     register(func) {
         this.registeredCallbacks.push(func);
     }
@@ -926,10 +701,10 @@ class KeyDownEventRegistrar extends RegistrableEvent {
 }
 /** Splits inputted seconds into hours, minutes, & seconds. toString() returns the time in digital format. */
 class Time {
+    seconds = 0;
+    minutes = 0;
+    hours = 0;
     constructor(seconds) {
-        this.seconds = 0;
-        this.minutes = 0;
-        this.hours = 0;
         this.seconds = Time.numberToDigitalTimeString(Math.floor(seconds % 60));
         this.minutes = Math.floor(seconds / 60);
         this.hours = Math.floor(this.minutes / 60);
@@ -948,14 +723,14 @@ class Time {
     }
 }
 class DataTransferItemGrabber {
+    dataTransferItemList = [];
+    files = [];
+    activePromises = 0;
+    filesCollected = 0;
+    filesAdded = 0;
+    phase = 0 /* PhaseType.COLLECTING */;
     /** @param dataTransferItemList this can be any array-like containing DataTransferItems or File / Directory entries (from DataTransferItem.webkitGetAsEntry()) */
     constructor(dataTransferItemList) {
-        this.dataTransferItemList = [];
-        this.files = [];
-        this.activePromises = 0;
-        this.filesCollected = 0;
-        this.filesAdded = 0;
-        this.phase = 0 /* PhaseType.COLLECTING */;
         this.dataTransferItemList = dataTransferItemList;
     }
     async retrieveContents() {
@@ -1046,25 +821,28 @@ class DataTransferItemGrabber {
         }
     }
 }
-var KEY_DOWN_EVENT = new KeyDownEventRegistrar(), StatusTexts = {
+var KEY_DOWN_EVENT = new KeyDownEventRegistrar();
+var StatusTexts = {
     PLAYING: "Playing",
     PAUSED: "Paused",
     STOPPED: "Stopped",
     LOADING: "Loading",
+    BUFFERING: "Buffering",
     DOWNLOADING: "Downloading File...",
     PROCESSING: "Processing...",
     RETRIEVING: "Retrieving Files...",
     COLLECTING: "Collecting Files..."
-}, RowColors = {
+};
+var RowColors = {
     PLAYING: "rgb(172, 172, 172)",
     SELECTING: "lightblue",
     NONE: ""
-}, PAUSED = false, PLAYING = true, MAIN_TABLE = document.body.querySelector(".mainTable"), PLAYLIST_VIEWER_TABLE = document.getElementById("Playlist_Viewer"), PRELOAD_DIST_ELEMENT = document.getElementById('preloadDistance'), PRELOAD_TYPE_SELECTOR = document.getElementById("preloadType"), COMPACT_MODE_LINK_ELEMENT = document.getElementById('compactModeStyleLink'), COMPACT_MODE_TOGGLE = document.getElementById('compactMode'), SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration'), SEEK_DURATION_DISPLAY = document.getElementById("seekDurationDisplay"), SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional'), SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable'), SHOW_LENGTHS = document.getElementById('showLengths'), TOGGLE_PIP_BUTTON = document.getElementById('enterPIP'), UPLOAD_BUTTON = document.getElementById('0input'), UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory'), PLAY_RATE_RANGE = document.getElementById('0playRateSlider'), SETTINGS_POPUP = document.getElementById('settingsPage'), ERROR_POPUP = document.getElementById('errorPopup'), DEPRECATED_POPUP = document.getElementById('deprecatedPopup'), DIALOGS = [SETTINGS_POPUP, ERROR_POPUP, DEPRECATED_POPUP], ERROR_LIST = document.getElementById('errorList'), CONTEXT_MENU = document.getElementById('rightClickContextMenu'), MOBILE_CONTEXT_BUTTONS = document.getElementById("mobileContextButtons"), MOBILE_PLAYLIST_OPTIONS = document.getElementById('mobilePlaylistOptions'), 
+};
+var MAIN_TABLE = document.body.querySelector(".mainTable"), PLAYLIST_VIEWER_TABLE = document.getElementById("Playlist_Viewer"), BUFFER_SECONDS = document.getElementById('bufferSeconds'), COMPACT_MODE_LINK_ELEMENT = document.getElementById('compactModeStyleLink'), COMPACT_MODE_TOGGLE = document.getElementById('compactMode'), SEEK_DURATION_NUMBER_INPUT = document.getElementById('seekDuration'), SEEK_DURATION_DISPLAY = document.getElementById("seekDurationDisplay"), SEEK_DISTANCE_PROPORTIONAL_CHECKBOX = document.getElementById('seekDistanceProportional'), SKIP_UNPLAYABLE_CHECKBOX = document.getElementById('skipUnplayable'), SHOW_LENGTHS = document.getElementById('showLengths'), TOGGLE_PIP_BUTTON = document.getElementById('enterPIP'), UPLOAD_BUTTON = document.getElementById('0input'), UPLOAD_DIRECTORY_BUTTON = document.getElementById('inputDirectory'), PLAY_RATE_RANGE = document.getElementById('0playRateSlider'), SETTINGS_POPUP = document.getElementById('settingsPage'), ERROR_POPUP = document.getElementById('errorPopup'), DEPRECATED_POPUP = document.getElementById('deprecatedPopup'), DIALOGS = [SETTINGS_POPUP, ERROR_POPUP, DEPRECATED_POPUP], ERROR_LIST = document.getElementById('errorList'), CONTEXT_MENU = document.getElementById('rightClickContextMenu'), MOBILE_CONTEXT_BUTTONS = document.getElementById("mobileContextButtons"), MOBILE_PLAYLIST_OPTIONS = document.getElementById('mobilePlaylistOptions'), 
 // LOADING_GRAY = document.getElementById('loadingGray') as HTMLDivElement,
-PROGRESS_BAR = document.getElementById('progress-bar'), HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay'), VOLUME_CHANGER = document.getElementById('0playVolume'), PLAY_RATE = document.getElementById('0playRate'), PLAY_PAN = document.getElementById('0playPan'), SEEK_BACK = document.getElementById('seekBack'), 
+PROGRESS_BAR = document.getElementById('progress-bar'), HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay'), VOLUME_CHANGER = document.getElementById('0playVolume'), PLAY_RATE = document.getElementById('0playRate'), CENTS_CHECKBOX = document.getElementById('centsCheckbox'), PLAY_PAN = document.getElementById('0playPan'), SEEK_BACK = document.getElementById('seekBack'), 
 // SEEK_FORWARD = document.getElementById('seekForward') as HTMLTableCellElement,
 REPEAT_BUTTON = document.getElementById('repeatButton'), SHUFFLE_BUTTON = document.getElementById('shuffleButton'), MUTE_BUTTON = document.getElementById('0Mute'), PLAY_BUTTON = document.getElementById('playpause'), STATUS_TEXT = document.getElementById('0status'), CURRENT_FILE_NAME = document.getElementById('currentFileName'), POSITION_OF_SONG_DISPLAY = document.getElementById('firstDurationLabel'), DURATION_OF_SONG_DISPLAY = document.getElementById('secondDurationLabel'), DROPPING_FILE_OVERLAY = document.getElementById("dragOverDisplay");
-var filePlayingCheckboxes = [];
 var sounds = [];
 var selectedRows = [];
 var hoveredRowInDragAndDrop = null; //does not work with importing files, only when organizing added files
@@ -1114,6 +892,7 @@ var currentSongIndex = null;
                         break;
                     case " ": //space
                     case "k":
+                        PLAY_BUTTON.checked = !PLAY_BUTTON.checked;
                         togglePauseCurrentSong();
                         keyEvent.preventDefault();
                         break;
@@ -1141,62 +920,9 @@ var currentSongIndex = null;
                 }
             }
         }
-        return;
-        if (keyEvent.shiftKey) {
-            switch (keyLower) {
-                case "n":
-                    jumpSong(1);
-                    keyEvent.preventDefault();
-                    break;
-                case "p":
-                    jumpSong(-1);
-                    keyEvent.preventDefault();
-                    break;
-            }
-        }
-        else if (keyEvent.ctrlKey) {
-            switch (keyLower) {
-                case "a":
-                    selectAll();
-                    keyEvent.preventDefault();
-                    break;
-            }
-        }
-        else {
-            switch (keyLower) {
-                case "escape":
-                    deselectAll();
-                    PLAYLIST_VIEWER_TABLE.blur();
-                    break;
-                case " ": //space
-                case "k":
-                    togglePauseCurrentSong();
-                    keyEvent.preventDefault();
-                    break;
-                case "arrowleft":
-                    seek(-1);
-                    keyEvent.preventDefault();
-                    break;
-                case "arrowright":
-                    seek(1);
-                    keyEvent.preventDefault();
-                    break;
-                case "m":
-                    MUTE_BUTTON.click();
-                    break;
-                case "l":
-                    REPEAT_BUTTON.click();
-                    break;
-                case "s":
-                    SHUFFLE_BUTTON.click();
-                    break;
-            }
-        }
     });
     requestAnimationFrame(onFrameStepped);
-    setInterval(onTickStepped, 0);
-    setInterval(onPeriodicStepped, 500);
-    updateSongInfos();
+    // updateSongInfos();
     makeDocumentDroppable();
     // curDoc.addEventListener('touchend', (touchEvent: TouchEvent) => {
     //   if(touchEvent.touches == 1) {
@@ -1216,7 +942,7 @@ var currentSongIndex = null;
     //   }
     // });
     curDoc.addEventListener("beforeunload", function () {
-        quitPlayingMusic();
+        stopPlayingMusic();
         sounds = [];
     }, { passive: true });
     initContextMenu();
@@ -1230,27 +956,52 @@ var currentSongIndex = null;
     registerClickEvent('exitErrorPopup', () => ERROR_POPUP.close())();
     registerClickEvent('exitDeprecatedPopup', () => DEPRECATED_POPUP.close())();
     registerKeyDownEvent(SEEK_BACK.nextElementSibling, () => PLAY_BUTTON.click());
-    registerChangeEvent(PLAY_BUTTON, pauseOrUnpauseCurrentSong);
+    registerChangeEvent(PLAY_BUTTON, togglePauseCurrentSong);
     registerChangeEvent(COMPACT_MODE_TOGGLE, toggleCompactMode);
     registerChangeEvent(SHOW_LENGTHS, updateAllFileInfos);
     registerKeyDownEvent(MUTE_BUTTON.parentElement, () => MUTE_BUTTON.click());
-    registerChangeEvent(MUTE_BUTTON, () => { if (currentHowlExists())
-        sounds[currentSongIndex].howl.mute(MUTE_BUTTON.checked); });
-    registerKeyDownEvent(REPEAT_BUTTON.labels[0], () => REPEAT_BUTTON.click());
-    registerChangeEvent(REPEAT_BUTTON, () => {
-        const checked = REPEAT_BUTTON.checked;
-        if (currentHowlExists())
-            sounds[currentSongIndex].howl.loop(checked);
+    registerChangeEvent(MUTE_BUTTON, () => {
+        if (MUTE_BUTTON.checked) {
+            gainNode.gain.value = 0;
+        }
+        else {
+            gainNode.gain.value = VOLUME_CHANGER.valueAsNumber;
+        }
     });
+    registerKeyDownEvent(REPEAT_BUTTON.labels[0], () => REPEAT_BUTTON.click());
+    // registerChangeEvent(REPEAT_BUTTON, () => {
+    //     const checked = REPEAT_BUTTON.checked;
+    //     if(currentHowlExists()) sounds[currentSongIndex].howl.loop(checked);
+    // });
     registerKeyDownEvent(SHUFFLE_BUTTON.labels[0], () => SHUFFLE_BUTTON.click());
     registerChangeEvent(SHUFFLE_BUTTON, () => handleShuffleButton(SHUFFLE_BUTTON.checked));
-    registerChangeEvent(PLAY_RATE, () => onPlayRateUpdate(parseFloat(PLAY_RATE.value)));
+    registerChangeEvent(PLAY_RATE, () => onPlayRateUpdate(PLAY_RATE.valueAsNumber));
+    registerInputEvent(PLAY_RATE_RANGE, () => { onPlayRateUpdate(PLAY_RATE_RANGE.valueAsNumber); });
+    registerChangeEvent(CENTS_CHECKBOX, () => {
+        if (CENTS_CHECKBOX.checked) {
+            const rate = calculateDetuneFromPlayRate(PLAY_RATE.valueAsNumber);
+            PLAY_RATE_RANGE.setAttribute("list", "commonCents");
+            PLAY_RATE_RANGE.max = "2400";
+            PLAY_RATE_RANGE.min = "-2400";
+            PLAY_RATE.min = "";
+            PLAY_RATE.setAttribute("value", "0");
+            PLAY_RATE_RANGE.step = PLAY_RATE.step = "100";
+            PLAY_RATE_RANGE.valueAsNumber = PLAY_RATE.valueAsNumber = rate;
+        }
+        else {
+            const rate = calculatePlayRateFromDetune(PLAY_RATE.valueAsNumber);
+            PLAY_RATE_RANGE.setAttribute("list", "commonVolumesAndRates");
+            PLAY_RATE_RANGE.max = "2";
+            PLAY_RATE_RANGE.min = PLAY_RATE.min = "0";
+            PLAY_RATE.setAttribute("value", "1");
+            PLAY_RATE_RANGE.step = PLAY_RATE.step = "0.01";
+            PLAY_RATE_RANGE.valueAsNumber = PLAY_RATE.valueAsNumber = rate;
+        }
+    });
     registerChangeEvent(SEEK_DISTANCE_PROPORTIONAL_CHECKBOX, updateSeekDurationDisplay);
     registerKeyDownEvent(UPLOAD_BUTTON.labels[0].querySelector("img"), () => UPLOAD_BUTTON.click());
     registerChangeEvent(UPLOAD_BUTTON, () => importFiles(UPLOAD_BUTTON.files));
     registerChangeEvent(UPLOAD_DIRECTORY_BUTTON, () => importFiles(UPLOAD_DIRECTORY_BUTTON.files));
-    registerInputEvent(PLAY_RATE_RANGE, () => { onPlayRateUpdate(parseFloat(PLAY_RATE_RANGE.value)); });
-    registerInputEvent(PRELOAD_DIST_ELEMENT, () => { PRELOAD_DIST_ELEMENT.labels[0].textContent = `Value: ${PRELOAD_DIST_ELEMENT.value}`; });
     registerInputEvent(PLAY_PAN, onPanningUpdate);
     registerInputEvent(VOLUME_CHANGER, onVolumeUpdate);
     initializeTableEvents();
@@ -1349,68 +1100,17 @@ function toggleCompactMode() {
     COMPACT_MODE_LINK_ELEMENT.disabled = !COMPACT_MODE_TOGGLE.checked;
     rowHeight = (COMPACT_MODE_TOGGLE.checked) ? 23 + 1 : 55 + 1;
 }
-var firstRowTop = 55;
-var rowHeight = 56;
-async function updateSongInfos() {
-    if (PLAYLIST_VIEWER_TABLE.rows.length > 1 && SHOW_LENGTHS.checked) {
-        // const rowsAway = Math.floor(Math.max(-heightAway/heightOfEachRow, 0))+1;
-        // const firstRowTop = firstRowRect.top; //55px
-        // const heightOfEachRow = firstRowRect.height+1; //+1 to account for row border
-        const rowsAway = Math.floor(Math.max((curWin.scrollY - firstRowTop) / rowHeight, 0)) + 1;
-        for (let i = 0; i < innerHeight / rowHeight; i++) {
-            const rowIndex = i + rowsAway;
-            if (rowIndex >= PLAYLIST_VIEWER_TABLE.rows.length)
-                break;
-            const song = sounds[rowIndex - 1];
-            if (!song.durationLoaded()) {
-                await loadSongDuration(song);
-                setTimeout(updateSongInfos, 0);
-                return;
-            }
-        }
-    }
-    setTimeout(updateSongInfos, 500);
-}
-function onPeriodicStepped() {
-    PRELOAD_DIST_ELEMENT.max = String(Math.max(sounds.length - 1, 1));
-    if (skipSongQueued) {
-        skipSongQueued = false;
-        const nextSongIndex = (currentSongIndex + 1) % sounds.length;
-        sounds[nextSongIndex].currentRow.getPlaySongCheckbox().dispatchEvent(new MouseEvent('click'));
-    }
-}
-function onTickStepped() {
-    let isLoading;
-    if (currentSongIndex === null || (isLoading = sounds[currentSongIndex].isLoading()))
-        return cannotUpdateProgress(isLoading);
-    // else if(sounds[currentSongIndex].howl.playing() && (STATUS_TEXT.textContent == StatusTexts.LOADING || STATUS_TEXT.textContent == StatusTexts.DOWNLOADING))
-    //   onLatePlayStart();
-}
 function onFrameStepped() {
-    if (currentSongIndex !== null && sounds[currentSongIndex].isLoaded()) {
-        const songDuration = sounds[currentSongIndex].howl.duration();
-        const currentTime = sounds[currentSongIndex].howl.seek();
+    if (currentSongIndex !== null && sounds[currentSongIndex].duration !== null) {
+        const songDuration = sounds[currentSongIndex].duration;
+        const currentTime = SoundManager.getCurrentTime();
         const timeToSet = (currentTime / songDuration) * 100;
         if (Number.isFinite(timeToSet))
             setProgressBarPercentage(timeToSet);
         updateCurrentTimeDisplay(currentTime, songDuration);
     }
+    // changeStatus(String(scheduledNodes.length)); //debug
     requestAnimationFrame(onFrameStepped);
-}
-function onPlayStart() {
-    changeStatus(StatusTexts.PLAYING);
-    reapplySoundAttributes(sounds[currentSongIndex].howl);
-}
-function cannotUpdateProgress(isProcessing) {
-    if (isProcessing)
-        changeStatus(StatusTexts.LOADING);
-    setProgressBarPercentage(100);
-    if (DURATION_OF_SONG_DISPLAY.textContent != "00:00")
-        DURATION_OF_SONG_DISPLAY.textContent = "00:00";
-    if (POSITION_OF_SONG_DISPLAY.textContent != "00:00")
-        POSITION_OF_SONG_DISPLAY.textContent = "00:00";
-    if (HOVERED_TIME_DISPLAY.style.transform != "translate(-9999px, 0px)")
-        HOVERED_TIME_DISPLAY.style.transform = "translate(-9999px, 0px)";
 }
 function reapplySoundAttributes(howl) {
     howl.rate(parseFloat(PLAY_RATE.value));
@@ -1422,34 +1122,28 @@ function updateCurrentTimeDisplay(currentTime, songDurationInSeconds) {
     const songDurationFormatted = new Time(songDurationInSeconds).toString();
     if (DURATION_OF_SONG_DISPLAY.textContent != songDurationFormatted)
         DURATION_OF_SONG_DISPLAY.textContent = songDurationFormatted;
-    // if (HOVERED_TIME_DISPLAY.hasAttribute('inUse')) return;
-    // const progressBarDomRect = PROGRESS_BAR.getBoundingClientRect();
-    // const hoveredTimeDisplayRect = HOVERED_TIME_DISPLAY.getBoundingClientRect();
-    // const beginningOfProgressBar = (progressBarDomRect.left - hoveredTimeDisplayRect.width / 2)+curWin.scrollX;
     POSITION_OF_SONG_DISPLAY.textContent = new Time(currentTime).toString();
-    // if (HOVERED_TIME_DISPLAY.children[0].textContent != currentTimeString) HOVERED_TIME_DISPLAY.children[0].textContent = currentTimeString;
-    // const pixelsAcrossProgressBar = (progressBarDomRect.width * currentTime / songDurationInSeconds) - 1;
-    // HOVERED_TIME_DISPLAY.style.top = `${progressBarDomRect.top}px`;
-    // HOVERED_TIME_DISPLAY.style.left = `${beginningOfProgressBar+pixelsAcrossProgressBar}px`;
 }
 function progressBarSeek(mouse, hoverType) {
-    if (currentSongIndex === null || !sounds[currentSongIndex].isInExistence() || (mouse?.pointerType == "touch" && hoverType !== 0 /* ProgressBarSeekAction.SEEK_TO */) || hoverType === 2 /* ProgressBarSeekAction.STOP_DISPLAYING */) {
-        // HOVERED_TIME_DISPLAY.toggleAttribute('inUse', false);
+    if (currentSongIndex === null || (mouse?.pointerType == "touch" && hoverType !== 0 /* ProgressBarSeekAction.SEEK_TO */) || hoverType === 2 /* ProgressBarSeekAction.STOP_DISPLAYING */) {
         HOVERED_TIME_DISPLAY.style.transform = "translate(-9999px, 0px)";
         return;
     }
-    const offsetX = mouse.offsetX, progressBarWidth = PROGRESS_BAR.clientWidth, currentSongLength = sounds[currentSongIndex].howl.duration();
-    let seekToTime = Math.max(offsetX * (currentSongLength / progressBarWidth), 0);
+    const offsetX = mouse.offsetX;
+    const progressBarWidth = PROGRESS_BAR.clientWidth;
+    const duration = sounds[currentSongIndex].duration;
+    if (duration === null) {
+        HOVERED_TIME_DISPLAY.style.transform = "translate(-9999px, 0px)";
+        return;
+    }
+    let seekToTime = Math.max(offsetX * (duration / progressBarWidth), 0);
     switch (hoverType) {
         case (0 /* ProgressBarSeekAction.SEEK_TO */): {
-            sounds[currentSongIndex].howl.seek(seekToTime);
+            SoundManager.setCurrentTime(seekToTime);
             return;
         }
         case (1 /* ProgressBarSeekAction.DISPLAY_TIME */): {
-            // HOVERED_TIME_DISPLAY.toggleAttribute('inUse', true);
             const progressBarDomRect = PROGRESS_BAR.getBoundingClientRect();
-            // HOVERED_TIME_DISPLAY.style.top = `${progressBarDomRect.top}px`;
-            // HOVERED_TIME_DISPLAY.style.left = `${(mouse.x - HOVERED_TIME_DISPLAY.getBoundingClientRect().width / 2) + 1}px`;
             HOVERED_TIME_DISPLAY.style.transform = `translate(${(mouse.x - HOVERED_TIME_DISPLAY.getBoundingClientRect().width / 2)}px, ${progressBarDomRect.top - 20}px)`;
             HOVERED_TIME_DISPLAY.firstChild.textContent = new Time(seekToTime).toString();
             return;
@@ -1460,7 +1154,7 @@ function progressBarSeek(mouse, hoverType) {
  * @param error The exception.
  * @param shortMessage A user-readable error message. If the error type is known, it will help to write this value out manually to better explain the error to the user.
  * @param errorCategory The category the error is contained in.
-*/
+ */
 function displayError(error, shortMessage, errorCategory) {
     console.error(error);
     errorCategory += ":";
@@ -1489,12 +1183,12 @@ function displayError(error, shortMessage, errorCategory) {
         ERROR_POPUP.showModal();
 }
 function seek(seekDirection) {
-    if (currentSongIndex === null || sounds[currentSongIndex].isUnloaded())
+    if (currentSongIndex === null)
         return;
-    const seekDuration = parseFloat(SEEK_DURATION_NUMBER_INPUT.value) * seekDirection;
-    const numToAdd = (SEEK_DISTANCE_PROPORTIONAL_CHECKBOX.checked) ? seekDuration * parseFloat(PLAY_RATE.value) : seekDuration;
-    const currentTime = sounds[currentSongIndex].howl.seek();
-    sounds[currentSongIndex].howl.seek(Math.max(currentTime + numToAdd, 0));
+    const seekDuration = SEEK_DURATION_NUMBER_INPUT.valueAsNumber * seekDirection;
+    const numToAdd = (SEEK_DISTANCE_PROPORTIONAL_CHECKBOX.checked) ? seekDuration * PLAY_RATE.valueAsNumber : seekDuration;
+    const currentTime = SoundManager.getCurrentTime();
+    SoundManager.setCurrentTime(currentTime + numToAdd);
 }
 async function importFiles(element) {
     if (element.constructor.name == "FileList") {
@@ -1509,14 +1203,15 @@ async function importFiles(element) {
         addFiles(await fileReceiver.retrieveContents());
     }
 }
-function addFiles(files /*FileList or File[]*/) {
+async function addFiles(files /*FileList or File[]*/) {
     const songTableRows = [];
     const lengthBeforeBegin = sounds.length;
     let offsetBecauseOfSkipped = 0;
     changeStatus(`Importing ${files.length} Files...`);
+    const Mediabunny = await importMediabunny();
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        if (file == null)
+        if (!file)
             continue;
         const fileExtension = getFileExtension(file.name);
         if (SKIP_UNPLAYABLE_CHECKBOX.checked && !isValidExtension(fileExtension)) {
@@ -1531,12 +1226,31 @@ function addFiles(files /*FileList or File[]*/) {
         songRow.updateFileSizeDisplay(file.size);
         songRow.setRowSongNumber(nativeIndex + 1);
         const song = new Song(file, nativeIndex, songRow);
+        const input = new Mediabunny.Input({ source: new Mediabunny.BlobSource(file), formats: Mediabunny.ALL_FORMATS });
+        input.getPrimaryAudioTrack().then(track => {
+            if (!track) {
+                console.warn(`Could not find an audio track in file ${file.name}`);
+                return;
+            }
+            track.getDurationFromMetadata({ skipLiveWait: true }).then(async (duration) => {
+                if (duration === null) {
+                    duration = await track.computeDuration({
+                        metadataOnly: true,
+                        verifyKeyPackets: false,
+                        skipLiveWait: true
+                    });
+                }
+                song.updateDuration(duration);
+            });
+        }).catch(e => {
+            console.warn(`Error reading track data from file ${file.name}`, e);
+        });
         songTableRows.push(songRow.tableRow); //index (2nd parameter) is used to number the checkboxes
         sounds.push(song);
     }
     addRowsInPlaylistTable(songTableRows);
     changeStatus(`${files.length - offsetBecauseOfSkipped} files added!`);
-    updateAllFileInfos();
+    // updateAllFileInfos();
 }
 function addRowsInPlaylistTable(songTableRows) {
     const QUANTUM = 32768;
@@ -1550,51 +1264,31 @@ function addRowsInPlaylistTable(songTableRows) {
     }
     if (addEvents) {
         const firstRow = songTableRows[0];
-        // const resizeObserver = new ResizeObserver((entries) => {
-        //   rowHeight = entries.at(-1).contentBoxSize[0].blockSize+1; //account for table border
-        // });
-        // resizeObserver.observe(firstRow);
         const firstRowRect = firstRow.getBoundingClientRect();
         firstRowTop = firstRowRect.top;
         rowHeight = firstRowRect.height + 1;
     }
 }
 function onPlayRateUpdate(newRate) {
-    let stringRate = String(newRate);
-    PLAY_RATE_RANGE.value = stringRate;
-    PLAY_RATE.value = stringRate;
+    PLAY_RATE_RANGE.valueAsNumber = PLAY_RATE.valueAsNumber = newRate;
+    SoundManager.setPlayRate((CENTS_CHECKBOX.checked) ? calculatePlayRateFromDetune(newRate) : newRate);
     updateSeekDurationDisplay();
-    if (!currentHowlExists())
-        return;
-    if (newRate <= 0) {
-        sounds[currentSongIndex].howl.pause(); //the rate cant be set to 0. the progress tracker will glitch back to 0.
-        return;
-    }
-    if (sounds[currentSongIndex].isPaused() && STATUS_TEXT.textContent == StatusTexts.PLAYING) {
-        const currentTime = sounds[currentSongIndex].howl.seek();
-        sounds[currentSongIndex].howl.rate(newRate);
-        sounds[currentSongIndex].howl.play(); //this starts the song over
-        sounds[currentSongIndex].howl.seek(currentTime); //jump back to where we were
-        return;
-    }
-    sounds[currentSongIndex].howl.rate(newRate);
 }
 function onPanningUpdate() {
-    if (currentHowlExists())
-        sounds[currentSongIndex].howl.stereo(Number(PLAY_PAN.value));
+    // if(currentHowlExists()) //TODO: implement
+    //     sounds[currentSongIndex].howl.stereo(Number(PLAY_PAN.value));
     PLAY_PAN.labels[0].textContent = `${Math.floor(Number(PLAY_PAN.value) * 100)}%`;
 }
 function onVolumeUpdate() {
-    if (currentHowlExists())
-        sounds[currentSongIndex].howl.volume(Number(VOLUME_CHANGER.value));
-    VOLUME_CHANGER.labels[0].textContent = `${Math.floor(Number(VOLUME_CHANGER.value) * 100)}%`;
+    gainNode.gain.value = VOLUME_CHANGER.valueAsNumber;
+    VOLUME_CHANGER.labels[0].textContent = `${Math.floor(VOLUME_CHANGER.valueAsNumber * 100)}%`;
 }
 function setIsBuffering(buffering) {
     isBuffering = buffering;
 }
 function updateSeekDurationDisplay() {
-    const duration = Number(SEEK_DURATION_NUMBER_INPUT.value);
-    const playRate = (SEEK_DISTANCE_PROPORTIONAL_CHECKBOX.checked) ? Number(PLAY_RATE.value) : 1;
+    const duration = SEEK_DURATION_NUMBER_INPUT.valueAsNumber;
+    const playRate = (SEEK_DISTANCE_PROPORTIONAL_CHECKBOX.checked) ? PLAY_RATE.valueAsNumber : 1;
     if (duration < 1) {
         SEEK_DURATION_DISPLAY.textContent = `${(duration * playRate) * 1000} ms`;
     }
@@ -1604,84 +1298,85 @@ function updateSeekDurationDisplay() {
 }
 function handleShuffleButton(enable) {
     if (enable) {
+        // @ts-ignore
         shuffle();
-        refreshSongNames();
-        for (let i = 0; i < sounds.length; i++) {
-            sounds[i].updateFileInfoDisplay();
-        }
-        if (currentSongIndex !== null)
-            updateRowColor(sounds[currentSongIndex].currentRow.tableRow);
-        return;
     }
-    let tempArray = sounds, foundCurrentPlayingSong = false;
-    sounds = new Array(tempArray.length);
-    for (let i = 0; i < tempArray.length; i++) {
-        let sound = tempArray[i];
-        sounds[sound.nativeIndex] = sound;
-        sound.currentRow = new SongTableRow(PLAYLIST_VIEWER_TABLE.rows[sound.nativeIndex + 1]);
-        sound.updateFileInfoDisplay();
-        if (!foundCurrentPlayingSong && currentSongIndex !== null && i == currentSongIndex) {
-            currentSongIndex = sound.nativeIndex;
-            const currentCheckbox = filePlayingCheckboxes[currentSongIndex];
-            filePlayingCheckboxes.forEach(it => { it.checked = false; });
-            currentCheckbox.checked = true;
-            foundCurrentPlayingSong = true;
-        }
+    else {
+        unshuffle();
     }
-    for (let i = 0; i < tempArray.length; i++)
-        sounds[tempArray[i].nativeIndex] = tempArray[i];
-    sounds = Array.from(sounds); //V8 optimization?
-    refreshSongNames();
-    if (currentSongIndex !== null)
-        updateRowColor(sounds[currentSongIndex].currentRow.tableRow);
-    tempArray = null;
 }
-function shuffle() {
-    let currentIndex = sounds.length, randomIndex;
-    while (currentIndex != 0) {
-        randomIndex = Math.floor(Math.random() * currentIndex);
-        --currentIndex;
-        if (currentSongIndex !== null) {
-            if (currentSongIndex == currentIndex)
-                currentSongIndex = randomIndex;
-            else if (currentSongIndex == randomIndex)
-                currentSongIndex = currentIndex;
-            const currentCheckbox = filePlayingCheckboxes[currentSongIndex];
-            filePlayingCheckboxes.forEach(box => { box.checked = false; });
-            currentCheckbox.checked = true;
+// Source - https://stackoverflow.com/a/25984542
+// Posted by cocco, modified by community. See post 'Timeline' for change history
+// Retrieved 2026-09-01, License - CC BY-SA 3.0
+//ts-ignore
+function shuffle(b, c, d) {
+    c = sounds.length;
+    while (c) {
+        b = Math.random() * c-- | 0;
+        d = sounds[c];
+        sounds[c] = sounds[b];
+        sounds[b].currentIndex = c;
+        sounds[b] = d;
+        d.currentIndex = b;
+        if (currentSongIndex === c) {
+            currentSongIndex = b;
         }
-        let tempForSwapping = sounds[currentIndex];
-        sounds[currentIndex] = sounds[randomIndex];
-        //TODO: Optimize row swapping
-        tempForSwapping.currentRow = new SongTableRow(PLAYLIST_VIEWER_TABLE.rows[randomIndex + 1]);
-        sounds[randomIndex].currentRow = new SongTableRow(PLAYLIST_VIEWER_TABLE.rows[currentIndex + 1]);
-        sounds[randomIndex] = tempForSwapping;
+        else if (currentSongIndex === b) {
+            currentSongIndex = c;
+        }
     }
+    updateRowOrder();
+}
+function unshuffle() {
+    let oldArr = sounds;
+    sounds = new Array(oldArr.length).fill(null);
+    for (let i = 0; i < oldArr.length; i++) {
+        let sound = oldArr[i];
+        sounds[sound.nativeIndex] = sound;
+        sound.currentIndex = sound.nativeIndex;
+    }
+    if (currentSongIndex !== null) {
+        currentSongIndex = oldArr[currentSongIndex].nativeIndex;
+    }
+    updateRowOrder();
+}
+function updateRowOrder() {
+    const rows = [];
+    for (let i = 0; i < sounds.length; i++) {
+        sounds[i].currentIndex = i;
+        rows.push(sounds[i].currentRow.tableRow);
+    }
+    const QUANTUM = 32768;
+    const body = PLAYLIST_VIEWER_TABLE.tBodies[0];
+    body.replaceChildren(body.children[0]);
+    for (let i = 0; i < rows.length; i += QUANTUM) {
+        body.append(...rows.slice(i, Math.min(i + QUANTUM, rows.length)));
+    }
+    updateSongNumberings();
 }
 function onClickSpecificPlaySong(checkbox) {
-    const index = tryFindTableRowInParents(checkbox).rowIndex - 1;
-    startOrUnloadSong(index, checkbox.checked);
+    const song = sounds[tryFindTableRowInParents(checkbox).rowIndex - 1];
+    startOrUnloadSong(song, checkbox.checked);
 }
-function startOrUnloadSong(index, startPlaying) {
-    filePlayingCheckboxes.forEach(checkbox => { checkbox.checked = false; }); //uncheck the play button for all the other sounds except the one u chose
-    filePlayingCheckboxes[index].checked = startPlaying;
+function startOrUnloadSong(song, startPlaying) {
     if (startPlaying)
-        startPlayingSpecificSong(index);
+        startPlayingSpecificSong(song);
     else
-        quitPlayingMusic();
+        stopPlayingMusic();
 }
-function quitPlayingMusic() {
-    const currentRow = PLAYLIST_VIEWER_TABLE.rows[currentSongIndex + 1];
-    filePlayingCheckboxes[currentSongIndex].checked = false;
+function stopPlayingMusic() {
     PLAY_BUTTON.checked = false;
-    currentSongIndex = null;
+    SoundManager.stop();
+    removeCurrentSong();
     setProgressBarPercentage(100);
-    for (let i = 0; i < sounds.length; i++)
-        sounds[i].unload();
-    Howler.stop();
     changeStatus(StatusTexts.STOPPED);
-    updateRowColor(currentRow);
-    return;
+    if (DURATION_OF_SONG_DISPLAY.textContent != "00:00")
+        DURATION_OF_SONG_DISPLAY.textContent = "00:00";
+    if (POSITION_OF_SONG_DISPLAY.textContent != "00:00")
+        POSITION_OF_SONG_DISPLAY.textContent = "00:00";
+    if (HOVERED_TIME_DISPLAY.style.transform != "translate(-9999px, 0px)")
+        HOVERED_TIME_DISPLAY.style.transform = "translate(-9999px, 0px)";
+    PLAY_BUTTON.checked = false;
 }
 /**
  * @param percent A number from 0 to 100
@@ -1691,95 +1386,45 @@ function setProgressBarPercentage(percent) {
     PROGRESS_BAR.style.setProperty("--percentage", String(percent) + '%');
     // PROGRESS_BAR.style.setProperty("--percentageRev", String((-percent)+100)+'%');
 }
-async function startPlayingSpecificSong(index) {
-    if (sounds[index].isInExistence())
-        sounds[index].howl.stop();
-    Howler.stop();
-    currentSongIndex = index;
-    updateRowColor(sounds[index].currentRow.tableRow);
-    const soundName = sounds[index].file.name;
-    const fileExtension = getFileExtension(soundName);
-    if (SKIP_UNPLAYABLE_CHECKBOX.checked && !isValidExtension(fileExtension)) {
-        const error = new TypeError(`The file ${soundName} failed to import because its extension ${fileExtension} is unsupported and cannot be played!`);
-        displayError(error, `The file type '${fileExtension}' is unsupported.`, soundName);
-        skipSongQueued = true;
-        return;
-    }
-    changeStatus(StatusTexts.DOWNLOADING);
-    let song = sounds[index];
-    song.loadSong().then(succeeded => {
-        if (succeeded && currentSongIndex === index)
-            startPlayingSong(song);
-    });
-    refreshPreloadedSongs();
-}
-function startPlayingSong(song) {
-    setCurrentFileName(song.file.name);
-    reapplySoundAttributes(song.howl);
-    if (Number(PLAY_RATE.value) != 0) {
-        if (song.howl.state() == "unloaded")
-            song.howl.load();
-        song.howl.play();
-        PLAY_BUTTON.checked = PLAYING;
-    }
-}
-function refreshPreloadedSongs() {
-    if (currentSongIndex === null)
-        return;
-    for (let i = 0; i < sounds.length; i++) {
-        if (currentSongIndex === i)
-            continue;
-        if (!isIndexInRangeOfCurrent(i)) {
-            sounds[i].unload();
-            continue;
-        }
-        sounds[i].loadSong();
-    }
-}
-function isIndexInRangeOfCurrent(index) {
-    const distance = parseInt(PRELOAD_DIST_ELEMENT.value);
-    const withinRange = index >= (currentSongIndex - distance) && index <= (currentSongIndex + distance);
-    const inRangeWrappedToBegin = (index + distance) >= sounds.length && ((index + distance) % sounds.length) >= currentSongIndex;
-    const inRangeWrappedToEnd = index - distance < 0 && ((index - distance) + sounds.length) <= currentSongIndex;
-    return withinRange || inRangeWrappedToBegin || inRangeWrappedToEnd;
+function startPlayingSpecificSong(song) {
+    changeStatus(StatusTexts.BUFFERING);
+    PLAY_BUTTON.checked = true;
+    setCurrentSong(song);
+    SoundManager.stop();
+    SoundManager.startTime = 0;
+    SoundManager.startPlaying();
 }
 function jumpSong(amount = 1) {
     if (currentSongIndex === null)
         return;
-    currentSongIndex = (currentSongIndex + (sounds.length + amount)) % sounds.length;
-    const playButtonToActivate = filePlayingCheckboxes[currentSongIndex];
-    playButtonToActivate.dispatchEvent(new MouseEvent('click'));
+    const song = sounds[(currentSongIndex + (sounds.length + amount)) % sounds.length];
+    setCurrentSong(song);
+    SoundManager.stop();
+    SoundManager.startTime = 0;
+    SoundManager.startPlaying();
 }
 function togglePauseCurrentSong() {
-    if (currentSongIndex !== null && sounds[currentSongIndex].isInExistence()) {
-        PLAY_BUTTON.checked = !PLAY_BUTTON.checked;
-        pauseOrUnpauseCurrentSong();
-    }
-}
-function pauseOrUnpauseCurrentSong() {
-    const pause = !PLAY_BUTTON.checked;
-    if (!sounds[currentSongIndex] || !sounds[currentSongIndex].isInExistence()) {
+    if (currentSongIndex === null) {
         PLAY_BUTTON.checked = !PLAY_BUTTON.checked;
         return;
     }
-    if (pause) {
-        PLAY_BUTTON.checked = PAUSED;
-        sounds[currentSongIndex].howl.pause();
-        changeStatus(StatusTexts.PAUSED);
-    }
-    else {
-        sounds[currentSongIndex].howl.play();
+    if (PLAY_BUTTON.checked) {
+        SoundManager.resume();
         changeStatus(StatusTexts.PLAYING);
     }
-}
-function refreshSongNames() {
-    for (let i = 0; i < sounds.length; i++) {
-        sounds[i].currentRow.setSongName(sounds[i].file.name);
+    else {
+        SoundManager.pause();
+        changeStatus(StatusTexts.PAUSED);
     }
 }
+// function refreshSongNames(){
+//     for (let i = 0; i < sounds.length; i++) {
+//         sounds[i].currentRow.setSongName(sounds[i].file.name);
+//     }
+// }
 function setCurrentFileName(name) {
-    if (CURRENT_FILE_NAME.textContent != name) {
-        CURRENT_FILE_NAME.textContent = name; //name is compressed by CSS formatting if too large
+    if (CURRENT_FILE_NAME.textContent !== name) {
+        CURRENT_FILE_NAME.textContent = name;
         CURRENT_FILE_NAME.setAttribute('title', name);
         curDoc.title = name;
     }
@@ -1788,16 +1433,15 @@ function precisionRound(number, precision) {
     const factor = Math.pow(10, precision);
     return Math.round(number * factor) / factor;
 }
-function currentHowlExists() { return currentSongIndex !== null && sounds[currentSongIndex].isInExistence(); }
 function changeStatus(status) { STATUS_TEXT.textContent = status; }
 function onlyFiles(dataTransfer) { return dataTransfer.types.length == 1 && dataTransfer.types[0] === 'Files'; }
-function isValidExtension(extension) { return codecsMixin(extension); }
+function isValidExtension(extension) { return canPlay(extension); }
 //@ts-ignore
 function setAttributes(element, attrs) { for (const key in attrs)
     element.setAttribute(key, attrs[key]); }
 // @ts-ignore
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
-function getInMegabytes(bytes) { return (bytes / 1048576).toFixed(2); }
+function getInMegabytes(bytes) { return (bytes / 1_048_576).toFixed(2); }
 function getFileExtension(fileName) { return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase(); }
 /*            TABLE INTERACTION FUNCTIONS             */
 var longTapTimer = null;
@@ -1851,8 +1495,7 @@ function cancelLongTapTimer() {
 function onLongTap(event) {
     longTapTimer = null;
     longTapping = true;
-    if ("vibrate" in navigator)
-        navigator.vibrate(5);
+    navigator?.vibrate?.(50);
     const target = event.target;
     const row = findValidTableRow(target);
     if (row) {
@@ -1947,27 +1590,29 @@ function initializeRowEvents(row) {
     });
     row.addEventListener('drop', onDropRow);
 }
-var previouslyActiveRow = null;
-function setRowActive(row) {
-    if (previouslyActiveRow != null && previouslyActiveRow != row) {
-        updateRowColor(previouslyActiveRow); //previouslyActiveRow.style.backgroundColor = RowColors.NONE;
+var activeRow = null;
+function setActiveRow(row) {
+    const previouslyActiveRow = activeRow;
+    activeRow = row;
+    if (previouslyActiveRow && previouslyActiveRow !== row) {
+        previouslyActiveRow.firstElementChild.querySelector("input.playpause").checked = false;
+        updateRowColor(previouslyActiveRow); //activeRow.style.backgroundColor = RowColors.NONE;
     }
-    row.style.backgroundColor = RowColors.PLAYING;
-    previouslyActiveRow = row;
+    if (row) {
+        row.firstElementChild.querySelector("input.playpause").checked = true;
+        updateRowColor(row);
+    }
 }
 function updateRowColor(row) {
-    let setColor = false;
-    if (currentSongIndex !== null && sounds[currentSongIndex]?.currentRow?.tableRow == row) {
-        setRowActive(row);
-        setColor = true;
-    }
     if (row.hasAttribute("data-selected")) {
         row.style.backgroundColor = RowColors.SELECTING;
-        setColor = true;
+        return;
     }
-    if (!setColor) {
-        row.style.backgroundColor = RowColors.NONE;
+    if (activeRow == row) {
+        row.style.backgroundColor = RowColors.PLAYING;
+        return;
     }
+    row.style.backgroundColor = RowColors.NONE;
 }
 function whileDraggingRows(event) {
     if (onlyFiles(event.dataTransfer))
@@ -2040,25 +1685,6 @@ function onSingleClick(mouseEvent) {
     selectRow(row);
     updateMobilePlaylistOptions();
 }
-// function onRightClick(pointerEvent){
-//   let row = pointerEvent.target;
-//   if(!rowValid(row)){
-//     row = tryFindTableRowInParents(row);
-//     if(!rowValid(row)) return;
-//   }
-//   pointerEvent.preventDefault();
-//   openRowContextMenu(pointerEvent.clientX, pointerEvent.clientY, row);
-// }
-// function openRowContextMenu(clientX, clientY, row){
-//   if(!selectedRows.includes(row)){
-//     deselectAll();
-//     selectRow(row);
-//   }
-//   const contextOptions = [];
-//   if(selectedRows.length == 1) contextOptions.push({text: (currentSongIndex != selectedRows[0].rowIndex-1) ? "Play" : "Stop", action: () => playRow(selectedRows[0]) });
-//   contextOptions.push({text: "Delete", action: deleteSelectedSongs});
-//   spawnContextMenu(clientX, clientY, contextOptions, true);
-// }
 function isSelected(row) { return row.hasAttribute("data-selected"); }
 function scrollRowIntoView(row) {
     //@ts-ignore
@@ -2132,35 +1758,35 @@ function selectAll() {
 }
 function playRow(row) {
     row = findValidTableRow(row);
-    const index = row.rowIndex - 1;
-    const checkbox = filePlayingCheckboxes[index];
-    checkbox.checked = !checkbox.checked;
-    startOrUnloadSong(index, checkbox.checked);
+    const song = sounds[row.rowIndex - 1];
+    const playSongCheckbox = song.currentRow.getPlaySongCheckbox();
+    startOrUnloadSong(song, (playSongCheckbox.checked = !playSongCheckbox.checked));
 }
 function deleteSelectedSongs() {
     const tableBody = PLAYLIST_VIEWER_TABLE.firstElementChild;
     for (let i = 0; i < selectedRows.length; i++) {
         const index = selectedRows[i].rowIndex - 1;
         if (index === currentSongIndex) {
-            quitPlayingMusic(); //stop playing
-            setProgressBarPercentage(0);
+            stopPlayingMusic();
+            // setProgressBarPercentage(0);
         }
         else if (currentSongIndex !== null && currentSongIndex > index) {
             --currentSongIndex;
         }
         tableBody.removeChild(selectedRows[i]);
         for (let i = 0; i < sounds.length; i++) {
-            if (sounds[i].nativeIndex > sounds[index].nativeIndex) {
+            const myNativeIndex = sounds[index].nativeIndex;
+            if (sounds[i].nativeIndex > myNativeIndex) {
                 --sounds[i].nativeIndex;
             }
+            if (sounds[i].currentIndex > index) {
+                --sounds[i].currentIndex;
+            }
         }
-        sounds[index].onDelete();
         sounds.splice(index, 1);
-        filePlayingCheckboxes.splice(index, 1);
     }
     deselectAll();
     updateSongNumberings();
-    refreshPreloadedSongs();
 }
 function moveSelectedSongs(toIndex) {
     const tableBody = PLAYLIST_VIEWER_TABLE.firstElementChild;
@@ -2169,13 +1795,13 @@ function moveSelectedSongs(toIndex) {
         const index = selectedRows[i].rowIndex - 1;
         tableBody.removeChild(selectedRows[i]);
         sounds.splice(toIndex, 0, sounds.splice(index, 1)[0]);
-        filePlayingCheckboxes.splice(toIndex, 0, filePlayingCheckboxes.splice(index, 1)[0]);
         tableBody.insertBefore(selectedRows[i], tableBody.children[toIndex + 1]);
         currentSongIndex = currentlyPlayingRow.rowIndex - 1;
     }
+    for (let i = 0; i < sounds.length; i++)
+        sounds[i].currentIndex = i;
     deselectAll();
     updateSongNumberings();
-    refreshPreloadedSongs();
 }
 function selectionLogicForKeyboard(keyboardEvent) {
     if (selectedRows.length == 0)
@@ -2241,6 +1867,11 @@ function tryFindTableRowInParents(element) {
 function updateSongNumberings() {
     for (const song of sounds) {
         song.currentRow.updateRowSongNumber();
+    }
+}
+async function updateAllFileInfos() {
+    for (const song of sounds) {
+        song.updateFileInfoDisplay();
     }
 }
 function rowValid(row) { return row?.constructor?.name == "HTMLTableRowElement" && row != PLAYLIST_VIEWER_TABLE.rows[0] && row.closest('table') == PLAYLIST_VIEWER_TABLE; }
@@ -2366,7 +1997,7 @@ function initContextMenu() {
                             }
                             else {
                                 VOLUME_CHANGER.max = "1";
-                                VOLUME_CHANGER.value = "1";
+                                VOLUME_CHANGER.valueAsNumber = Math.min(VOLUME_CHANGER.valueAsNumber, 1);
                                 onVolumeUpdate();
                             }
                         } }

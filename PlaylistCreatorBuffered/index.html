@@ -19,8 +19,6 @@
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
         <script defer src="PlaylistCreator.js"></script>
-        <!-- <script defer src="../howler.js"></script> -->
-        <!-- <script src="../ServiceWorker.js"></script> -->
         <link rel="stylesheet" href="PlaylistCreator.css">
         <link rel="stylesheet" href="CompactMode.css" id="compactModeStyleLink" disabled>
         <link rel="stylesheet" href="../CSS/background.css">
@@ -103,6 +101,7 @@
                                     <img class="playBackIcon" src="../Icons/PlaybackSpeedIcon.svg" alt="Playback Speed Changer" style="width:100%; height:100%; position: absolute; left:50%; transform: translate(-50%, 0%);">
                                     <div tabindex="0" id="playRatePullsOpen" class="pullsOpen" style="position: absolute; justify-content: center; display: flex; visibility: visible;">
                                         <div style="display: flex; flex-direction: column;">
+                                            <label title="±1200 per octave, ±100 per semitone" style="display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; color: black; container-type: inline-size; width: 100%;"><input type="checkbox" id="centsCheckbox"><span style="font-size: clamp(0.1em, 24cqw, 1em); white-space: nowrap;"> Cents</span></label>
                                             <input type="number" style="width: calc(100% - 7.6px)" class="playRate" id="0playRate" value="1" step="0.01" min="0" inputmode="numeric">
                                             <input type="range" id="0playRateSlider" list='commonVolumesAndRates' max=2 min=0 value=1 step=0.01 style="writing-mode: vertical-lr; direction: rtl; appearance: slider-vertical; width: 100%; height: 100%; flex-grow: 1" />
                                         </div>
@@ -137,6 +136,7 @@
         </table>
 
         <datalist style="display: none" id="commonVolumesAndRates"><option value="0"></option><option value="0.25"></option><option value="0.5"></option><option value="0.75"></option><option value="1"></option><option value="1.25"></option><option value="1.5"></option><option value="1.75"></option><option value="2"></option><option value="2.5"></option><option value="3"></option><option value="3.5"></option><option value="4"></option><option value="4.5"></option><option value="5"></option><option value="5.5"></option><option value="6"></option><option value="6.5"></option><option value="7"></option><option value="7.5"></option><option value="8"></option><option value="8.5"></option><option value="9"></option><option value="9.5"></option><option value="10"></option></datalist>
+        <datalist style="display: none" id="commonCents"><option value="-2400"></option><option value="-2300"></option><option value="-2200"></option><option value="-2100"></option><option value="-2000"></option><option value="-1900"></option><option value="-1800"></option><option value="-1700"></option><option value="-1600"></option><option value="-1500"></option><option value="-1400"></option><option value="-1300"></option><option value="-1200"></option><option value="-1100"></option><option value="-1000"></option><option value="-900"></option><option value="-800"></option><option value="-700"></option><option value="-600"></option><option value="-500"></option><option value="-400"></option><option value="-300"></option><option value="-200"></option><option value="-100"></option><option value="0"></option><option value="100"></option><option value="200"></option><option value="300"></option><option value="400"></option><option value="500"></option><option value="600"></option><option value="700"></option><option value="800"></option><option value="900"></option><option value="1000"></option><option value="1100"></option><option value="1200"></option><option value="1300"></option><option value="1400"></option><option value="1500"></option><option value="1600"></option><option value="1700"></option><option value="1800"></option><option value="1900"></option><option value="2000"></option><option value="2100"></option><option value="2200"></option><option value="2300"></option><option value="2400"></option></datalist>
         <datalist style="display: none" id="commonPanValues"><option value="-1"></option><option value="-0.5"></option><option value="0"></option><option value="0.5"></option><option value="1"></option></datalist>
         
         <dialog id="settingsPage" inert>
@@ -149,9 +149,7 @@
                     </select>
                 </div>
                 <div>
-                    <div class="largerSize scrollableText text" style="display: block;" title="Preload Songs Distance (# of songs before and after current song are preloaded (RAM INTENSIVE)):">Preload Songs Distance (# of songs before and after current song are preloaded (RAM INTENSIVE)):</div>
-                    <input type="range" id="preloadDistance" max=1 min=0 value=1 step=1 style="width: 75%; display: inline-block; position: relative; top: -4px; transform: translate(0%, 50%);">
-                    <label for="preloadDistance" style="display: inline-block;">Value: 1</label>
+                    <label title="Increase to preload more audio data at the cost of memory. WARNING: setting below 0.2 or too high will cause glitches (stick to 0.2-10 secs)">Buffer Seconds: <input style="width: 40%; margin-right: 5px;" type="number" inputmode="numeric" value=1 step=0.1 min=0 id="bufferSeconds"></label>
                 </div>
                 <div>
                     <input style="width: 40%; margin-right: 5px;" type="number" inputmode="numeric" value=10 step=1 min=0 id="seekDuration"><label for="seekDuration">Seek Duration: </label><label id="seekDurationDisplay" for="seekDuration">10 sec</label>
