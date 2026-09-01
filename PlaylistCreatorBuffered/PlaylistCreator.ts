@@ -125,6 +125,8 @@ async function rerenderBuffer(buffer: AudioBuffer, playRate: number) {
 
 let cachedMediabunnyInternals: [InputAudioTrack, number, number, Song] = [null, null, null, null];
 async function *resampledBufferIterator(bufferIterator: AsyncGenerator, nChannels: number, inputSampleRate: number, currentID: number){
+    inputSampleRate *= playRate;
+
     const LibSampleRate = await import('@axonkit/libsamplerate-js'); //https://www.npmjs.com/package/@axonkit/libsamplerate-js
     let bufferFrameSize = ctx.sampleRate;
     let inBuffer = new Float32Array(Math.ceil(((ctx.sampleRate/inputSampleRate) * bufferFrameSize) * nChannels + nChannels));
@@ -150,8 +152,8 @@ async function *resampledBufferIterator(bufferIterator: AsyncGenerator, nChannel
                 while(length > bufferFrameSize){
                     bufferFrameSize *= 2;
                 }
-                inBuffer = new Float32Array(Math.ceil(((ctx.sampleRate/inputSampleRate) * bufferFrameSize) * nChannels + nChannels));
-                outBuffer = new Float32Array(Math.ceil(((ctx.sampleRate/inputSampleRate) * bufferFrameSize) * nChannels + nChannels));
+                inBuffer = new Float32Array(Math.ceil(((ctx.sampleRate/buffer.sampleRate) * bufferFrameSize) * nChannels + nChannels));
+                outBuffer = new Float32Array(Math.ceil(((ctx.sampleRate/buffer.sampleRate) * bufferFrameSize) * nChannels + nChannels));
                 console.warn("bufferFrameSize changed to: " + bufferFrameSize)
             }
 
@@ -297,7 +299,7 @@ class SoundManager { //adapted from https://github.com/Vanilagy/mediabunny/blob/
 
                         const node = ctx.createBufferSource();
                         node.buffer = buffer;
-                        node.playbackRate.value = playRate;
+                        // node.playbackRate.value = playRate;
                         node.connect(gainNode);
 
 
@@ -309,14 +311,14 @@ class SoundManager { //adapted from https://github.com/Vanilagy/mediabunny/blob/
                             playbackTimeAtStart = timestamp;
                         }
 
-                        let startTimestamp = SoundManager.ctxStartTime + (timestamp - playbackTimeAtStart)/playRate;
+                        let startTimestamp = SoundManager.ctxStartTime + (timestamp - playbackTimeAtStart);
                         startTimestamp = Math.round(ctx.sampleRate*startTimestamp)/ctx.sampleRate; // Round timestamp to the context's sample boundaries to prevent subsample audio glitches
 
                         let audioNode = new AudioNode(node, timestamp, duration, startTimestamp);
                         SoundManager.addNode(audioNode);
                         if(result.done){
                             let nextIndex = REPEAT_BUTTON.checked ? index : (index+(sounds.length+1))%sounds.length;
-                            let nextCtxStartTime = startTimestamp+duration/playRate;
+                            let nextCtxStartTime = startTimestamp+duration;
                             SoundManager.ctxStartTime = nextCtxStartTime;
                             if(index !== nextIndex){
                                 destroyCachedMediabunnyInternals();
@@ -404,7 +406,7 @@ class SoundManager { //adapted from https://github.com/Vanilagy/mediabunny/blob/
         //     audioNode.node = node;
         // }
     }
-    static setPlayRate(rate){
+    static setPlayRate(rate: number){
         if(isPlaying){
             ++SoundManager.playID;
             SoundManager.startTime = SoundManager.getCurrentTime(); //setting playRate before calling this function breaks the calculation
@@ -415,7 +417,7 @@ class SoundManager { //adapted from https://github.com/Vanilagy/mediabunny/blob/
             playRate = rate;
         }
     }
-    static setCurrentTime(time){
+    static setCurrentTime(time: number){
         if(isPlaying){
             ++SoundManager.playID;
             SoundManager.clear();
@@ -498,233 +500,6 @@ class SoundManager { //adapted from https://github.com/Vanilagy/mediabunny/blob/
         }
     }
 }
-// class SoundManager { //adapted from https://github.com/Vanilagy/mediabunny/blob/main/examples/media-player/media-player.ts (thank you!)
-//   static playID = 0;
-//   static currentTime = 0; //TODO: REFACTOR THIS TO "startTime" INSTEAD
-//   static ctxStartTime = null;
-//   static ctxStartTimeDisplay = null;
-//   static startPlaying(){
-//     SoundManager.ctxStartTime = SoundManager.ctxStartTimeDisplay = null;
-//     let currentID = ++SoundManager.playID;
-//     isPlaying = true;
-//     setIsBuffering(true);
-//     return new Promise(async (resolve) => {
-//       try {
-//         SoundManager.assertID(currentID);
-//         if (ctx.state === 'suspended') {
-//           await ctx.resume();
-//         }
-//         let index = currentSongIndex;
-//         let playbackTimeAtStart = SoundManager.currentTime;
-//         while(true){
-//           const song = sounds[index];
-//           const buffer = await ctx.decodeAudioData(await song.file.arrayBuffer());
-//           SoundManager.assertID(currentID);
-//
-//           const node = ctx.createBufferSource();
-//           node.buffer = buffer;
-//           node.playbackRate.value = playRate;
-//           node.connect(gainNode);
-//
-//           const ctxCurrentTime = ctx.currentTime;
-//           if(SoundManager.ctxStartTime === null){ //playback had *just* started
-//             SoundManager.ctxStartTime = SoundManager.ctxStartTimeDisplay = ctxCurrentTime;
-//           } else if(isBuffering){ //tried to shift buffers, but the next one was not available
-//             SoundManager.ctxStartTime = SoundManager.ctxStartTimeDisplay = ctxCurrentTime;
-//             // playbackTimeAtStart = 0;
-//           }
-//
-//           // let effectiveSampleRate = buffer.sampleRate*playRate;
-//           // console.log(effectiveSampleRate)
-//           let startTimestamp = SoundManager.ctxStartTime - playbackTimeAtStart;
-//           startTimestamp = Math.round(ctx.sampleRate*startTimestamp)/ctx.sampleRate; // Round timestamp to the context's sample boundaries to prevent subsample audio glitches
-//
-//           if(startTimestamp - ctx.currentTime >= BUFFER_SECONDS) { //moved up so the next sound can be decoded
-//             await new Promise((resolve, reject) => {
-//               const id = setInterval(() => {
-//                 // console.log("waiting before adding more buffers");
-//                 if(currentID != SoundManager.playID){
-//                   reject();
-//                 }
-//                 if(startTimestamp - ctx.currentTime < BUFFER_SECONDS) {
-//                   clearInterval(id);
-//                   resolve();
-//                 }
-//               }, 100);
-//             });
-//             SoundManager.assertID(currentID);
-//           }
-//
-//           let audioNode = new AudioNode(node, null, buffer.duration, null);
-//           SoundManager.addNode(audioNode);
-//           let nextIndex = REPEAT_BUTTON.checked ? index : (index+(sounds.length+1))%sounds.length;
-//           let nextCtxStartTime = (SoundManager.ctxStartTime - (playbackTimeAtStart/playRate))+(buffer.duration/playRate);
-//           SoundManager.ctxStartTime = nextCtxStartTime;
-//           index = nextIndex;
-//           node.onended = () => {
-//             audioNode.finished = true;
-//             SoundManager.shiftQueuedNodes(nextIndex);
-//             SoundManager.ctxStartTimeDisplay = nextCtxStartTime;
-//           }
-//
-//
-//           if (startTimestamp >= ctxCurrentTime) {
-//             // let effectiveStartTimestamp;
-//             // if(playRate !== 1){
-//             //     const effectiveSampleRate = buffer.sampleRate*playRate;
-//             //     effectiveStartTimestamp = Math.round(effectiveSampleRate* ((startTimestamp - SoundManager.ctxStartTime)/playRate + SoundManager.ctxStartTime) )/effectiveSampleRate;
-//             //     console.log(ctxCurrentTime, startTimestamp, effectiveStartTimestamp);
-//             // } else
-//             // {
-//             //     effectiveStartTimestamp = startTimestamp;
-//             // }
-//             node.start(startTimestamp); // If the audio starts in the future, we just schedule it
-//           } else {
-//             node.start(ctxCurrentTime, ctxCurrentTime - startTimestamp); // If it starts in the past, only play the audible section that remains from here
-//           }
-//           // const channelData = [];
-//
-//           // // Extract raw Float32Arrays out of the buffer to transfer them
-//           // for (let i = 0; i < buffer.numberOfChannels; i++) {
-//           //     channelData.push(buffer.getChannelData(i));
-//           // }
-//
-//           // // Pass the raw data instantly down to the worklet thread
-//           // resamplerNode.port.postMessage({
-//           //     channelData: channelData,
-//           //     sampleRate: buffer.sampleRate,
-//           //     playbackRate: playRate
-//           // });
-//
-//
-//           playbackTimeAtStart = 0;
-//         }
-//       } catch(e) {
-//         console.warn(e);
-//       }
-//     });
-//   }
-//   static addNode(node){
-//     setIsBuffering(false);
-//     if(!currentNode){
-//       currentNode = node;
-//     } else {
-//       scheduledNodes.push(node);
-//     }
-//   }
-//   static reapplySoundAttributes(){
-//     SoundManager.reset();
-//
-//     // currentNode.node.playbackRate.value = playRate;
-//
-//     // let offset = 0;
-//     // const ctxCurrentTime = ctx.currentTime;
-//     // for(const audioNode of scheduledNodes){
-//     //     const oldended = audioNode.node.onended;
-//     //     audioNode.node.onended = null;
-//     //     audioNode.node.stop();
-//     //     const buffer = audioNode.node.buffer;
-//     //     const node = ctx.createBufferSource();
-//     //     const effectiveSampleRate = buffer.sampleRate*playRate;
-//     //     node.buffer = buffer;
-//     //     node.playbackRate.value = playRate;
-//     //     node.onended = oldended;
-//     //     node.connect(gainNode);
-//
-//     //     node.start(Math.round(effectiveSampleRate* ((audioNode.startTimestamp - ctxCurrentTime)/playRate + ctxCurrentTime) )/effectiveSampleRate);
-//     //     audioNode.node = node;
-//     // }
-//   }
-//   static setPlayRate(rate){
-//     if(isPlaying){
-//       ++SoundManager.playID;
-//       SoundManager.currentTime = SoundManager.getCurrentTime(); //setting playRate before calling this function breaks the calculation
-//       SoundManager.clear();
-//       playRate = rate;
-//       SoundManager.startPlaying();
-//     } else {
-//       playRate = rate;
-//     }
-//   }
-//   static setCurrentTime(time){
-//     if(isPlaying){
-//       ++SoundManager.playID;
-//       SoundManager.clear();
-//       SoundManager.currentTime = time;
-//       SoundManager.startPlaying();
-//     } else {
-//       SoundManager.currentTime = time;
-//     }
-//   }
-//   static reset(){
-//     ++SoundManager.playID;
-//     SoundManager.currentTime = SoundManager.getCurrentTime();
-//     SoundManager.clear();
-//     SoundManager.startPlaying();
-//   }
-//   static pause(){
-//     ++SoundManager.playID;
-//     SoundManager.currentTime = SoundManager.getCurrentTime();
-//     isPlaying = false;
-//     setIsBuffering(false);
-//     SoundManager.clear();
-//   }
-//   static stop(){
-//     ++SoundManager.playID;
-//     SoundManager.currentTime = 0;
-//     isPlaying = false;
-//     setIsBuffering(false);
-//     SoundManager.clear();
-//     destroyCachedMediabunnyInternals();
-//   }
-//   /** Stops playback & clears scheduled buffers */
-//   static clear(){
-//     if(currentNode){
-//       currentNode.node.onended = null;
-//       currentNode.node.stop();
-//       currentNode = null;
-//     }
-//     for(const audioNode of scheduledNodes){
-//       audioNode.node.onended = null;
-//       audioNode.node.stop();
-//     }
-//     scheduledNodes = [];
-//   }
-//   static async resume(){
-//     SoundManager.startPlaying();
-//   }
-//   static shiftQueuedNodes(nextIndex){
-//     if(!isPlaying){
-//       console.warn("shiftQueuedNodes but isPlaying is false");
-//     }
-//     let previousNode = currentNode;
-//     currentNode = scheduledNodes.shift();
-//     if(!currentNode){
-//       setIsBuffering(true);
-//       SoundManager.currentTime = 0;
-//       setCurrentSongIndex(nextIndex);
-//     }
-//
-//     SoundManager.currentTime = 0;
-//     setCurrentSongIndex(nextIndex);
-//   }
-//   static getCurrentTime(){
-//     if(!isPlaying){
-//       return SoundManager.currentTime;
-//     } else {
-//       if(isBuffering || !SoundManager.ctxStartTimeDisplay){
-//         return SoundManager.currentTime;
-//       } else {
-//         return (ctx.currentTime - SoundManager.ctxStartTimeDisplay) * playRate + SoundManager.currentTime;
-//       }
-//     }
-//   }
-//   static assertID(id){
-//     if(id != SoundManager.playID){
-//       throw new Error("Play id changed");
-//     }
-//   }
-// }
 
 function destroyCachedMediabunnyInternals(){ //TODO: better clean up
     if(cachedMediabunnyInternals[3]){

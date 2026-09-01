@@ -6,6 +6,12 @@ import("../Javascript/howler.js").catch((error) => {
     howlerScript.src = "../Javascript/howler.js";
     document.head.appendChild(howlerScript);
 });
+function importMediabunny() {
+    return import("mediabunny").catch(e => {
+        console.error("Mediabunny failed to import due to error", e);
+        throw e;
+    });
+}
 function helper_calculatePlayRate(cents) {
     return Math.pow(2, cents / 1200);
 }
@@ -252,30 +258,6 @@ async function updateAllFileInfos() {
         song.updateFileInfoDisplay();
     }
 }
-let queuedSongs = new Set();
-async function loadAndDisplaySongLengths() {
-    const loadSongs = queuedSongs.size == 0;
-    for (const song of sounds) {
-        if (song.duration === null)
-            queuedSongs.add(song);
-    }
-    if (!loadSongs)
-        return;
-    for (const song of queuedSongs) {
-        if (!SHOW_LENGTHS.checked) {
-            queuedSongs.clear();
-            return;
-        }
-        queuedSongs.delete(song);
-        if (song.currentRow.isRemoved())
-            continue;
-        if (song.durationLoaded()) {
-            song.updateFileInfoDisplay();
-            continue;
-        }
-        await loadSongDuration(song);
-    }
-}
 async function loadSongDuration(song) {
     await new Promise((resolve) => {
         const audio = curDoc.createElement('audio');
@@ -391,6 +373,10 @@ class Song {
     /** @returns Whether the associated {@link Howl} is created for this Song. */
     isInExistence() {
         return this.howl != null;
+    }
+    setDuration(duration) {
+        this.duration = duration;
+        this.updateFileInfoDisplay();
     }
     durationLoaded() {
         return this.duration !== null;
@@ -654,62 +640,11 @@ var currentSongIndex = null;
                 }
             }
         }
-        return;
-        if (keyEvent.shiftKey) {
-            switch (keyLower) {
-                case "n":
-                    jumpSong(1);
-                    keyEvent.preventDefault();
-                    break;
-                case "p":
-                    jumpSong(-1);
-                    keyEvent.preventDefault();
-                    break;
-            }
-        }
-        else if (keyEvent.ctrlKey) {
-            switch (keyLower) {
-                case "a":
-                    selectAll();
-                    keyEvent.preventDefault();
-                    break;
-            }
-        }
-        else {
-            switch (keyLower) {
-                case "escape":
-                    deselectAll();
-                    PLAYLIST_VIEWER_TABLE.blur();
-                    break;
-                case " ": //space
-                case "k":
-                    togglePauseCurrentSong();
-                    keyEvent.preventDefault();
-                    break;
-                case "arrowleft":
-                    seek(-1);
-                    keyEvent.preventDefault();
-                    break;
-                case "arrowright":
-                    seek(1);
-                    keyEvent.preventDefault();
-                    break;
-                case "m":
-                    MUTE_BUTTON.click();
-                    break;
-                case "l":
-                    REPEAT_BUTTON.click();
-                    break;
-                case "s":
-                    SHUFFLE_BUTTON.click();
-                    break;
-            }
-        }
     });
     requestAnimationFrame(onFrameStepped);
     setInterval(onTickStepped, 0);
     setInterval(onPeriodicStepped, 500);
-    updateSongInfos();
+    // updateSongInfos(); //TODO: remove updateSongInfos
     makeDocumentDroppable();
     // curDoc.addEventListener('touchend', (touchEvent: TouchEvent) => {
     //   if(touchEvent.touches == 1) {
@@ -973,7 +908,7 @@ function progressBarSeek(mouse, hoverType) {
  * @param error The exception.
  * @param shortMessage A user-readable error message. If the error type is known, it will help to write this value out manually to better explain the error to the user.
  * @param errorCategory The category the error is contained in.
-*/
+ */
 function displayError(error, shortMessage, errorCategory) {
     console.error(error);
     errorCategory += ":";
@@ -1022,14 +957,15 @@ async function importFiles(element) {
         addFiles(await fileReceiver.retrieveContents());
     }
 }
-function addFiles(files /*FileList or File[]*/) {
+async function addFiles(files /*FileList or File[]*/) {
     const songTableRows = [];
     const lengthBeforeBegin = sounds.length;
     let offsetBecauseOfSkipped = 0;
     changeStatus(`Importing ${files.length} Files...`);
+    const Mediabunny = await importMediabunny();
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        if (file == null)
+        if (!file)
             continue;
         const fileExtension = getFileExtension(file.name);
         if (SKIP_UNPLAYABLE_CHECKBOX.checked && !isValidExtension(fileExtension)) {
@@ -1044,12 +980,27 @@ function addFiles(files /*FileList or File[]*/) {
         songRow.updateFileSizeDisplay(file.size);
         songRow.setRowSongNumber(nativeIndex + 1);
         const song = new Song(file, nativeIndex, songRow);
+        const input = new Mediabunny.Input({ source: new Mediabunny.BlobSource(file), formats: Mediabunny.ALL_FORMATS });
+        input.getPrimaryAudioTrack().then(track => {
+            if (!track) {
+                console.warn(`Could not find an audio track in file ${file.name}`);
+                return;
+            }
+            track.getDurationFromMetadata({ skipLiveWait: true }).then(async (duration) => {
+                if (duration === null) {
+                    duration = await track.computeDuration({ metadataOnly: true, verifyKeyPackets: false, skipLiveWait: true });
+                }
+                song.setDuration(duration);
+            });
+        }).catch(e => {
+            console.warn(`Error reading track data from file ${file.name}`, e);
+        });
         songTableRows.push(songRow.tableRow); //index (2nd parameter) is used to number the checkboxes
         sounds.push(song);
     }
     addRowsInPlaylistTable(songTableRows);
     changeStatus(`${files.length - offsetBecauseOfSkipped} files added!`);
-    updateAllFileInfos();
+    // updateAllFileInfos();
 }
 function addRowsInPlaylistTable(songTableRows) {
     const QUANTUM = 32768;
