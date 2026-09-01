@@ -385,26 +385,6 @@ class SoundManager { //adapted from https://github.com/Vanilagy/mediabunny/blob/
     }
     static reapplySoundAttributes(){
         SoundManager.reset();
-
-        // currentNode.node.playbackRate.value = playRate;
-
-        // let offset = 0;
-        // const ctxCurrentTime = ctx.currentTime;
-        // for(const audioNode of scheduledNodes){
-        //     const oldended = audioNode.node.onended;
-        //     audioNode.node.onended = null;
-        //     audioNode.node.stop();
-        //     const buffer = audioNode.node.buffer;
-        //     const node = ctx.createBufferSource();
-        //     const effectiveSampleRate = buffer.sampleRate*playRate;
-        //     node.buffer = buffer;
-        //     node.playbackRate.value = playRate;
-        //     node.onended = oldended;
-        //     node.connect(gainNode);
-
-        //     node.start(Math.round(effectiveSampleRate* ((audioNode.startTimestamp - ctxCurrentTime)/playRate + ctxCurrentTime) )/effectiveSampleRate);
-        //     audioNode.node = node;
-        // }
     }
     static setPlayRate(rate: number){
         if(isPlaying){
@@ -476,7 +456,7 @@ class SoundManager { //adapted from https://github.com/Vanilagy/mediabunny/blob/
                 SoundManager.startTime = 0;
                 setCurrentSongIndex(nextIndex);
             } else {
-                SoundManager.startTime = previousNode.timestamp+previousNode.duration;
+                SoundManager.startTime = (previousNode.timestamp+previousNode.duration)*playRate;
             }
         } else if(nextIndex !== null){
             SoundManager.startTime = 0;

@@ -328,23 +328,6 @@ class SoundManager {
     }
     static reapplySoundAttributes() {
         SoundManager.reset();
-        // currentNode.node.playbackRate.value = playRate;
-        // let offset = 0;
-        // const ctxCurrentTime = ctx.currentTime;
-        // for(const audioNode of scheduledNodes){
-        //     const oldended = audioNode.node.onended;
-        //     audioNode.node.onended = null;
-        //     audioNode.node.stop();
-        //     const buffer = audioNode.node.buffer;
-        //     const node = ctx.createBufferSource();
-        //     const effectiveSampleRate = buffer.sampleRate*playRate;
-        //     node.buffer = buffer;
-        //     node.playbackRate.value = playRate;
-        //     node.onended = oldended;
-        //     node.connect(gainNode);
-        //     node.start(Math.round(effectiveSampleRate* ((audioNode.startTimestamp - ctxCurrentTime)/playRate + ctxCurrentTime) )/effectiveSampleRate);
-        //     audioNode.node = node;
-        // }
     }
     static setPlayRate(rate) {
         if (isPlaying) {
@@ -419,7 +402,7 @@ class SoundManager {
                 setCurrentSongIndex(nextIndex);
             }
             else {
-                SoundManager.startTime = previousNode.timestamp + previousNode.duration;
+                SoundManager.startTime = (previousNode.timestamp + previousNode.duration) * playRate;
             }
         }
         else if (nextIndex !== null) {
