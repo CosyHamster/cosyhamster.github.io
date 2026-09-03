@@ -181,7 +181,9 @@ async function* resampledBufferIterator(bufferIterator, nChannels, inputSampleRa
         while (true) {
             let { buffer, timestamp, duration } = nextResult.value;
             // nextResult.value.buffer = ctx.createBuffer(nChannels, integerLength, ctx.sampleRate);
+            // console.time("Retrieve from Mediabunny");
             nextResult = (await bufferIterator.next());
+            // console.timeEnd("Retrieve from Mediabunny");
             SoundManager.assertID(currentID);
             // buffer = await rerenderBuffer(buffer, 0.5);
             let length = buffer.length;
@@ -198,6 +200,7 @@ async function* resampledBufferIterator(bufferIterator, nChannels, inputSampleRa
             //     console.warn("hasDiscontinuity");
             // }
             let hasDiscontinuity = false; //I cant figure it out rn. sorry...
+            // console.time("Assemble Buffer");
             const data = inBuffer.subarray(0, nChannels * length);
             for (let i = 0; i < nChannels; i++) {
                 const channel = buffer.getChannelData(i);
@@ -205,9 +208,13 @@ async function* resampledBufferIterator(bufferIterator, nChannels, inputSampleRa
                     data[i + j * nChannels] = channel[j];
                 }
             }
+            // console.timeEnd("Assemble Buffer");
+            // console.time("Process Buffer");
             let out = src.process(data, outBuffer, outLen);
+            // console.timeEnd("Process Buffer");
             length = outLen.frames;
             if (length) {
+                // console.time("Disassemble Buffer");
                 out = out.subarray(0, length * nChannels);
                 let outputBuffer = ctx.createBuffer(nChannels, length, ctx.sampleRate);
                 for (let i = 0; i < nChannels; i++) {
@@ -217,10 +224,12 @@ async function* resampledBufferIterator(bufferIterator, nChannels, inputSampleRa
                     }
                 }
                 let outputDuration = length / outputBuffer.sampleRate * playRate;
+                // console.timeEnd("Disassemble Buffer");
                 yield { buffer: outputBuffer, timestamp: currentTimestamp, duration: outputDuration };
                 currentTimestamp += outputDuration;
             }
             if ((nextResult.done || hasDiscontinuity) && (out = src.flush()).length) {
+                // console.time("Flush Buffer");
                 let length = out.length / nChannels;
                 let outputBuffer = ctx.createBuffer(nChannels, length, ctx.sampleRate);
                 for (let i = 0; i < nChannels; i++) {
@@ -230,6 +239,7 @@ async function* resampledBufferIterator(bufferIterator, nChannels, inputSampleRa
                     }
                 }
                 let outputDuration = length / outputBuffer.sampleRate * playRate;
+                // console.timeEnd("Flush Buffer");
                 yield { buffer: outputBuffer, timestamp: currentTimestamp, duration: outputDuration };
                 currentTimestamp += outputDuration;
             }
@@ -282,7 +292,7 @@ class SoundManager {
                                 destroyCachedMediabunnyInternals();
                             }
                         }
-                        let input = new Mediabunny.Input({ source: new Mediabunny.BlobSource(currentSong.file), formats: Mediabunny.ALL_FORMATS });
+                        let input = new Mediabunny.Input({ source: new Mediabunny.BlobSource(currentSong.file, { maxCacheSize: 1000 * 1000 * 20, useStreamReader: true }), formats: Mediabunny.ALL_FORMATS });
                         let success = await input.getPrimaryAudioTrack().then(async (audioTrack) => {
                             return Promise.all([audioTrack.getNumberOfChannels(), audioTrack.getSampleRate()]).then((values) => {
                                 track = audioTrack;
@@ -641,7 +651,6 @@ class SongTableRow {
 }
 class Song {
     file;
-    howl = null;
     duration = null;
     currentRow;
     nativeIndex;
@@ -1254,19 +1263,9 @@ async function addFiles(files /*FileList or File[]*/) {
 }
 function addRowsInPlaylistTable(songTableRows) {
     const QUANTUM = 32768;
-    const addEvents = PLAYLIST_VIEWER_TABLE.rows.length <= 1 && songTableRows.length > 0;
     const playlistTableBody = PLAYLIST_VIEWER_TABLE.tBodies[0];
-    // const headerRow = playlistTableBody.rows[0];
-    // playlistTableBody.replaceChildren();
-    // playlistTableBody.appendChild(headerRow);
     for (let i = 0; i < songTableRows.length; i += QUANTUM) {
         playlistTableBody.append(...songTableRows.slice(i, Math.min(i + QUANTUM, songTableRows.length)));
-    }
-    if (addEvents) {
-        const firstRow = songTableRows[0];
-        const firstRowRect = firstRow.getBoundingClientRect();
-        firstRowTop = firstRowRect.top;
-        rowHeight = firstRowRect.height + 1;
     }
 }
 function onPlayRateUpdate(newRate) {
@@ -1794,12 +1793,33 @@ function deleteSelectedSongs() {
 function moveSelectedSongs(toIndex) {
     const tableBody = PLAYLIST_VIEWER_TABLE.firstElementChild;
     for (let i = selectedRows.length - 1; i >= 0; i--) {
-        const currentlyPlayingRow = PLAYLIST_VIEWER_TABLE.rows[currentSongIndex + 1];
         const index = selectedRows[i].rowIndex - 1;
-        tableBody.removeChild(selectedRows[i]);
-        sounds.splice(toIndex, 0, sounds.splice(index, 1)[0]);
-        tableBody.insertBefore(selectedRows[i], tableBody.children[toIndex + 1]);
-        currentSongIndex = currentlyPlayingRow.rowIndex - 1;
+        const movedSong = sounds.splice(index, 1)[0];
+        if (toIndex > index) {
+            if (!SHUFFLE_BUTTON.checked) {
+                for (const song of sounds) {
+                    if (song.nativeIndex > index && song.nativeIndex <= toIndex) {
+                        song.nativeIndex--;
+                    }
+                }
+            }
+            sounds.splice(toIndex, 0, movedSong);
+            tableBody.insertBefore(selectedRows[i], tableBody.children[toIndex + 2]);
+        }
+        else {
+            if (!SHUFFLE_BUTTON.checked) {
+                for (const song of sounds) {
+                    if (song.nativeIndex >= toIndex && song.nativeIndex < index) {
+                        song.nativeIndex++;
+                    }
+                }
+            }
+            sounds.splice(toIndex, 0, movedSong);
+            tableBody.insertBefore(selectedRows[i], tableBody.children[toIndex + 1]);
+        }
+        if (index === currentSongIndex) {
+            currentSongIndex = toIndex;
+        }
     }
     for (let i = 0; i < sounds.length; i++)
         sounds[i].currentIndex = i;

@@ -999,6 +999,21 @@ function reapplySoundAttributes(howl: Howl) {
     howl.mute(MUTE_BUTTON.checked);
     howl.stereo(parseFloat(PLAY_PAN.value));
 }
+function updateRowOrder(){
+    const rows = [];
+    for(let i = 0; i < sounds.length; i++){
+        rows.push(sounds[i].currentRow.tableRow);
+    }
+
+    const QUANTUM = 32768;
+    const body = PLAYLIST_VIEWER_TABLE.tBodies[0];
+    body.replaceChildren(body.children[0]);
+    for (let i = 0; i < rows.length; i += QUANTUM) {
+        body.append( ...rows.slice(i, Math.min(i + QUANTUM, rows.length)) );
+    }
+
+    updateSongNumberings();
+}
 function updateCurrentTimeDisplay(currentTime: number, songDurationInSeconds: number) {
     const songDurationFormatted = new Time(songDurationInSeconds).toString()
     if (DURATION_OF_SONG_DISPLAY.textContent != songDurationFormatted) DURATION_OF_SONG_DISPLAY.textContent = songDurationFormatted;
