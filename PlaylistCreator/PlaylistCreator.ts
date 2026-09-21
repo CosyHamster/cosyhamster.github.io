@@ -677,6 +677,7 @@ var
     HOVERED_TIME_DISPLAY = document.getElementById('hoveredTimeDisplay') as HTMLDivElement,
     VOLUME_CHANGER = document.getElementById('0playVolume') as HTMLInputElement,
     PLAY_RATE = document.getElementById('0playRate') as HTMLInputElement,
+    CENTS_CHECKBOX = document.getElementById('centsCheckbox') as HTMLInputElement,
     PLAY_PAN = document.getElementById('0playPan') as HTMLInputElement,
     SEEK_BACK = document.getElementById('seekBack') as HTMLTableCellElement,
     // SEEK_FORWARD = document.getElementById('seekForward') as HTMLTableCellElement,
@@ -820,12 +821,32 @@ var currentSongIndex: number | null = null;
     });
     registerKeyDownEvent(SHUFFLE_BUTTON.labels[0], () => SHUFFLE_BUTTON.click());
     registerChangeEvent(SHUFFLE_BUTTON, () => handleShuffleButton(SHUFFLE_BUTTON.checked));
-    registerChangeEvent(PLAY_RATE, () => onPlayRateUpdate(parseFloat(PLAY_RATE.value)));
     registerChangeEvent(SEEK_DISTANCE_PROPORTIONAL_CHECKBOX, updateSeekDurationDisplay);
     registerKeyDownEvent(UPLOAD_BUTTON.labels[0].querySelector("img"), () => UPLOAD_BUTTON.click());
     registerChangeEvent(UPLOAD_BUTTON, () => importFiles(UPLOAD_BUTTON.files));
     registerChangeEvent(UPLOAD_DIRECTORY_BUTTON, () => importFiles(UPLOAD_DIRECTORY_BUTTON.files));
-    registerInputEvent(PLAY_RATE_RANGE, () => { onPlayRateUpdate(parseFloat(PLAY_RATE_RANGE.value)) });
+    registerChangeEvent(PLAY_RATE, () => onPlayRateUpdate(PLAY_RATE.valueAsNumber));
+    registerInputEvent(PLAY_RATE_RANGE, () => onPlayRateUpdate(PLAY_RATE_RANGE.valueAsNumber));
+    registerChangeEvent(CENTS_CHECKBOX, () => {
+        if(CENTS_CHECKBOX.checked){
+            const rate = calculateDetuneFromPlayRate(PLAY_RATE.valueAsNumber);
+            PLAY_RATE_RANGE.setAttribute("list", "commonCents");
+            PLAY_RATE_RANGE.max = "2400";
+            PLAY_RATE_RANGE.min = "-2400";
+            PLAY_RATE.min = "";
+            PLAY_RATE.setAttribute("value", "0");
+            PLAY_RATE_RANGE.step = PLAY_RATE.step = "100";
+            PLAY_RATE_RANGE.valueAsNumber = PLAY_RATE.valueAsNumber = rate;
+        } else {
+            const rate = calculatePlayRateFromDetune(PLAY_RATE.valueAsNumber);
+            PLAY_RATE_RANGE.setAttribute("list", "commonVolumesAndRates");
+            PLAY_RATE_RANGE.max = "2";
+            PLAY_RATE_RANGE.min = PLAY_RATE.min = "0";
+            PLAY_RATE.setAttribute("value", "1");
+            PLAY_RATE_RANGE.step = PLAY_RATE.step = "0.01";
+            PLAY_RATE_RANGE.valueAsNumber = PLAY_RATE.valueAsNumber = rate;
+        }
+    });
     registerInputEvent(PRELOAD_DIST_ELEMENT, () => { PRELOAD_DIST_ELEMENT.labels[0].textContent = `Value: ${PRELOAD_DIST_ELEMENT.value}` });
     registerInputEvent(PLAY_PAN, onPanningUpdate);
     registerInputEvent(VOLUME_CHANGER, onVolumeUpdate);
@@ -994,10 +1015,10 @@ function cannotUpdateProgress(isProcessing: boolean) {
     if (HOVERED_TIME_DISPLAY.style.transform != "translate(-9999px, 0px)") HOVERED_TIME_DISPLAY.style.transform = "translate(-9999px, 0px)";
 }
 function reapplySoundAttributes(howl: Howl) {
-    howl.rate(parseFloat(PLAY_RATE.value));
-    howl.volume(parseFloat(VOLUME_CHANGER.value));
+    howl.rate(obtainPlayRate());
+    howl.volume(VOLUME_CHANGER.valueAsNumber);
     howl.mute(MUTE_BUTTON.checked);
-    howl.stereo(parseFloat(PLAY_PAN.value));
+    howl.stereo(PLAY_PAN.valueAsNumber);
 }
 function updateRowOrder(){
     const rows = [];
@@ -1097,7 +1118,7 @@ function displayError(error: Error, shortMessage: string, errorCategory: string)
 function seek(seekDirection: number) { //controls audio seeking, seekDuration: usually +1 || -1
     if(currentSongIndex === null || sounds[currentSongIndex].isUnloaded()) return;
     const seekDuration = parseFloat(SEEK_DURATION_NUMBER_INPUT.value) * seekDirection;
-    const numToAdd = (SEEK_DISTANCE_PROPORTIONAL_CHECKBOX.checked) ? seekDuration * parseFloat(PLAY_RATE.value) : seekDuration;
+    const numToAdd = (SEEK_DISTANCE_PROPORTIONAL_CHECKBOX.checked) ? seekDuration * obtainPlayRate() : seekDuration;
     const currentTime = sounds[currentSongIndex].howl.seek();
     sounds[currentSongIndex].howl.seek(Math.max(currentTime + numToAdd, 0));
 }
@@ -1193,13 +1214,11 @@ function addRowsInPlaylistTable(songTableRows: HTMLTableRowElement[]){
 }
 
 function onPlayRateUpdate(newRate: number) {
-    let stringRate = String(newRate);
-
-    PLAY_RATE_RANGE.value = stringRate;
-    PLAY_RATE.value = stringRate;
+    PLAY_RATE_RANGE.valueAsNumber = PLAY_RATE.valueAsNumber = newRate;
     updateSeekDurationDisplay();
     if (!currentHowlExists()) return;
 
+    newRate = obtainPlayRate();
     if (newRate <= 0) {
         sounds[currentSongIndex].howl.pause(); //the rate cant be set to 0. the progress tracker will glitch back to 0.
         return;
@@ -1216,6 +1235,22 @@ function onPlayRateUpdate(newRate: number) {
     sounds[currentSongIndex].howl.rate(newRate);
 }
 
+function obtainPlayRate() {
+    return (CENTS_CHECKBOX.checked) ? calculatePlayRateFromDetune(PLAY_RATE.valueAsNumber) : PLAY_RATE.valueAsNumber;
+}
+
+function calculatePlayRateFromDetune(cents: number) { //https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode/detune
+    return Math.pow(2, cents / 1200);
+}
+
+function calculateDetuneFromPlayRate(rate: number) {
+    return round6(1200 * Math.log2(rate));
+}
+
+function round6(num: number) {
+    return Math.round(num*1000000)/1000000;
+}
+
 function onPanningUpdate(){
     if(currentHowlExists())
         sounds[currentSongIndex].howl.stereo(Number(PLAY_PAN.value));
@@ -1230,7 +1265,7 @@ function onVolumeUpdate(){
 
 function updateSeekDurationDisplay() {
     const duration = Number(SEEK_DURATION_NUMBER_INPUT.value);
-    const playRate = (SEEK_DISTANCE_PROPORTIONAL_CHECKBOX.checked) ? Number(PLAY_RATE.value) : 1;
+    const playRate = (SEEK_DISTANCE_PROPORTIONAL_CHECKBOX.checked) ? obtainPlayRate() : 1;
     if (duration < 1) {
         SEEK_DURATION_DISPLAY.textContent = `${(duration*playRate) * 1000} ms`;
     } else {
@@ -1362,7 +1397,7 @@ async function startPlayingSpecificSong(index: number){ //called by HTML element
 function startPlayingSong(song: Song) {
     setCurrentFileName(song.file.name);
     reapplySoundAttributes(song.howl);
-    if (Number(PLAY_RATE.value) != 0) {
+    if (obtainPlayRate() !== 0) {
         if(song.howl.state() == "unloaded")
             song.howl.load();
         song.howl.play();
