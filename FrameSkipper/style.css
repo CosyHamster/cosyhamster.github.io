@@ -160,6 +160,7 @@ main{
     transform: translateX(-100%);
     left: anchor(right); /* 100% */
     top: anchor(bottom);
+    min-width: 160px;
     z-index: 3;
     padding: 5px 2px;
     margin: 0;
