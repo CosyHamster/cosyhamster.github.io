@@ -990,8 +990,8 @@ var currentSongIndex = null;
         if (CENTS_CHECKBOX.checked) {
             const rate = calculateDetuneFromPlayRate(PLAY_RATE.valueAsNumber);
             PLAY_RATE_RANGE.setAttribute("list", "commonCents");
-            PLAY_RATE_RANGE.max = "2400";
-            PLAY_RATE_RANGE.min = "-2400";
+            PLAY_RATE_RANGE.max = "1800";
+            PLAY_RATE_RANGE.min = "-1800";
             PLAY_RATE.min = "";
             PLAY_RATE.setAttribute("value", "0");
             PLAY_RATE_RANGE.step = PLAY_RATE.step = "100";

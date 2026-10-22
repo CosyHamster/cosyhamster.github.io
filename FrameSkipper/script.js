@@ -1247,29 +1247,27 @@ function setButtonsDisabled(disabled){
 }
 
 /** Registers a click event which calls the specified function. Call the returned function to add a keyboard event.
- *  @param element EventTarget | string
- *  @param func (event: Event) => void
+ *  @param {EventTarget} element
+ *  @param {(event: Event) => void} func
  *  @returns () => void
  * */
 function registerClickEvent(element, func) {
-	if (typeof element === 'string') element = curDoc.getElementById(element);
 	element.addEventListener('click', func, {passive: true})
 	return () => registerKeyDownEvent(element, func);
 }
-/** @param element HTMLElement
- *  @param func (event: Event) => void
- *  @param keyName string */
+/** @param {HTMLElement} element
+ *  @param {(event: Event) => void} func
+ *  @param {string} keyName */
 function registerKeyDownEvent(element, func, keyName = "Enter"){
 	element.addEventListener('keydown', (keyEvent) => { if(keyEvent.key === keyName) func(keyEvent) }, {passive: true})
 }
-/** @param element EventTarget | string
- *  @param func (event: Event) => void */
+/** @param {EventTarget} element
+ *  @param {(event: Event) => void} func */
 function registerChangeEvent(element, func) {
-	if (typeof element === 'string') element = curDoc.getElementById(element);
 	element.addEventListener('change', func, { passive: true })
 }
-/** @param elem HTMLInputElement
- *  @param func (event: Event) => void) */
+/** @param {HTMLInputElement} elem
+ *  @param {(event: Event) => void} func */
 function registerInputEvent(elem, func) {
 	elem.addEventListener('input', func, { passive: true });
 }
@@ -1334,7 +1332,7 @@ function removeHoveredTimeDisplay(){
 
 /** @param {InputEvent} event
  * @param {() => void} submitCallback
- * @param {(string) => boolean} isUnallowedTest
+ * @param {(s: string) => boolean} isUnallowedTest
  */
 function timeInputBeforeInput(event, submitCallback, isUnallowedTest) {
 	if(inert || !videoSrc){

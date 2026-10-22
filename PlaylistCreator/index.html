@@ -95,7 +95,7 @@
                                     <img class="playBackIcon" src="../Icons/PlaybackSpeedIcon.svg" alt="Playback Speed Changer" style="width:100%; height:100%; position: absolute; left:50%; transform: translate(-50%, 0%);">
                                     <div tabindex="0" id="playRatePullsOpen" class="pullsOpen" style="position: absolute; justify-content: center; display: flex; visibility: visible;">
                                         <div style="display: flex; flex-direction: column;">
-                                            <label title="±1200 per octave, ±100 per semitone" style="display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; color: black; container-type: inline-size; width: 100%;"><input type="checkbox" id="centsCheckbox"><span style="font-size: clamp(0.1em, 24cqw, 1em); white-space: nowrap;"> Cents</span></label>
+                                            <label title="±1200 per octave, ±100 per semitone" style="display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; color: black; container-type: inline-size; width: 100%; overflow-x: clip;"><input type="checkbox" id="centsCheckbox"><span style="font-size: clamp(0.1em, 24cqw, 1em); white-space: nowrap;"> Cents</span></label>
                                             <input type="number" style="width: calc(100% - 7.6px)" class="playRate" id="0playRate" value="1" step="0.01" min="0" inputmode="numeric">
                                             <input type="range" id="0playRateSlider" list='commonVolumesAndRates' max=2 min=0 value=1 step=0.01 style="writing-mode: vertical-lr; direction: rtl; appearance: slider-vertical; width: 100%; height: 100%; flex-grow: 1" />
                                         </div>

@@ -1,6 +1,6 @@
 const CACHE_NAME = 'CosyHamsterMusicPlayerOfflineCache';
 var cacheStorage: Cache;
-self.addEventListener("install", event => {
+self.addEventListener("install", (event: ExtendableEvent) => {
     console.log("[Service Worker] Install");
     const contentToCache: string[] = [
         "/",
@@ -42,35 +42,41 @@ self.addEventListener("install", event => {
     }))
 });
 
-self.addEventListener('activate', (e) => {
+self.addEventListener('activate', (e: ExtendableEvent) => {
     e.waitUntil(clients.claim());
 });
 
-self.addEventListener("fetch", (e) => {
+self.addEventListener("fetch", (e: FetchEvent) => {
     if(e.request.method !== "GET") return;
     e.preventDefault();
     e.respondWith(new Promise(async (resolve, reject) => {
         if(!cacheStorage) cacheStorage = await caches.open(CACHE_NAME);
-        let requestResolved = false;
+        let isFetching = true;
         const timeoutID = setTimeout(() => {
-            if(!requestResolved) {
-                resolveRequest();
+            if(isFetching) {
+                stopFetching();
                 resolveUsingCache();
             }
         }, 10_000);
 
-        useFetchRequestAndCache(e.request).then(response => {
-            if(!requestResolved) {
-                resolveRequest();
-                resolve(response)
-            }
-        }, error => {
-            console.log(`Resolving request ${e.request} with cache due to ${error}`);
-            if(!requestResolved) {
-                resolveRequest();
-                resolveUsingCache();
-            }
-        });
+        if(navigator.onLine){
+            useFetchRequestAndCache(e.request).then(response => {
+                if(isFetching) {
+                    stopFetching();
+                    resolve(response)
+                }
+            }, error => {
+                console.log(`Resolving request ${e.request} with cache due to ${error}`);
+                if(isFetching) {
+                    stopFetching();
+                    resolveUsingCache();
+                }
+            });
+        } else {
+            stopFetching();
+            resolveUsingCache();
+        }
+
 
 
         function resolveUsingCache(){
@@ -83,8 +89,8 @@ self.addEventListener("fetch", (e) => {
             })
         }
 
-        function resolveRequest(){
-            requestResolved = true;
+        function stopFetching(){
+            isFetching = false;
             clearTimeout(timeoutID);
         }
     }));
