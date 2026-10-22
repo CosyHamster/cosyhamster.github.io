@@ -6,19 +6,20 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-import { toDataView } from '../misc';
+import { assert, toDataView } from '../misc';
 import { metadataTagsAreEmpty } from '../metadata';
 import { Muxer } from '../muxer';
 import { Output, OutputAudioTrack } from '../output';
 import { Mp3OutputFormat } from '../output-format';
 import { EncodedPacket } from '../packet';
 import { Writer } from '../writer';
-import { getXingOffset, INFO, readMp3FrameHeader, XING } from '../../shared/mp3-misc';
+import { getXingOffset, INFO, readMp3FrameHeader, SAMPLING_RATES, XING } from '../../shared/mp3-misc';
 import { Mp3Writer, XingFrameData } from './mp3-writer';
 import { Id3V2Writer } from '../id3';
 
 export class Mp3Muxer extends Muxer {
 	private format: Mp3OutputFormat;
+	private writeXingHeader: boolean;
 	private writer!: Writer;
 	private mp3Writer!: Mp3Writer;
 	private xingFrameData: XingFrameData | null = null;
@@ -30,12 +31,13 @@ export class Mp3Muxer extends Muxer {
 		super(output);
 
 		this.format = format;
+		this.writeXingHeader = format._options.xingHeader !== false;
 	}
 
 	async start() {
 		const release = await this.mutex.acquire();
 
-		this.writer = await this.output._getRootWriter(this.format._options.xingHeader === false);
+		this.writer = await this.output._getRootWriter(!this.writeXingHeader);
 		this.mp3Writer = new Mp3Writer(this.writer);
 
 		if (!metadataTagsAreEmpty(this.output._metadataTags)) {
@@ -61,9 +63,7 @@ export class Mp3Muxer extends Muxer {
 		const release = await this.mutex.acquire();
 
 		try {
-			const writeXingHeader = this.format._options.xingHeader !== false;
-
-			if (!this.xingFrameData && writeXingHeader) {
+			if (!this.xingFrameData && this.writeXingHeader) {
 				const view = toDataView(packet.data);
 				if (view.byteLength < 4) {
 					throw new Error('Invalid MP3 header in sample.');
@@ -112,7 +112,7 @@ export class Mp3Muxer extends Muxer {
 
 			this.validateTimestamp(track, packet.timestamp, packet.type === 'key');
 
-			if (writeXingHeader) {
+			if (this.writeXingHeader) {
 				this.framePositions.push(this.writer.getPos());
 			}
 
@@ -130,38 +130,137 @@ export class Mp3Muxer extends Muxer {
 	}
 
 	async finalize() {
-		if (!this.xingFrameData || this.xingFramePos === null) {
-			return;
-		}
-
 		const release = await this.mutex.acquire();
 
-		const endPos = this.writer.getPos();
-		const audioDataEndPos = endPos - this.xingFramePos;
+		const isEmpty = this.frameCount === 0;
 
-		this.writer.seek(this.xingFramePos);
+		if (isEmpty) {
+			if (!this.writeXingHeader) {
+				// MP3 has no container-level header, so the Xing frame is the only thing we could have synthesized
+				throw new Error(
+					'Cannot finalize an empty MP3 file: not a single packet was added and the Xing header is disabled,'
+					+ ' so there\'s no frame we could write.',
+				);
+			}
 
-		const toc = new Uint8Array(100);
-		for (let i = 0; i < 100; i++) {
-			const index = Math.floor(this.framePositions.length * (i / 100));
+			// Not a single packet came in, so let's write a lone Xing frame; that way, the file is still a valid
+			// (if empty) MP3. We derive its header from whatever the track told us up front.
+			const track = this.output.tracks[0];
+			assert(track?.isAudioTrack());
 
-			const byteOffset = this.framePositions[index]! - this.xingFramePos;
-			toc[i] = 256 * (byteOffset / audioDataEndPos);
+			const primingPacket = track.metadata.primingPacket;
+			if (primingPacket) {
+				// The best case: an actual frame tells us exactly what the header should look like
+				const view = toDataView(primingPacket.data);
+				if (view.byteLength < 4) {
+					throw new Error('Invalid MP3 header in priming packet.');
+				}
+
+				const word = view.getUint32(0, false);
+				const header = readMp3FrameHeader(word, null).header;
+				if (!header) {
+					throw new Error('Invalid MP3 header in priming packet.');
+				}
+
+				this.xingFrameData = {
+					mpegVersionId: header.mpegVersionId,
+					layer: header.layer,
+					frequencyIndex: header.frequencyIndex,
+					sampleRate: header.sampleRate,
+					channel: header.channel,
+					modeExtension: header.modeExtension,
+					copyright: header.copyright,
+					original: header.original,
+					emphasis: header.emphasis,
+
+					frameCount: null,
+					fileSize: null,
+					toc: null,
+				};
+			} else if (track.metadata.decoderConfig) {
+				// All we know is the sample rate and channel count, so let's derive the rest
+				const { sampleRate, numberOfChannels } = track.metadata.decoderConfig;
+
+				// MPEG Version 1 uses the sampling rates directly, Version 2 halves them, and Version 2.5 quarters them
+				const mpegVersionIds = [3, 2, 0];
+				let mpegVersionId: number | null = null;
+				let frequencyIndex = -1;
+
+				for (let i = 0; i < mpegVersionIds.length; i++) {
+					frequencyIndex = SAMPLING_RATES.indexOf(sampleRate << i);
+					if (frequencyIndex !== -1) {
+						mpegVersionId = mpegVersionIds[i]!;
+						break;
+					}
+				}
+
+				if (mpegVersionId === null) {
+					throw new Error(`${sampleRate} Hz is not a valid MP3 sample rate.`);
+				}
+
+				this.xingFrameData = {
+					mpegVersionId,
+					layer: 1, // Layer III
+					frequencyIndex,
+					sampleRate,
+					channel: numberOfChannels === 1 ? 3 : 0, // 3 = single channel, 0 = stereo
+					modeExtension: 0,
+					copyright: 0,
+					original: 0,
+					emphasis: 0,
+
+					frameCount: null,
+					fileSize: null,
+					toc: null,
+				};
+			} else {
+				throw new Error(
+					'Cannot finalize an empty MP3 file: no packets were added and the track specified neither a'
+					+ ' decoderConfig nor a primingPacket in its metadata, so there\'s no telling what the file'
+					+ ' should look like.',
+				);
+			}
+
+			this.xingFramePos = this.writer.getPos();
+			this.mp3Writer.writeXingFrame(this.xingFrameData);
+
+			this.frameCount++;
 		}
 
-		this.xingFrameData.frameCount = this.frameCount;
-		this.xingFrameData.fileSize = audioDataEndPos;
-		this.xingFrameData.toc = toc;
+		if (this.writeXingHeader) {
+			assert(this.xingFrameData);
+			assert(this.xingFramePos !== null);
 
-		if (this.format._options.onXingFrame) {
-			this.writer.startTrackingWrites();
-		}
+			const endPos = this.writer.getPos();
+			const audioDataEndPos = endPos - this.xingFramePos;
 
-		this.mp3Writer.writeXingFrame(this.xingFrameData);
+			this.writer.seek(this.xingFramePos);
 
-		if (this.format._options.onXingFrame) {
-			const { data, start } = this.writer.stopTrackingWrites();
-			this.format._options.onXingFrame(data, start);
+			if (this.framePositions.length > 0) {
+				const toc = new Uint8Array(100);
+				for (let i = 0; i < 100; i++) {
+					const index = Math.floor(this.framePositions.length * (i / 100));
+
+					const byteOffset = this.framePositions[index]! - this.xingFramePos;
+					toc[i] = 256 * (byteOffset / audioDataEndPos);
+				}
+
+				this.xingFrameData.toc = toc;
+			}
+
+			this.xingFrameData.frameCount = this.frameCount;
+			this.xingFrameData.fileSize = audioDataEndPos;
+
+			if (this.format._options.onXingFrame) {
+				this.writer.startTrackingWrites();
+			}
+
+			this.mp3Writer.writeXingFrame(this.xingFrameData);
+
+			if (this.format._options.onXingFrame) {
+				const { data, start } = this.writer.stopTrackingWrites();
+				this.format._options.onXingFrame(data, start);
+			}
 		}
 
 		release();

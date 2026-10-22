@@ -6,11 +6,10 @@
     "typescript": "^5.4.3"
   },
   "dependencies": {
-    "@alexanderolsen/libsamplerate-js": "^2.1.2",
-    "@axonkit/libsamplerate-js": "^0.1.0",
+    "@axonkit/libsamplerate-js": "https://registry.npmjs.org/@axonkit/libsamplerate-js/-/libsamplerate-js-0.1.0.tgz",
     "@types/service_worker_api": "^0.0.9",
     "howler": "^2.2.4",
-    "mediabunny": "^1.46.0",
+    "mediabunny": "^1.62.0",
     "mp4box": "^2.3.0"
   }
 }

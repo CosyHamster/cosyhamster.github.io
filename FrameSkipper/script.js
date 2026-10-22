@@ -14,7 +14,7 @@ function importMediabunny(){
 }
 
 /** Splits inputted seconds into hours, minutes, & seconds. toString() returns the time in digital format.
-  * @param {number} seconds */
+ * @param {number} seconds */
 function secondsToTimestamp(seconds) {
 	let secondString = numberToDigitalTimeString(Math.floor(seconds % 60))
 
@@ -36,7 +36,7 @@ const screenshotCanvasCtx = screenshotCanvas.getContext("2d");
 
 const BUFFER_SIZE = 1024*1024*15;
 const MOE = 0.015;//0.016900000000077853  //0.001900000000205182
-const SEEK_APPROACH = 0; //0 - MO// E, 1 - BACKWARD MOE, 2 - CLAMPED MOE (not yet added)
+const SEEK_APPROACH = 0; //0 - MOE, 1 - BACKWARD MOE, 2 - CLAMPED MOE (not yet added)
 var inert = false;
 /** @type HTMLDivElement */ const VIDEO_TITLE_DISPLAY = document.getElementById("videoTitle");
 /** @type HTMLDivElement */ const LOADING_OVERLAY = document.getElementById("loadingFR");
@@ -68,7 +68,7 @@ var inert = false;
 /** @type HTMLDivElement */ const FRAME_VIEW = document.getElementById("frameView");
 /** @type HTMLDivElement */ const FRAME_ITEM_CONTAINER = document.getElementById("frameItemContainer");
 /** @type HTMLDivElement */ const FRAME_ITEM_OFFSET = document.getElementById("frameItemOffset");
-/** @type HTMLInputElement */ const KEYFRAME_ONLY_CHECKBOX = document.getElementById("keyframesOnlyCheckbox");
+/**@type HTMLInputElement */ const KEYFRAME_ONLY_CHECKBOX = document.getElementById("keyframesOnlyCheckbox");
 
 /** @type HTMLAnchorElement */ const DOWNLOAD_BUTTON = document.getElementById("downloadFrame");
 /** @type HTMLDivElement */ const UI = document.getElementById("ui");
@@ -84,11 +84,11 @@ var inert = false;
 /** @type HTMLDivElement */ const SEEK_BACKWARD = document.getElementById('seekBackward');
 /** @type HTMLDivElement */ const SEEK_FORWARD = document.getElementById('seekForward');
 
-/** @type HTMLDialogElement */ const COMMAND_CREATOR = document.getElementById("ffmpegCommandCreator");
-/** @type HTMLSpanElement */ const COMMAND_CREATOR_PATH = document.getElementById("commandCreatorPath");
-/** @type HTMLSpanElement */ const COMMAND_CREATOR_OUTPUT = document.getElementById("commandCreatorOutput");
-/** @type HTMLSpanElement */ const COMMAND_CREATOR_START = document.getElementById("commandCreatorStart");
-/** @type HTMLSpanElement */ const COMMAND_CREATOR_END = document.getElementById("commandCreatorEnd");
+/**@type HTMLDialogElement */ const COMMAND_CREATOR = document.getElementById("ffmpegCommandCreator");
+/**@type HTMLSpanElement */ const COMMAND_CREATOR_PATH = document.getElementById("commandCreatorPath");
+/**@type HTMLSpanElement */ const COMMAND_CREATOR_OUTPUT = document.getElementById("commandCreatorOutput");
+/** @type HTMLDivElement */ const TRIM_VIDEO_BUTTON = document.getElementById("trimVideo");
+/** @type HTMLInputElement */ const TRIM_VIDEO_KEY_ONLY = document.getElementById("trimVideoKeyOnly");
 
 // Source - https://stackoverflow.com/a/60055110
 // Posted by trincot, modified by community. See post 'Timeline' for change history
@@ -166,8 +166,8 @@ function uploadFile(file){
 
 	const separationIndex = file.name.lastIndexOf('.');
 	VIDEO_TITLE_DISPLAY.textContent = separationIndex !== -1 ? file.name.substring(0, separationIndex) : file.name;
-	COMMAND_CREATOR_PATH.textContent = '"'+file.name+'"';
-	COMMAND_CREATOR_OUTPUT.textContent = '"'+(separationIndex !== -1 ? file.name.substring(0, separationIndex)+" TRIM"+file.name.substring(separationIndex) : file.name)+'"';
+	COMMAND_CREATOR_PATH.textContent = file.name;
+	COMMAND_CREATOR_OUTPUT.textContent = separationIndex !== -1 ? file.name.substring(0, separationIndex)+" TRIM"+file.name.substring(separationIndex) : file.name;
 	saveVideoNamePrefix = VIDEO_TITLE_DISPLAY.textContent.substring(0, 28);
 
 	videoFile = file;
@@ -432,6 +432,10 @@ class FrameSeek {
 		return binarySearchLenientFloor(this.keyframeIndexes, frameNumber);
 	}
 
+	calcOwningFrameNumber(frameNumber){
+		return this.keyFrameNumberToFrameNumber(this.calcOwningKeyFrameNumber(frameNumber));
+	}
+
 	getFrameCount(){
 		return this.timestamps.length;
 	}
@@ -534,6 +538,7 @@ class AB {
 class FrameView {
 	/** @type FrameSeek */ frameSeek = null;
 	/** @type MediabunnyThumbnailService */ thumbnailService = null;
+	/** @type HTMLDivElement */ activeFrameItem = null;
 	/** @param {MediabunnyThumbnailService} thumbnailService */
 	constructor(thumbnailService) {
 		this.updateFrameView = this.updateFrameView.bind(this);
@@ -575,10 +580,32 @@ class FrameView {
 
 	scrollToFrameNumber(frameNumber){
 		if(KEYFRAME_ONLY_CHECKBOX.checked){
-			FRAME_VIEW.scrollLeft = (this.frameSeek.calcOwningKeyFrameNumber(frameNumber)*100)-(window.innerWidth/2)+50;
+			const kFrameNumber = this.frameSeek.calcOwningKeyFrameNumber(frameNumber);
+			FRAME_VIEW.scrollLeft = (kFrameNumber*100)-(window.innerWidth/2)+50;
+			this.setActiveFrameNumber(this.frameSeek.keyFrameNumberToFrameNumber(kFrameNumber));
 		} else {
 			FRAME_VIEW.scrollLeft = (frameNumber*100)-(window.innerWidth/2)+50;
+			this.setActiveFrameNumber(frameNumber);
 		}
+	}
+
+	/** @param {number} frameNumber */
+	setActiveFrameNumber(frameNumber){
+		for (const frameItem of FRAME_ITEM_CONTAINER.children) {
+			if(Number(frameItem.getAttribute("data-n")) === frameNumber){
+				this.setActiveFrameItem(frameItem);
+			}
+		}
+	}
+
+	/** @param {HTMLDivElement} frameItem */
+	setActiveFrameItem(frameItem){
+		if(this.activeFrameItem){
+			this.activeFrameItem.classList.remove("active");
+		}
+
+		frameItem.classList.add("active");
+		this.activeFrameItem = frameItem;
 	}
 
 	disable() {
@@ -591,7 +618,7 @@ class FrameView {
 	onChangedKeyFrameMode(){
 		FRAME_ITEM_CONTAINER.replaceChildren();
 		this.initializeFrameView();
-		this.updateFrameView()
+		this.updateFrameView();
 	}
 
 	createFrameItem(frameNumber, frameType = null){
@@ -604,6 +631,10 @@ class FrameView {
 		const container = document.createElement("div");
 		container.title = String(this.frameSeek.getMediaTimeAtFrame(frameNumber));
 		container.className = "frameItem clickableButton";
+		if(frameNumber === (KEYFRAME_ONLY_CHECKBOX.checked ? this.frameSeek.calcOwningFrameNumber(currentFrameNumber) : currentFrameNumber))
+			this.setActiveFrameItem(container);
+		if(this.frameSeek.getMediaTimeAtFrame(frameNumber) < 0)
+			container.classList.add("negative");
 		container.setAttribute("data-n", frameNumber);
 		container.addEventListener("click", this.frameItemClick, {passive: true});
 
@@ -632,6 +663,7 @@ class FrameView {
 		updateCurrentTime(frameNumber, mediaTime);
 		video.currentTime = mediaTime+MOE;
 		this.frameSeek.onSeekedManually(mediaTime+MOE);
+		frameSeek.scrollFrameView(frameNumber); //TODO: check if this is better
 	}
 
 	updateFrameView() {
@@ -1499,7 +1531,8 @@ registerClickEvent(document.getElementById("setBHere"), () => {
 	LOOP_END_BAR.style.setProperty("--progress", `${mediaTime/video.duration*100}%`);
 })();
 
-registerClickEvent(document.getElementById("trimVideo"), () => {
+registerClickEvent(TRIM_VIDEO_BUTTON, () => {
+	TRIM_VIDEO_BUTTON.style.pointerEvents = "none";
 	importMediabunny().then(async (Mediabunny) => {
 		const input = new Mediabunny.Input({source: new Mediabunny.BlobSource(videoFile), formats: Mediabunny.ALL_FORMATS});
 		Promise.all([input.getPrimaryVideoTrack(), input.getPrimaryAudioTrack(), input.getMetadataTags()]).then(([videoTrack, audioTrack, metadata]) => {
@@ -1517,16 +1550,16 @@ registerClickEvent(document.getElementById("trimVideo"), () => {
 
 				const videoSink = new Mediabunny.EncodedPacketSink(videoTrack);
 				const beginVideoPacket = await videoSink.getKeyPacket(frameSeek.ab.loopBeginMediaTime, {verifyKeyPackets: true, metadataOnly: false});
-				const begin = beginVideoPacket.timestamp;
+				const begin = TRIM_VIDEO_KEY_ONLY.checked ? beginVideoPacket.timestamp : frameSeek.ab.loopBeginMediaTime;
 				const end = frameSeek.ab.loopEndMediaTime;
 
 				const videoMux = (async () => {
 					const decoderConfig = await videoTrack.getDecoderConfig();
 					for await (const encodedPacket of videoSink.packets(beginVideoPacket, undefined, {metadataOnly: false})) {
+						//TODO: the video duration glitches if the last frame is on a keyframe. not sure why.
 						let sequenceNumber = 0;
-						if(encodedPacket.timestamp > end) //TODO: the video duration sometimes glitches if the last frame is on a keyframe. not sure why.
+						if(encodedPacket.timestamp > end)
 							break;
-						// encodedPacket.timestamp -= begin;
 						await videoPacketSource.add(encodedPacket.clone({timestamp: encodedPacket.timestamp-begin, sequenceNumber: sequenceNumber++}), {decoderConfig: decoderConfig});
 					}
 					videoPacketSource.close();
@@ -1541,9 +1574,6 @@ registerClickEvent(document.getElementById("trimVideo"), () => {
 						if(encodedPacket.timestamp > end){
 							break;
 						}
-						if(encodedPacket.timestamp < begin) //TODO: wait for mediabunny to support negative timestamps.
-							continue;
-						// encodedPacket.timestamp -= begin;
 						await audioPacketSource.add(encodedPacket.clone({timestamp: encodedPacket.timestamp-begin, sequenceNumber: sequenceNumber++}), {decoderConfig: decoderConfig});
 					}
 					audioPacketSource.close();
@@ -1562,55 +1592,11 @@ registerClickEvent(document.getElementById("trimVideo"), () => {
 				});
 			});
 		});
+	}).finally(() => {
+		TRIM_VIDEO_BUTTON.style.pointerEvents = "";
 	});
 })();
 
-async function exportVideoWithoutAudio(){
-	importMediabunny().then(async (Mediabunny) => {
-		const input = new Mediabunny.Input({source: new Mediabunny.BlobSource(videoFile), formats: Mediabunny.ALL_FORMATS});
-		Promise.all([input.getPrimaryVideoTrack(), input.getMetadataTags()]).then(([videoTrack, metadata]) => {
-			Promise.all([videoTrack?.getCodec?.()]).then(async ([videoCodec]) => {
-				const videoPacketSource = new Mediabunny.EncodedVideoPacketSource(videoCodec);
-				const output = new Mediabunny.Output({
-					target: new Mediabunny.BufferTarget(),
-					format: new Mediabunny.Mp4OutputFormat()
-				});
-				output.addVideoTrack(videoPacketSource);
-				output.setMetadataTags(metadata);
-				await output.start();
-
-				const videoSink = new Mediabunny.EncodedPacketSink(videoTrack);
-				const beginVideoPacket = await videoSink.getKeyPacket(frameSeek.ab.loopBeginMediaTime, {verifyKeyPackets: true, metadataOnly: false});
-				const begin = beginVideoPacket.timestamp;
-				const end = frameSeek.ab.loopEndMediaTime;
-
-				const videoMux = (async () => {
-					const decoderConfig = await videoTrack.getDecoderConfig();
-					for await (const encodedPacket of videoSink.packets(beginVideoPacket, undefined, {metadataOnly: false})) {
-						let sequenceNumber = 0;
-						if(encodedPacket.timestamp > end) //TODO: the video duration sometimes glitches if the last frame is on a keyframe. not sure why.
-							break;
-						// encodedPacket.timestamp -= begin;
-						await videoPacketSource.add(encodedPacket.clone({timestamp: encodedPacket.timestamp-begin, sequenceNumber: sequenceNumber++}), {decoderConfig: decoderConfig});
-					}
-					videoPacketSource.close();
-				})();
-
-				Promise.all([videoMux]).then(async () => {
-					await output.finalize();
-					const blob = new Blob([output.target.buffer], {type: "video/mp4"});
-					input.dispose();
-					const url = URL.createObjectURL(blob);
-					const a = document.createElement("a");
-					a.href = url;
-					a.download = videoFile.name;
-					a.click();
-					URL.revokeObjectURL(url);
-				});
-			});
-		});
-	});
-}
 
 function showTimeDisplayPointerEvent(mediaTime, frameNumber, mouse, rect) {
 	HOVERED_TIME_DISPLAY.children[0].textContent = String(secondsToTimestamp(mediaTime));
@@ -1844,19 +1830,16 @@ function binarySearchLenientFloor(arr, val) {
 	})();
 	registerClickEvent(document.getElementById("openCommandCreator"), () => {
 		if(videoFile){
+			document.getElementById("commandCreatorStart").style.display = "none"
+			document.getElementById("commandCreatorEnd").style.display = "none";
 			if(frameSeek && frameSeek.abEnabled){
 				if(frameSeek.ab.loopBeginFrameNumber !== 0){
-					COMMAND_CREATOR_START.textContent = `-ss ${frameSeek.getMediaTimeAtFrame(frameSeek.keyFrameNumberToFrameNumber(frameSeek.calcOwningKeyFrameNumber(frameSeek.ab.loopBeginFrameNumber)))} `;
-					COMMAND_CREATOR_START.style.display = "";
-				} else {
-					COMMAND_CREATOR_START.style.display = "none";
+					document.getElementById("commandCreatorStart").textContent = `-ss ${TRIM_VIDEO_KEY_ONLY.checked ? frameSeek.getMediaTimeAtFrame(frameSeek.calcOwningFrameNumber(frameSeek.ab.loopBeginFrameNumber)) : frameSeek.getMediaTimeAtFrame(frameSeek.ab.loopBeginFrameNumber)} `;
+					document.getElementById("commandCreatorStart").style.display = "";
 				}
-
 				if(frameSeek.ab.loopEndFrameNumber !== frameSeek.getFrameCount()-1){
-					COMMAND_CREATOR_END.textContent = `-to ${frameSeek.ab.loopEndMediaTime} `;
-					COMMAND_CREATOR_END.style.display = "";
-				} else {
-					COMMAND_CREATOR_END.style.display = "none";
+					document.getElementById("commandCreatorEnd").textContent = `-to ${frameSeek.ab.loopEndMediaTime} `;
+					document.getElementById("commandCreatorEnd").style.display = "";
 				}
 			}
 			COMMAND_CREATOR.showModal();
@@ -1887,5 +1870,3 @@ function binarySearchLenientFloor(arr, val) {
 	// 	[].push({ text: "Toggle PIP (WIP)", action: () => TOGGLE_PIP_BUTTON.dispatchEvent(new MouseEvent('click')) });
 	// }
 })();
-
-

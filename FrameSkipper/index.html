@@ -41,9 +41,11 @@
 									<div id="toggleLoopBar" class="clickableButton" tabindex="1">Toggle AB Looping</div>
 									<div id="setAHere" class="clickableButton" tabindex="1" style="display: var(--abLoopDisplay);">Set A Here</div>
 									<div id="setBHere" class="clickableButton" tabindex="1" style="display: var(--abLoopDisplay);">Set B Here</div>
-									<div id="trimVideo" class="clickableButton" tabindex="1" style="display: none;/*var(--abLoopDisplay);*/">Save Copy From A to B (inclusive)</div>
+									<div style="display:var(--abLoopDisplay);">
+										<div id="trimVideo" class="clickableButton" tabindex="1">Save Copy From A to B (inclusive)</div>
+										<label title="Enable this option for broken players that do not support negative timestamps.">Start at Keyframe <input type="checkbox" id="trimVideoKeyOnly" tabindex="1" autocomplete="off" checked></label>
+									</div>
 									<div id="openCommandCreator" class="clickableButton" tabindex="1">FFMPEG Command Creator</div>
-<!--									doesn't work because mediabunny still doesn't support negative timestamps-->
 									<div tabindex="1">Using <a tabindex="1" href="https://github.com/gpac/mp4box.js/" target="_blank">MP4Box</a> and <a tabindex="1" href="https://github.com/Vanilagy/mediabunny/" target="_blank">Mediabunny</a></div>
 								</div>
 							</div>
