@@ -135,6 +135,7 @@
 		<dialog id="exportMenu">
 			<div>
 				<img class="clickableButton" id="exitCommandCreator" style="border-radius: 8px; float: right; width: 20px; height: 20px;" src="../Icons/CancelIcon.svg" alt="Exit"/>
+				<div><label title="Dramatically improves trim speed by storing the output in RAM. Disable for large trims to avoid RAM issues (a progress bar for buffered mode is WIP).">Use Memory Buffer <input type="checkbox" id="useMemoryBuffer" autocomplete="off" checked></label></div>
 				<div><label title="Enable this option for broken players that do not support negative timestamps. The start of the video trim will round down to a keyframe.">Start at Keyframe <input type="checkbox" id="startAtKeyframe" autocomplete="off" checked></label></div>
 				<div><label>Audio <input type="checkbox" id="exportAudio" autocomplete="off" checked></label></div>
 				<div style="margin-bottom: 0.5em;"><b>FFMPEG: </b><code><span id="ffmpegDirectory" class="input" contenteditable="plaintext-only">.\ffmpeg</span> <span id="commandCreatorStart">-ss NUMBER </span><span id="commandCreatorEnd">-to NUMBER </span>-i <span id="commandCreatorPath" class="input" contenteditable="plaintext-only" autofocus></span> <span id="commandCreatorOptions">-c copy</span> <span id="commandCreatorOutput" class="input" contenteditable="plaintext-only"></span></code> <button type="button" id="commandCreatorCopy" style="user-select: none;">Copy</button></div>

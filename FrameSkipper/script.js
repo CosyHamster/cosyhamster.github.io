@@ -88,6 +88,7 @@ var inert = false;
 /**@type HTMLDialogElement */ const EXPORT_MENU = document.getElementById("exportMenu");
 /**@type HTMLSpanElement */ const COMMAND_CREATOR_PATH = document.getElementById("commandCreatorPath");
 /**@type HTMLSpanElement */ const COMMAND_CREATOR_OUTPUT = document.getElementById("commandCreatorOutput");
+/** @type HTMLInputElement */ const USE_MEMORY_BUFFER = document.getElementById("useMemoryBuffer");
 /** @type HTMLInputElement */ const EXPORT_AUDIO_CHECKBOX = document.getElementById("exportAudio");
 /** @type HTMLInputElement */ const START_AT_KEYFRAME = document.getElementById("startAtKeyframe");
 
@@ -136,7 +137,7 @@ function togglePause(){
 
 /** @param {number} seekDirection */
 function seek(seekDirection){
-	const frameNumber = frameSeek.calcFrameNumber(currentMediaTime+(5 * seekDirection));
+	const frameNumber = Math.max(frameSeek.calcFrameNumber(currentMediaTime+(5 * seekDirection)), frameSeek.getFirstValidFrameNumber());
 	const mediaTime = frameSeek.getMediaTimeAtFrame(frameNumber);
 	updateCurrentTime(frameNumber, mediaTime);
 	video.currentTime = currentMediaTime+MOE;
@@ -146,7 +147,7 @@ function seek(seekDirection){
 
 /** @param {number} seekDirection */
 function smallSeek(seekDirection){
-	const frameNumber = clamp(currentFrameNumber+(5 * seekDirection), 0, frameSeek.getFrameCount()-1);
+	const frameNumber = clamp(currentFrameNumber+(5 * seekDirection), frameSeek.getFirstValidFrameNumber(), frameSeek.getFrameCount()-1);
 	const mediaTime = frameSeek.getMediaTimeAtFrame(frameNumber);
 	updateCurrentTime(frameNumber, mediaTime);
 	video.currentTime = currentMediaTime+MOE;
@@ -365,15 +366,15 @@ class FrameSeek {
 					this.scrollFrameView(currentFrameNumber);
 				}
 				break;
-			case 1:
-				const newMediaTime = this.timestamps?.[currentFrameNumber+1];
-				nextMediaTime = this.timestamps?.[currentFrameNumber+2];
-				if(nextMediaTime){
-					currentMediaTime = newMediaTime;
-					video.currentTime = nextMediaTime-MOE;
-					this.onSeekedManually(newMediaTime, currentFrameNumber+1);
-				}
-				break;
+			// case 1:
+			// 	const newMediaTime = this.timestamps?.[currentFrameNumber+1];
+			// 	nextMediaTime = this.timestamps?.[currentFrameNumber+2];
+			// 	if(nextMediaTime){
+			// 		currentMediaTime = newMediaTime;
+			// 		video.currentTime = nextMediaTime-MOE;
+			// 		this.onSeekedManually(newMediaTime, currentFrameNumber+1);
+			// 	}
+			// 	break;
 		}
 	}
 
@@ -390,15 +391,15 @@ class FrameSeek {
 					this.scrollFrameView(currentFrameNumber);
 				}
 				break;
-			case 1:
-				const mediaTime = this.timestamps?.[currentFrameNumber];
-				prevMediaTime = this.timestamps?.[currentFrameNumber-1];
-				if(prevMediaTime){
-					currentMediaTime = prevMediaTime;
-					video.currentTime = mediaTime-MOE;
-					this.onSeekedManually(prevMediaTime, currentFrameNumber-1);
-				}
-				break;
+			// case 1:
+			// 	const mediaTime = this.timestamps?.[currentFrameNumber];
+			// 	prevMediaTime = this.timestamps?.[currentFrameNumber-1];
+			// 	if(prevMediaTime){
+			// 		currentMediaTime = prevMediaTime;
+			// 		video.currentTime = mediaTime-MOE;
+			// 		this.onSeekedManually(prevMediaTime, currentFrameNumber-1);
+			// 	}
+			// 	break;
 		}
 	}
 
@@ -444,6 +445,14 @@ class FrameSeek {
 		return this.timestamps.length;
 	}
 
+	getValidFrameCount(){
+		return this.timestamps.length - this.getFirstValidFrameNumber();
+	}
+
+	getInvalidFrameCount(){
+		return this.timestamps.length - this.getValidFrameCount();
+	}
+
 	getKeyFrameCount(){
 		return this.keyframeIndexes.length;
 	}
@@ -484,7 +493,7 @@ class FrameSeek {
 
 	decrementAPosition(){
 		const frameNumber = this.ab.loopBeginFrameNumber-1;
-		if(frameNumber < 0){
+		if(frameNumber < this.getFirstValidFrameNumber()){
 			return [null, null];
 		}
 
@@ -1445,7 +1454,6 @@ function fixCursorOnInput(input){
 
 LOOP_START_BAR.addEventListener("pointerdown", (mouse) => {
 	LOOP_START_BAR.setPointerCapture(mouse.pointerId);
-	mouse.preventDefault();
 }, {passive: false});
 LOOP_START_BAR.addEventListener("pointermove", (mouse) => {
 	if(LOOP_START_BAR.hasPointerCapture(mouse.pointerId)){
@@ -1455,9 +1463,8 @@ LOOP_START_BAR.addEventListener("pointermove", (mouse) => {
 		// LOOP_START_BAR.style.setProperty("--progress", `${progress*100}%`);
 
 		const [mediaTime, frameNumber] = frameSeek.setAMediaTime(frameSeek.getFinalFrameMediaTime() * progress);
-		// showTimeDisplayPointerEvent(mediaTime, frameNumber, mouse, rect);
-		showTimeDisplayPointerEvent1(mediaTime, frameNumber, LOOP_START_BAR);
-		mouse.preventDefault();
+		showTimeDisplayPointerEvent(mediaTime, frameNumber, mouse, rect);
+		// showTimeDisplayPointerEvent1(mediaTime, frameNumber, LOOP_START_BAR);
 	}
 }, {passive: false});
 LOOP_START_BAR.addEventListener("keydown", (keyboard) => {
@@ -1512,8 +1519,8 @@ LOOP_END_BAR.addEventListener("pointermove", (mouse) => {
 		// LOOP_END_BAR.style.setProperty("--progress", `${progress*100}%`);
 
 		const [mediaTime, frameNumber] = frameSeek.setBMediaTime(frameSeek.getFinalFrameMediaTime() * progress);
-		// showTimeDisplayPointerEvent(mediaTime, frameNumber, mouse, rect);
-		showTimeDisplayPointerEvent1(mediaTime, frameNumber, LOOP_END_BAR);
+		showTimeDisplayPointerEvent(mediaTime, frameNumber, mouse, rect);
+		// showTimeDisplayPointerEvent1(mediaTime, frameNumber, LOOP_END_BAR);
 	}
 }, {passive: false});
 LOOP_END_BAR.addEventListener("keydown", (keyboard) => {
@@ -1560,6 +1567,7 @@ registerClickEvent(document.getElementById("exportTrim"), (event) => {
 	currentTarget.style.pointerEvents = "none";
 
 	const file = videoFile;
+	const buffered = !USE_MEMORY_BUFFER.checked;
 	const useAudio = EXPORT_AUDIO_CHECKBOX.checked;
 	const loopBeginMediaTime = (frameSeek.abEnabled) ? frameSeek.ab.loopBeginMediaTime : 0;
 	const loopEndMediaTime = (frameSeek.abEnabled) ? frameSeek.ab.loopEndMediaTime : frameSeek.getMediaTimeAtFrame(frameSeek.getFrameCount()-1);
@@ -1570,13 +1578,18 @@ registerClickEvent(document.getElementById("exportTrim"), (event) => {
 		const input = new Mediabunny.Input({source: new Mediabunny.BlobSource(file), formats: Mediabunny.ALL_FORMATS});
 		return Promise.all([input.getPrimaryVideoTrack(), useAudio ? input.getPrimaryAudioTrack() : null, input.getMetadataTags()]).then(([videoTrack, audioTrack, metadata]) => {
 			return Promise.all([videoTrack.getCodec(), audioTrack?.getCodec?.()]).then(async ([videoCodec, audioCodec]) => {
-				const BUFFERED = true;
-				/** @type FileSystemFileHandle */
-				const fileHandle = await showSaveFilePicker({id: 75347884, startIn: "videos", suggestedName: suggestedName});
-				const writable = await fileHandle.createWritable();
+				let streamTarget;
+				if(buffered){
+					/** @type FileSystemFileHandle */
+					const fileHandle = await showSaveFilePicker({id: 75347884, startIn: "videos", suggestedName: suggestedName});
+					const writable = await fileHandle.createWritable();
+					streamTarget = new Mediabunny.StreamTarget(writable);
+				} else {
+					streamTarget = new Mediabunny.BufferTarget();
+				}
 
 				const output = new Mediabunny.Output({
-					target: BUFFERED ? new Mediabunny.StreamTarget(writable) : new Mediabunny.BufferTarget(),
+					target: streamTarget,
 					format: new Mediabunny.Mp4OutputFormat()
 				});
 
@@ -1628,19 +1641,15 @@ registerClickEvent(document.getElementById("exportTrim"), (event) => {
 				}
 
 				return Promise.all([videoMux, audioMux]).then(async () => {
-					// await output.finalize();
-					// const blob = new Blob([output.target.buffer], { type: "video/mp4" });
-					// const url = URL.createObjectURL(blob);
-					// const a = document.createElement("a");
-					// a.href = url;
-					// a.download = videoFile.name;
-					// a.click();
-					// URL.revokeObjectURL(url);
-
 					await output.finalize();
-					if(!BUFFERED){
-						await writable.write(output.target.buffer);
-						await writable.close();
+					if(!buffered){
+						const blob = new Blob([output.target.buffer], { type: "video/mp4" });
+						const url = URL.createObjectURL(blob);
+						const a = document.createElement("a");
+						a.href = url;
+						a.download = videoFile.name;
+						a.click();
+						URL.revokeObjectURL(url);
 					}
 				});
 			});
@@ -1653,9 +1662,12 @@ registerClickEvent(document.getElementById("exportTrim"), (event) => {
 })();
 
 function showTimeDisplayPointerEvent(mediaTime, frameNumber, mouse, rect) {
+	// HOVERED_TIME_DISPLAY.children[0].textContent = String(secondsToTimestamp(mediaTime));
+	// HOVERED_TIME_DISPLAY.children[1].textContent = String(frameNumber);
+	// HOVERED_TIME_DISPLAY.style.transform = `translate(calc(${clamp(mouse.clientX, rect.left, rect.right)}px - 50%), ${rect.top - 40}px)`;
 	HOVERED_TIME_DISPLAY.children[0].textContent = String(secondsToTimestamp(mediaTime));
 	HOVERED_TIME_DISPLAY.children[1].textContent = String(frameNumber);
-	HOVERED_TIME_DISPLAY.style.transform = `translate(calc(${clamp(mouse.clientX, rect.left, rect.right)}px - 50%), ${rect.top - 40}px)`;
+	HOVERED_TIME_DISPLAY.style.transform = `translate(calc(${rect.left+(rect.right-rect.left)*((frameNumber-frameSeek.getInvalidFrameCount())/(frameSeek.getValidFrameCount()-1))}px - 50%), ${rect.top - 40}px)`;
 }
 
 function showTimeDisplayPointerEvent1(mediaTime, frameNumber, element) {
