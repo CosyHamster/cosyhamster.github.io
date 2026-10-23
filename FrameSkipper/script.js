@@ -1647,7 +1647,7 @@ registerClickEvent(document.getElementById("exportTrim"), (event) => {
 						const url = URL.createObjectURL(blob);
 						const a = document.createElement("a");
 						a.href = url;
-						a.download = videoFile.name;
+						a.download = suggestedName;
 						a.click();
 						URL.revokeObjectURL(url);
 					}
